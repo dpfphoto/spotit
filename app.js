@@ -124,11 +124,53 @@ async function locate() {
     const pos = await getPosition();
     if (meMarker) meMarker.remove();
     meMarker = L.circleMarker([pos.lat, pos.lng], { radius: 8, color: '#fff', weight: 3, fillColor: '#2563EB', fillOpacity: 1 }).addTo(map);
-    map.setView([pos.lat, pos.lng], 15);
+    map.setView([pos.lat, pos.lng], 17);
+    loadNearby(pos);
   } catch {
     toast('Posizione non disponibile: controlla i permessi');
   }
 }
+
+// ---------- Locali intorno a te sulla mappa ----------
+// Puntini bianchi: i locali vicini da toccare e salvare al volo
+
+const nearLayer = L.layerGroup().addTo(map);
+const areaBtn = el('button', { type: 'button', class: 'area-btn', hidden: '', onclick: () => loadNearby(centerOf(map), radiusOfView()) }, 'Cerca locali in questa zona');
+$('map').parentElement.append(areaBtn);
+let nearLoading = false;
+
+function centerOf(m) { const c = m.getCenter(); return { lat: c.lat, lng: c.lng }; }
+function radiusOfView() {
+  const b = map.getBounds();
+  return Math.min(800, Math.round(map.distance(b.getCenter(), b.getNorthEast()) * 0.7));
+}
+
+async function loadNearby(pos, radius) {
+  if (nearLoading) return;
+  nearLoading = true;
+  areaBtn.hidden = true;
+  toast('Cerco i locali qui intorno…');
+  try {
+    let list = GOOGLE_KEY ? await googleNearby(pos) : await osmNearby(pos, radius || 250, 40);
+    if (!list.length && !GOOGLE_KEY && !radius) list = await osmNearby(pos, 600, 40);
+    const isSaved = r => places.some(p => p.name === r.name && Math.abs(p.lat - r.lat) < 0.0005 && Math.abs(p.lng - r.lng) < 0.0005);
+    nearLayer.clearLayers();
+    for (const r of list.filter(r => !isSaved(r))) {
+      L.circleMarker([r.lat, r.lng], { radius: 7, color: '#17202A', weight: 2, fillColor: '#FFFFFF', fillOpacity: 1 })
+        .bindTooltip(r.name, { direction: 'top', offset: [0, -6] })
+        .on('click', () => { openAdd(''); startDraft(r); })
+        .addTo(nearLayer);
+    }
+    toast(list.length ? 'Tocca un puntino bianco per salvarlo' : 'Nessun locale trovato qui intorno');
+  } catch {
+    toast('Non riesco a cercare i locali in questo momento');
+  }
+  nearLoading = false;
+}
+
+map.on('moveend', () => {
+  if (view === 'map' && map.getZoom() >= 15 && !nearLoading) areaBtn.hidden = false;
+});
 
 let fittedOnce = false;
 function renderMap(list) {
@@ -191,6 +233,7 @@ function setView(v) {
   $('tabList').setAttribute('aria-selected', String(v === 'list'));
   $('list').hidden = v !== 'list';
   locateBtn.hidden = v !== 'map';
+  if (v !== 'map') areaBtn.hidden = true;
   if (v === 'map') setTimeout(() => map.invalidateSize(), 0);
 }
 $('tabMap').onclick = () => setView('map');
@@ -326,7 +369,7 @@ $('btnHere').onclick = async () => {
 };
 
 // Locali vicini da OpenStreetMap (gratis), usato finché non c'è la chiave Google
-async function osmNearby(pos, radius) {
+async function osmNearby(pos, radius, limit = 8) {
   const tags = 'amenity~"^(restaurant|bar|cafe|pub|fast_food|ice_cream|biergarten|food_court)$"';
   const around = `around:${radius},${pos.lat},${pos.lng}`;
   const q = `[out:json][timeout:15];(nwr(${around})[${tags}][name];` +
@@ -347,7 +390,7 @@ async function osmNearby(pos, radius) {
     return { name: t.name, address: [street, t['addr:city']].filter(Boolean).join(', '), lat, lng, gid: '' };
   }).filter(r => r.name && Number.isFinite(r.lat))
     .sort((a, b) => dist(a, pos) - dist(b, pos))
-    .slice(0, 8);
+    .slice(0, limit);
 }
 
 async function googleNearby(pos) {
@@ -599,5 +642,6 @@ if ('serviceWorker' in navigator) {
 places = places.map(cleanPlace).filter(Boolean);
 render();
 setView('map');
+if (!/^#s=/.test(location.hash) && !location.search) locate();
 checkIncoming();
 checkShareTarget();
