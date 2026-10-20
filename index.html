@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F766E">
+<title>SpotIt</title>
+<meta name="description" content="Salva i posti dove vuoi andare o tornare e consigliali agli amici.">
+<meta property="og:title" content="SpotIt">
+<meta property="og:description" content="Un amico ti ha consigliato un posto. Aprilo e salvalo anche tu.">
+<meta property="og:image" content="icons/icon-512.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="SpotIt">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <h1>SpotIt</h1>
+  <div class="seg" role="tablist" aria-label="Vista">
+    <button type="button" id="tabMap" role="tab" aria-selected="true">Mappa</button>
+    <button type="button" id="tabList" role="tab" aria-selected="false">Lista</button>
+  </div>
+  <button type="button" id="btnSettings" class="icon-btn" aria-label="Impostazioni">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"></path></svg>
+  </button>
+</header>
+
+<div id="installBanner" class="banner" hidden>
+  <span id="installText"></span>
+  <button type="button" id="installBtn" class="btn small primary"></button>
+  <button type="button" id="installClose" class="icon-btn" aria-label="Chiudi">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+  </button>
+</div>
+
+<div id="filters" class="filters" aria-label="Filtra per giudizio"></div>
+
+<main>
+  <div id="map" aria-label="Mappa dei tuoi posti"></div>
+  <section id="list" hidden></section>
+</main>
+
+<button type="button" id="fab" class="fab">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+  Salva un posto
+</button>
+
+<!-- Salva un posto -->
+<dialog id="dlgAdd" class="sheet">
+  <div class="sheet-head">
+    <h2>Salva un posto</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+  </div>
+  <div id="addStep1">
+    <button type="button" id="btnHere" class="btn primary full">Sono davanti al posto: trovalo qui</button>
+    <p class="muted">Oppure cercalo per nome:</p>
+    <form id="searchForm" class="row">
+      <label class="sr" for="searchInput">Nome del posto o link di Google Maps</label>
+      <input id="searchInput" type="search" placeholder="Nome e città, o incolla un link" autocomplete="off">
+      <button type="submit" class="btn primary">Cerca</button>
+    </form>
+    <p id="searchMsg" class="muted"></p>
+    <ul id="results" class="results"></ul>
+  </div>
+  <form id="addStep2" hidden>
+    <label class="field">Nome del posto
+      <input id="draftName" type="text" required maxlength="80">
+    </label>
+    <p id="draftAddress" class="muted"></p>
+    <fieldset class="verdicts" id="draftVerdicts"><legend>Che ne pensi?</legend></fieldset>
+    <label class="field">Nota (facoltativa)
+      <textarea id="draftNote" rows="2" maxlength="280" placeholder="Es. chiedi il tavolo in terrazza"></textarea>
+    </label>
+    <div class="row">
+      <button type="button" id="btnBack" class="btn ghost">Indietro</button>
+      <button type="submit" id="btnSave" class="btn primary grow" disabled>Salva</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Scheda posto -->
+<dialog id="dlgPlace" class="sheet">
+  <div class="sheet-head">
+    <h2 id="pName"></h2>
+    <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+  </div>
+  <p id="pAddress" class="muted"></p>
+  <p id="pFrom" class="from" hidden></p>
+  <fieldset class="verdicts" id="pVerdicts"><legend>Il tuo giudizio</legend></fieldset>
+  <label class="field">Nota
+    <textarea id="pNote" rows="2" maxlength="280"></textarea>
+  </label>
+  <div class="grid3">
+    <a id="pDirections" class="btn ghost" target="_blank" rel="noopener">Apri in Maps</a>
+    <button type="button" id="pShare" class="btn whatsapp">WhatsApp</button>
+    <button type="button" id="pShareMore" class="btn ghost">Altro</button>
+  </div>
+  <button type="button" id="pDelete" class="btn danger-link">Elimina questo posto</button>
+</dialog>
+
+<!-- Posto ricevuto da un amico -->
+<dialog id="dlgShared" class="sheet">
+  <div class="sheet-head">
+    <h2 id="sTitle"></h2>
+    <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+  </div>
+  <div class="card">
+    <div id="sName" class="card-title"></div>
+    <div id="sAddress" class="muted"></div>
+    <span id="sBadge" class="badge"></span>
+    <p id="sNote" class="quote" hidden></p>
+  </div>
+  <fieldset class="verdicts" id="sVerdicts"><legend>Salvalo anche tu come</legend></fieldset>
+  <button type="button" id="sSave" class="btn primary full">Salva tra i miei posti</button>
+</dialog>
+
+<!-- Profilo e impostazioni -->
+<dialog id="dlgSettings" class="sheet">
+  <div class="sheet-head">
+    <h2>Il tuo profilo</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+  </div>
+  <label class="field">Il tuo nome (lo vedono gli amici quando condividi)
+    <input id="myName" type="text" maxlength="40" placeholder="Es. Flavio">
+  </label>
+  <div id="counts" class="counts"></div>
+  <p class="muted">Per ora i tuoi posti sono salvati solo su questo telefono. Fai ogni tanto una copia di sicurezza.</p>
+  <div class="row">
+    <button type="button" id="btnExport" class="btn ghost grow">Scarica copia</button>
+    <label class="btn ghost grow" for="importFile">Ripristina copia</label>
+    <input id="importFile" type="file" accept="application/json" class="sr">
+  </div>
+  <button type="button" id="btnInvite" class="btn primary full">Invita un amico su WhatsApp</button>
+</dialog>
+
+<!-- Guida installazione iPhone -->
+<dialog id="dlgIos" class="sheet">
+  <div class="sheet-head">
+    <h2>Aggiungi SpotIt alla Home</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+  </div>
+  <ol class="steps">
+    <li>Se l'hai aperta da WhatsApp, tocca i tre puntini o l'icona della bussola e scegli <strong>Apri in Safari</strong>.</li>
+    <li>In Safari tocca il pulsante <strong>Condividi</strong> (il quadrato con la freccia in su).</li>
+    <li>Scorri e tocca <strong>Aggiungi alla schermata Home</strong>, poi <strong>Aggiungi</strong>.</li>
+  </ol>
+  <p class="muted">Da quel momento SpotIt si apre dalla Home come un'app.</p>
+  <button type="button" class="btn primary full" data-close>Ho capito</button>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
