@@ -429,13 +429,14 @@ async function googleNearby(pos) {
 }
 
 function startDraft(d) {
-  draft = { ...d, verdict: null, note: '' };
+  draft = { ...d, verdict: null, note: '', photos: [] };
   $('addStep1').hidden = true;
   $('addStep2').hidden = false;
   $('draftName').value = d.name;
   $('draftAddress').textContent = d.address;
   $('draftNote').value = '';
   drawDraftVerdicts();
+  drawDraftPhotos();
   if (!d.name) $('draftName').focus();
 }
 function drawDraftVerdicts() {
@@ -450,10 +451,98 @@ $('addStep2').onsubmit = e => {
   if (!p) { toast('Scrivi il nome del posto'); return; }
   places.push(p);
   persist();
+  if (draft.photos.length) setPhotos(p.id, draft.photos).catch(() => toast('Spazio esaurito: foto non salvate'));
   $('dlgAdd').close();
   map.setView([p.lat, p.lng], Math.max(map.getZoom(), 15));
   toast(`Salvato come "${V[p.verdict].label}"`);
 };
+
+// ---------- Foto ----------
+// Le foto stanno in IndexedDB (localStorage è troppo piccolo), ridotte a 1280 px.
+
+const MAX_PHOTOS = 8;
+let dbPromise = null;
+function photoDb() {
+  dbPromise = dbPromise || new Promise((resolve, reject) => {
+    const req = indexedDB.open('spotit', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('photos');
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return dbPromise;
+}
+async function getPhotos(id) {
+  try {
+    const db = await photoDb();
+    return await new Promise(res => {
+      const r = db.transaction('photos').objectStore('photos').get(id);
+      r.onsuccess = () => res(r.result || []);
+      r.onerror = () => res([]);
+    });
+  } catch { return []; }
+}
+async function setPhotos(id, list) {
+  const db = await photoDb();
+  await new Promise((res, rej) => {
+    const tx = db.transaction('photos', 'readwrite');
+    if (list.length) tx.objectStore('photos').put(list, id); else tx.objectStore('photos').delete(id);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+}
+async function shrinkPhoto(file) {
+  const img = await new Promise((res, rej) => {
+    const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file);
+  });
+  const scale = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement('canvas');
+  c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  URL.revokeObjectURL(img.src);
+  return c.toDataURL('image/jpeg', 0.75);
+}
+
+// Disegna miniature + pulsante "Aggiungi foto"; onChange riceve la nuova lista
+function photoStrip(box, list, onChange) {
+  const input = el('input', { type: 'file', accept: 'image/*', multiple: '', class: 'sr' });
+  input.onchange = async () => {
+    const files = [...input.files].slice(0, MAX_PHOTOS - list.length);
+    if (!files.length) return;
+    toast('Aggiungo la foto…');
+    const added = [];
+    for (const f of files) { try { added.push(await shrinkPhoto(f)); } catch {} }
+    if (added.length) onChange([...list, ...added]); else toast('Non riesco a leggere la foto');
+  };
+  const thumbs = list.map((src, i) => el('button', { type: 'button', class: 'thumb', 'aria-label': `Foto ${i + 1}`,
+    onclick: () => showPhoto(src, () => onChange(list.filter((_, j) => j !== i))) }, el('img', { src, alt: '' })));
+  const add = list.length < MAX_PHOTOS
+    ? el('label', { class: 'thumb add' }, input, el('span', { 'aria-hidden': 'true' }, '📷'), el('span', {}, list.length ? 'Altra foto' : 'Aggiungi foto'))
+    : null;
+  box.replaceChildren(...thumbs, ...(add ? [add] : []));
+}
+
+let onPhotoDelete = null;
+function showPhoto(src, onDelete) {
+  $('photoBig').src = src;
+  onPhotoDelete = onDelete;
+  $('dlgPhoto').showModal();
+}
+$('photoDelete').onclick = () => {
+  if (!confirm('Eliminare questa foto?')) return;
+  $('dlgPhoto').close();
+  if (onPhotoDelete) onPhotoDelete();
+};
+
+function drawDraftPhotos() {
+  photoStrip($('draftPhotos'), draft.photos, l => { draft.photos = l; drawDraftPhotos(); });
+}
+async function drawPlacePhotos(id) {
+  const list = await getPhotos(id);
+  if (currentId !== id) return;
+  photoStrip($('pPhotos'), list, async l => {
+    try { await setPhotos(id, l); } catch { toast('Spazio esaurito sul telefono'); }
+    drawPlacePhotos(id);
+  });
+}
 
 // ---------- Scheda posto ----------
 
@@ -470,6 +559,8 @@ function openPlace(id) {
   $('pNote').value = p.note;
   $('pDirections').href = mapsUrl(p);
   drawPlaceVerdicts(p);
+  $('pPhotos').replaceChildren();
+  drawPlacePhotos(id);
   if (!$('dlgPlace').open) $('dlgPlace').showModal();
 }
 // Apre il posto in Google Maps (scheda del locale se abbiamo il suo id Google)
@@ -490,6 +581,7 @@ $('pDelete').onclick = () => {
   const p = places.find(x => x.id === currentId);
   if (!p || !confirm(`Eliminare "${p.name}"?`)) return;
   places = places.filter(x => x.id !== currentId);
+  setPhotos(p.id, []).catch(() => {});
   persist();
   $('dlgPlace').close();
 };
@@ -592,8 +684,10 @@ $('btnInvite').onclick = () => {
   const by = prefs.name ? `${prefs.name} ti invita su SpotIt` : 'Prova SpotIt';
   window.open('https://wa.me/?text=' + encodeURIComponent(`${by}: salva i posti dove vuoi andare o tornare e scopri quelli che consigliano gli amici. ${appUrl()}`), '_blank', 'noopener');
 };
-$('btnExport').onclick = () => {
-  const blob = new Blob([JSON.stringify({ app: 'spotit', v: 1, places }, null, 2)], { type: 'application/json' });
+$('btnExport').onclick = async () => {
+  const photos = {};
+  for (const p of places) { const l = await getPhotos(p.id); if (l.length) photos[p.id] = l; }
+  const blob = new Blob([JSON.stringify({ app: 'spotit', v: 1, places, photos })], { type: 'application/json' });
   const a = el('a', { href: URL.createObjectURL(blob), download: `spotit-${new Date().toISOString().slice(0, 10)}.json` });
   document.body.append(a); a.click(); a.remove();
 };
@@ -605,6 +699,11 @@ $('importFile').onchange = async e => {
     const ids = new Set(places.map(p => p.id));
     const added = incomingPlaces.filter(p => !ids.has(p.id));
     places.push(...added);
+    const photos = data.photos || {};
+    for (const p of added) {
+      const l = (photos[p.id] || []).filter(x => typeof x === 'string' && x.startsWith('data:image/')).slice(0, MAX_PHOTOS);
+      if (l.length) await setPhotos(p.id, l).catch(() => {});
+    }
     persist();
     toast(`Ripristinati ${added.length} posti`);
   } catch {

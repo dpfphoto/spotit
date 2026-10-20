@@ -135,3 +135,23 @@ textarea { resize: vertical; }
   background: rgba(255,255,255,.92); padding: 2px 6px; border-radius: 6px;
   pointer-events: none;
 }
+
+/* Foto del posto */
+.photos { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 10px; }
+.thumb {
+  flex: 0 0 auto; width: 76px; height: 76px; border-radius: 12px; overflow: hidden;
+  border: 1px solid #D5DBE1; background: #F3F5F7; padding: 0; cursor: pointer;
+}
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb.add {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border: 2px dashed #0F766E; color: #0F766E; font: 600 12px/1.2 system-ui, sans-serif; text-align: center;
+}
+.thumb.add span:first-of-type { font-size: 24px; }
+.photo-view {
+  border: 0; padding: 12px; background: #111; width: 100%; max-width: 100vw; max-height: 100vh; height: 100%;
+  margin: 0; box-sizing: border-box; display: none; flex-direction: column; gap: 12px;
+}
+.photo-view[open] { display: flex; }
+.photo-view img { flex: 1; min-height: 0; width: 100%; object-fit: contain; }
+.photo-view .btn.ghost { color: #fff; border-color: #fff; background: transparent; }
