@@ -146,9 +146,10 @@ function radiusOfView() {
 }
 
 async function loadNearby(pos, radius) {
-  if (nearLoading) return;
+  if (nearLoading) { toast('Sto già cercando, un attimo…'); return; }
   nearLoading = true;
-  areaBtn.hidden = true;
+  areaBtn.disabled = true;
+  areaBtn.textContent = 'Cerco…';
   toast('Cerco i locali qui intorno…');
   try {
     let list = GOOGLE_KEY ? await googleNearby(pos) : await osmNearby(pos, radius || 250, 40);
@@ -163,9 +164,12 @@ async function loadNearby(pos, radius) {
     }
     toast(list.length ? 'Tocca un locale sulla mappa per salvarlo' : 'Nessun locale trovato qui intorno');
   } catch {
-    toast('Non riesco a cercare i locali in questo momento');
+    toast('I locali non rispondono ora, riprova tra poco');
   }
   nearLoading = false;
+  areaBtn.disabled = false;
+  areaBtn.textContent = 'Cerca locali in questa zona';
+  areaBtn.hidden = true;
 }
 
 map.on('moveend', () => {
@@ -378,6 +382,8 @@ function osmEmoji(t) {
     hotel: '🏨', guest_house: '🏡', museum: '🏛️', attraction: '⭐' })[k] || '📍';
 }
 
+const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+
 async function osmNearby(pos, radius, limit = 8) {
   const tags = 'amenity~"^(restaurant|bar|cafe|pub|fast_food|ice_cream|biergarten|food_court)$"';
   const around = `around:${radius},${pos.lat},${pos.lng}`;
@@ -385,12 +391,18 @@ async function osmNearby(pos, radius, limit = 8) {
     `nwr(${around})[tourism~"^(hotel|museum|attraction|guest_house)$"][name];` +
     `nwr(${around})[shop~"^(bakery|pastry|confectionery|wine|deli|ice_cream)$"][name];);out center 60;`;
   const body = 'data=' + encodeURIComponent(q);
-  // Se il server principale è occupato, prova un server alternativo
-  let res;
-  try { res = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body }); } catch { res = null; }
-  if (!res || !res.ok) res = await fetch('https://overpass.kumi.systems/api/interpreter', { method: 'POST', body });
-  if (!res.ok) throw new Error(res.status);
-  const data = await res.json();
+  // I server gratuiti a volte sono lenti o occupati: provo il successivo dopo 8 secondi
+  let data = null;
+  for (const server of OVERPASS) {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 8000);
+    try {
+      const res = await fetch(server, { method: 'POST', body, signal: ctl.signal });
+      if (res.ok) { data = await res.json(); break; }
+    } catch { /* provo il prossimo */ }
+    finally { clearTimeout(timer); }
+  }
+  if (!data) throw new Error('overpass');
   const dist = (a, b) => Math.hypot((a.lat - b.lat) * 111320, (a.lng - b.lng) * 111320 * Math.cos(a.lat * Math.PI / 180));
   return (data.elements || []).map(e => {
     const t = e.tags || {};
