@@ -535,9 +535,13 @@ $('photoDelete').onclick = () => {
 function drawDraftPhotos() {
   photoStrip($('draftPhotos'), draft.photos, l => { draft.photos = l; drawDraftPhotos(); });
 }
+let currentPhotos = [];
 async function drawPlacePhotos(id) {
   const list = await getPhotos(id);
   if (currentId !== id) return;
+  currentPhotos = list;
+  $('pAttachRow').hidden = !list.length;
+  if (!list.length) $('pAttach').checked = false;
   photoStrip($('pPhotos'), list, async l => {
     try { await setPhotos(id, l); } catch { toast('Spazio esaurito sul telefono'); }
     drawPlacePhotos(id);
@@ -560,6 +564,9 @@ function openPlace(id) {
   $('pDirections').href = mapsUrl(p);
   drawPlaceVerdicts(p);
   $('pPhotos').replaceChildren();
+  $('pAttach').checked = false;
+  $('pAttachRow').hidden = true;
+  currentPhotos = [];
   drawPlacePhotos(id);
   if (!$('dlgPlace').open) $('dlgPlace').showModal();
 }
@@ -609,14 +616,35 @@ function shareText(p) {
 }
 function current() { return places.find(x => x.id === currentId); }
 
-$('pShare').onclick = () => {
+// Condivide link + foto con il menu del telefono (si sceglie WhatsApp). true se è andata.
+// Niente attese prima di navigator.share: Safari lo blocca se il tocco è "scaduto".
+function shareWithPhotos(p) {
+  const s = shareText(p);
+  const files = currentPhotos.map((src, i) => {
+    const bin = atob(src.split(',')[1]);
+    const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+    return new File([bytes], `spotit-${i + 1}.jpg`, { type: 'image/jpeg' });
+  });
+  // Il link va nel testo: con le foto alcune app ignorano il campo url
+  const data = { files, text: `${s.text}: ${s.url}` };
+  if (!files.length || !navigator.canShare || !navigator.canShare(data)) {
+    toast('Questo telefono non permette di allegare le foto: invio solo il link');
+    return false;
+  }
+  navigator.share(data).catch(() => { /* annullato */ });
+  return true;
+}
+
+$('pShare').onclick = async () => {
   const p = current(); if (!p) return;
   if (!prefs.name) toast('Suggerimento: metti il tuo nome nel profilo');
+  if ($('pAttach').checked && shareWithPhotos(p)) return;
   const s = shareText(p);
   window.open('https://wa.me/?text=' + encodeURIComponent(`${s.text}: ${s.url}`), '_blank', 'noopener');
 };
 $('pShareMore').onclick = async () => {
   const p = current(); if (!p) return;
+  if ($('pAttach').checked && shareWithPhotos(p)) return;
   const s = shareText(p);
   if (navigator.share) {
     try { await navigator.share({ title: p.name, text: s.text, url: s.url }); } catch { /* annullato */ }
