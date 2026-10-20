@@ -304,10 +304,8 @@ $('btnHere').onclick = async () => {
     const pos = await getPosition();
     const here = { name: '', address: 'Posizione attuale', lat: pos.lat, lng: pos.lng, gid: '' };
     let near = [];
-    if (GOOGLE_KEY) {
-      $('searchMsg').textContent = 'Cerco i locali qui intorno…';
-      try { near = await googleNearby(pos); } catch { near = []; }
-    }
+    $('searchMsg').textContent = 'Cerco i locali qui intorno…';
+    try { near = GOOGLE_KEY ? await googleNearby(pos) : await osmNearby(pos); } catch { near = []; }
     if (!near.length) { $('searchMsg').textContent = ''; startDraft(here); return; }
     // Il posto davanti a cui sei: i locali più vicini, il primo è quasi sempre quello giusto
     $('searchMsg').textContent = 'Sei davanti a uno di questi?';
@@ -320,6 +318,26 @@ $('btnHere').onclick = async () => {
     $('searchMsg').textContent = 'Posizione non disponibile: controlla i permessi del browser.';
   }
 };
+
+// Locali vicini da OpenStreetMap (gratis), usato finché non c'è la chiave Google
+async function osmNearby(pos) {
+  const tags = 'amenity~"^(restaurant|bar|cafe|pub|fast_food|ice_cream|biergarten|food_court)$"';
+  const q = `[out:json][timeout:15];(nwr(around:120,${pos.lat},${pos.lng})[${tags}][name];` +
+    `nwr(around:120,${pos.lat},${pos.lng})[tourism~"^(hotel|museum|attraction|guest_house)$"][name];` +
+    `nwr(around:120,${pos.lat},${pos.lng})[shop][name];);out center 40;`;
+  const res = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(q) });
+  if (!res.ok) throw new Error(res.status);
+  const data = await res.json();
+  const dist = (a, b) => Math.hypot((a.lat - b.lat) * 111320, (a.lng - b.lng) * 111320 * Math.cos(a.lat * Math.PI / 180));
+  return (data.elements || []).map(e => {
+    const t = e.tags || {};
+    const lat = e.lat ?? (e.center && e.center.lat), lng = e.lon ?? (e.center && e.center.lon);
+    const street = [t['addr:street'], t['addr:housenumber']].filter(Boolean).join(' ');
+    return { name: t.name, address: [street, t['addr:city']].filter(Boolean).join(', '), lat, lng, gid: '' };
+  }).filter(r => r.name && Number.isFinite(r.lat))
+    .sort((a, b) => dist(a, pos) - dist(b, pos))
+    .slice(0, 6);
+}
 
 async function googleNearby(pos) {
   const res = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
