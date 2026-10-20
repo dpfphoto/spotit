@@ -119,3 +119,19 @@ textarea { resize: vertical; }
 
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(86px + env(safe-area-inset-bottom)); z-index: 1000; background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 12px; font-size: 14px; max-width: calc(100% - 32px); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Locali vicini da salvare */
+.near { overflow: visible; }
+.near-ico {
+  display: flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: #fff; border: 2px solid #0F766E; box-shadow: 0 2px 6px rgba(0,0,0,.3);
+  font-size: 22px; line-height: 1; cursor: pointer;
+}
+.near-name {
+  position: absolute; top: 48px; left: 50%; transform: translateX(-50%);
+  white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis;
+  font: 600 12px/1.2 system-ui, sans-serif; color: #17202A;
+  background: rgba(255,255,255,.92); padding: 2px 6px; border-radius: 6px;
+  pointer-events: none;
+}

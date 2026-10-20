@@ -156,12 +156,12 @@ async function loadNearby(pos, radius) {
     const isSaved = r => places.some(p => p.name === r.name && Math.abs(p.lat - r.lat) < 0.0005 && Math.abs(p.lng - r.lng) < 0.0005);
     nearLayer.clearLayers();
     for (const r of list.filter(r => !isSaved(r))) {
-      L.circleMarker([r.lat, r.lng], { radius: 7, color: '#17202A', weight: 2, fillColor: '#FFFFFF', fillOpacity: 1 })
-        .bindTooltip(r.name, { direction: 'top', offset: [0, -6] })
+      const icon = L.divIcon({ className: 'near', html: `<span class="near-ico">${r.emoji || '📍'}</span><span class="near-name">${esc(r.name)}</span>`, iconSize: [44, 44], iconAnchor: [22, 22] });
+      L.marker([r.lat, r.lng], { icon, title: r.name, alt: r.name, riseOnHover: true })
         .on('click', () => { openAdd(''); startDraft(r); })
         .addTo(nearLayer);
     }
-    toast(list.length ? 'Tocca un puntino bianco per salvarlo' : 'Nessun locale trovato qui intorno');
+    toast(list.length ? 'Tocca un locale sulla mappa per salvarlo' : 'Nessun locale trovato qui intorno');
   } catch {
     toast('Non riesco a cercare i locali in questo momento');
   }
@@ -369,6 +369,15 @@ $('btnHere').onclick = async () => {
 };
 
 // Locali vicini da OpenStreetMap (gratis), usato finché non c'è la chiave Google
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+function osmEmoji(t) {
+  const k = t.amenity || t.shop || t.tourism || '';
+  return ({ restaurant: '🍝', fast_food: '🍔', bar: '🍸', pub: '🍺', biergarten: '🍺', cafe: '☕', ice_cream: '🍦',
+    food_court: '🍽️', bakery: '🥐', pastry: '🍰', confectionery: '🍬', wine: '🍷', deli: '🧀',
+    hotel: '🏨', guest_house: '🏡', museum: '🏛️', attraction: '⭐' })[k] || '📍';
+}
+
 async function osmNearby(pos, radius, limit = 8) {
   const tags = 'amenity~"^(restaurant|bar|cafe|pub|fast_food|ice_cream|biergarten|food_court)$"';
   const around = `around:${radius},${pos.lat},${pos.lng}`;
@@ -387,7 +396,7 @@ async function osmNearby(pos, radius, limit = 8) {
     const t = e.tags || {};
     const lat = e.lat ?? (e.center && e.center.lat), lng = e.lon ?? (e.center && e.center.lon);
     const street = [t['addr:street'], t['addr:housenumber']].filter(Boolean).join(' ');
-    return { name: t.name, address: [street, t['addr:city']].filter(Boolean).join(', '), lat, lng, gid: '' };
+    return { name: t.name, address: [street, t['addr:city']].filter(Boolean).join(', '), lat, lng, gid: '', emoji: osmEmoji(t) };
   }).filter(r => r.name && Number.isFinite(r.lat))
     .sort((a, b) => dist(a, pos) - dist(b, pos))
     .slice(0, limit);
