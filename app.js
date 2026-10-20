@@ -305,10 +305,16 @@ $('btnHere').onclick = async () => {
     const here = { name: '', address: 'Posizione attuale', lat: pos.lat, lng: pos.lng, gid: '' };
     let near = [];
     $('searchMsg').textContent = 'Cerco i locali qui intorno…';
-    try { near = GOOGLE_KEY ? await googleNearby(pos) : await osmNearby(pos); } catch { near = []; }
-    if (!near.length) { $('searchMsg').textContent = ''; startDraft(here); return; }
+    let failed = false;
+    try {
+      near = GOOGLE_KEY ? await googleNearby(pos) : await osmNearby(pos, 150);
+      // Il GPS al chiuso può sbagliare di qualche centinaio di metri: allarga la ricerca
+      if (!near.length && !GOOGLE_KEY) near = await osmNearby(pos, 500);
+    } catch { failed = true; }
     // Il posto davanti a cui sei: i locali più vicini, il primo è quasi sempre quello giusto
-    $('searchMsg').textContent = 'Sei davanti a uno di questi?';
+    $('searchMsg').textContent = near.length ? 'Sei davanti a uno di questi?'
+      : failed ? 'Non riesco a cercare i locali vicini in questo momento. Riprova tra poco, oppure salva il punto e scrivi tu il nome.'
+      : 'Non ho trovato locali qui vicino. Puoi salvare il punto e scrivere tu il nome.';
     $('results').replaceChildren(...near.map(r => el('li', {}, el('button', {
       type: 'button', onclick: () => startDraft(r)
     }, el('span', { class: 'name' }, r.name), el('span', { class: 'addr' }, r.address)))),
@@ -320,12 +326,17 @@ $('btnHere').onclick = async () => {
 };
 
 // Locali vicini da OpenStreetMap (gratis), usato finché non c'è la chiave Google
-async function osmNearby(pos) {
+async function osmNearby(pos, radius) {
   const tags = 'amenity~"^(restaurant|bar|cafe|pub|fast_food|ice_cream|biergarten|food_court)$"';
-  const q = `[out:json][timeout:15];(nwr(around:120,${pos.lat},${pos.lng})[${tags}][name];` +
-    `nwr(around:120,${pos.lat},${pos.lng})[tourism~"^(hotel|museum|attraction|guest_house)$"][name];` +
-    `nwr(around:120,${pos.lat},${pos.lng})[shop][name];);out center 40;`;
-  const res = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(q) });
+  const around = `around:${radius},${pos.lat},${pos.lng}`;
+  const q = `[out:json][timeout:15];(nwr(${around})[${tags}][name];` +
+    `nwr(${around})[tourism~"^(hotel|museum|attraction|guest_house)$"][name];` +
+    `nwr(${around})[shop~"^(bakery|pastry|confectionery|wine|deli|ice_cream)$"][name];);out center 60;`;
+  const body = 'data=' + encodeURIComponent(q);
+  // Se il server principale è occupato, prova un server alternativo
+  let res;
+  try { res = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body }); } catch { res = null; }
+  if (!res || !res.ok) res = await fetch('https://overpass.kumi.systems/api/interpreter', { method: 'POST', body });
   if (!res.ok) throw new Error(res.status);
   const data = await res.json();
   const dist = (a, b) => Math.hypot((a.lat - b.lat) * 111320, (a.lng - b.lng) * 111320 * Math.cos(a.lat * Math.PI / 180));
@@ -336,7 +347,7 @@ async function osmNearby(pos) {
     return { name: t.name, address: [street, t['addr:city']].filter(Boolean).join(', '), lat, lng, gid: '' };
   }).filter(r => r.name && Number.isFinite(r.lat))
     .sort((a, b) => dist(a, pos) - dist(b, pos))
-    .slice(0, 6);
+    .slice(0, 8);
 }
 
 async function googleNearby(pos) {

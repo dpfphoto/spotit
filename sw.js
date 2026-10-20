@@ -1,5 +1,5 @@
 // Cache dell'app per l'uso offline e l'installazione
-const CACHE = 'spotit-v2';
+const CACHE = 'spotit-v3';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'config.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
   'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css'];
@@ -24,9 +24,10 @@ self.addEventListener('fetch', e => {
     e.respondWith(fetch(req).catch(() => caches.match('index.html')));
     return;
   }
-  e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(res => {
+  // rete prima anche per i file dell'app, così ogni aggiornamento arriva subito; la copia serve offline
+  e.respondWith(fetch(req).then(res => {
     const copy = res.clone();
     caches.open(CACHE).then(c => c.put(req, copy));
     return res;
-  })));
+  }).catch(() => caches.match(req)));
 });
