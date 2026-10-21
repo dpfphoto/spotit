@@ -340,7 +340,10 @@ async function search(raw) {
   $('searchMsg').textContent = 'Cerco…';
   $('results').replaceChildren();
   try {
-    const data = GOOGLE_KEY ? await googleSearch(q) : await osmSearch(q);
+    let data;
+    // Alcuni browser non mandano a Google l'indirizzo completo della pagina e la chiave viene rifiutata: allora OpenStreetMap
+    try { data = GOOGLE_KEY ? await googleSearch(q) : await osmSearch(q); }
+    catch (e) { if (!GOOGLE_KEY) throw e; data = await osmSearch(q); }
     $('searchMsg').textContent = data.length ? '' : 'Nessun risultato. Prova ad aggiungere la città.';
     for (const r of data) {
       $('results').append(el('li', {}, el('button', {
