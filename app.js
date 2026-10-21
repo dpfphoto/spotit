@@ -47,7 +47,8 @@ function cleanPlace(p) {
     gid: /^[A-Za-z0-9_-]{10,300}$/.test(p.gid || '') ? p.gid : '',
     gphoto: /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/.test(p.gphoto || '') && String(p.gphoto).length < 1000 ? p.gphoto : '',
     gphotoBy: String(p.gphotoBy || '').slice(0, 80),
-    createdAt: Number(p.createdAt) || Date.now()
+    createdAt: Number(p.createdAt) || Date.now(),
+    updatedAt: Number(p.updatedAt) || Number(p.createdAt) || Date.now()
   };
 }
 

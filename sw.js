@@ -1,8 +1,8 @@
 // Cache dell'app per l'uso offline e l'installazione
-const CACHE = 'spotit-v16';
+const CACHE = 'spotit-v17';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'config.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
-  'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css'];
+  'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'vendor/supabase/supabase.js', 'account.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));

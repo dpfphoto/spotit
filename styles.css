@@ -171,3 +171,11 @@ textarea { resize: vertical; }
 .leave { margin: 14px 0; padding: 12px 14px; border-radius: 14px; background: #ECFDF5; color: #065F46; font-size: 15px; }
 .leave strong { font-size: 18px; }
 #pOuting { margin-top: 4px; }
+
+/* Account */
+.account { margin: 12px 0; padding: 14px; border-radius: 16px; background: var(--soft); }
+.acc-title { font-weight: 800; margin: 0 0 4px; }
+.btn.google { background: #fff; border: 1px solid var(--line); color: #17202A; display: flex; align-items: center; justify-content: center; gap: 10px; margin: 10px 0; }
+.acc-email summary { cursor: pointer; color: var(--muted); font-size: 14px; margin: 6px 0; }
+.icon-btn.signed { position: relative; }
+.icon-btn.signed::after { content: ''; position: absolute; right: 4px; bottom: 4px; width: 10px; height: 10px; border-radius: 5px; background: #16A34A; border: 2px solid #fff; }
