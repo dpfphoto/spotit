@@ -150,10 +150,22 @@
     if (!user || !changedUser) return;
     // Su questo telefono entra un altro account: ricomincio l'allineamento da capo
     if (sync.uid !== user.id) { sync = { uid: user.id, snap: {} }; saveSync(); }
+    // Il nome per gli amici: se manca, quello dell'account Google
+    const full = user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name);
+    if (!prefs.name && full) { prefs.name = String(full).slice(0, 40); savePrefs(); $('myName').value = prefs.name; }
     if (fromLogin) toast(`Sei dentro come ${user.email || 'utente'}: i tuoi posti ora sono salvati online`);
     syncProfile().catch(() => {});
     runSync();
+    for (const fn of readyFns) fn(user);
   }
+
+  // Per le altre parti dell'app (uscite di gruppo)
+  const readyFns = [];
+  window.SPOTIT_AUTH = {
+    sb,
+    user: () => user,
+    onUser: fn => { readyFns.push(fn); if (user) fn(user); }
+  };
 
   if (loginError) toast('Accesso non riuscito, riprova dal Profilo');
 

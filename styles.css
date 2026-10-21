@@ -81,7 +81,7 @@ dialog::backdrop { background: rgba(15,23,32,.45); }
 .grow { flex: 1; }
 .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 16px 0 8px; }
 .full { width: 100%; }
-input[type="search"], input[type="text"], textarea {
+input[type="search"], input[type="text"], input[type="email"], input[type="tel"], input[type="date"], input[type="time"], textarea {
   width: 100%; min-height: 48px; padding: 12px 14px; border-radius: 14px; border: 1px solid #C3CAD1; background: #fff; font-size: 16px;
 }
 textarea { resize: vertical; }
@@ -193,3 +193,30 @@ textarea { resize: vertical; }
 .gsi-btn[hidden] { display: none; }
 .link-btn { border: 0; background: none; color: var(--muted); font-size: 13px; text-decoration: underline; margin: 12px auto 4px; padding: 6px; }
 .gate :focus:not(:focus-visible) { outline: none; }
+
+/* Uscite di gruppo */
+.claim { margin: 14px 0 12px; }
+.claim-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.answer { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0 16px; }
+.answer button { min-height: 46px; border-radius: 14px; border: 1px solid #C3CAD1; background: #fff; color: var(--ink); font-weight: 700; font-size: 15px; }
+.answer button[aria-pressed="true"][data-a="si"] { background: #15803D; border-color: #15803D; color: #fff; }
+.answer button[aria-pressed="true"][data-a="forse"] { background: #B45309; border-color: #B45309; color: #fff; }
+.answer button[aria-pressed="true"][data-a="no"] { background: #4A5560; border-color: #4A5560; color: #fff; }
+.members-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.members { list-style: none; margin: 4px 0 12px; padding: 0; }
+.members li { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.m-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-status { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 10px; white-space: nowrap; }
+.m-status.yes { background: #DCFCE7; color: #166534; }
+.m-status.maybe { background: #FEF3C7; color: #92400E; }
+.m-status.no { background: #E5E7EB; color: #374151; }
+.m-status.wait { background: var(--soft); color: var(--muted); }
+.m-wa { font-size: 12px; font-weight: 700; color: #fff; background: #128C4B; padding: 6px 10px; border-radius: 10px; text-decoration: none; }
+.m-del { border: 0; background: none; color: var(--muted); font-size: 16px; width: 36px; height: 36px; border-radius: 18px; }
+.add-person { margin: 4px 0 12px; }
+.add-person .row input { flex: 1; min-width: 0; }
+.trips { margin: 8px 0 12px; padding: 4px 12px; border-radius: 16px; background: #ECFDF5; }
+.trips-title { margin: 10px 4px 0; font-weight: 800; color: #065F46; }
+.item.trip { border-bottom-color: #D1FAE5; }
+.item.trip:last-child { border-bottom: 0; }
+.trip-ico { font-size: 22px; width: 28px; text-align: center; }

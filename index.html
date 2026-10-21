@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="SpotIt">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=20">
+<link rel="stylesheet" href="styles.css?v=21">
 </head>
 <body>
 <header class="top">
@@ -125,12 +125,13 @@
   <label class="field">Messaggio (facoltativo)
     <input id="oMsg" type="text" maxlength="120" placeholder="Es. cena di compleanno di Marco">
   </label>
-  <p class="muted">Ogni amico vedrà a che ora partire da dove si trova e potrà mettere il promemoria nel calendario.</p>
-  <div class="row">
+  <p class="muted">Crei il gruppo, poi inviti gli amici su WhatsApp o li aggiungi tu. Ognuno risponde se c'è e vede a che ora partire.</p>
+  <button type="button" id="oCreate" class="btn primary full">Crea l'uscita</button>
+  <div id="oOld" class="row" hidden>
     <button type="button" id="oWhatsapp" class="btn whatsapp grow">Invita su WhatsApp</button>
     <button type="button" id="oMore" class="btn ghost">Altro</button>
   </div>
-  <button type="button" id="oMine" class="btn ghost full">Aggiungi anche al mio calendario</button>
+  <button type="button" id="oMine" class="btn ghost full" hidden>Aggiungi anche al mio calendario</button>
 </dialog>
 
 <!-- Invito a un'uscita ricevuto -->
@@ -206,6 +207,51 @@
   <button type="button" id="btnInvite" class="btn primary full">Invita un amico su WhatsApp</button>
 </dialog>
 
+<!-- Uscita di gruppo -->
+<dialog id="dlgGroup" class="sheet">
+  <div class="sheet-head">
+    <h2 id="gTitle">Uscita</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+  </div>
+  <figure id="gCover" class="cover" hidden><img alt=""><figcaption></figcaption></figure>
+  <div class="card">
+    <div id="gName" class="card-title"></div>
+    <div id="gAddress" class="muted"></div>
+    <div id="gWhen" class="when"></div>
+    <p id="gNote" class="quote" hidden></p>
+  </div>
+  <div id="gLeave" class="leave" hidden></div>
+  <div id="gClaim" class="claim" hidden>
+    <p class="acc-title">Chi sei?</p>
+    <div id="gClaimList" class="claim-list"></div>
+  </div>
+  <p class="acc-title">Ci sei?</p>
+  <div id="gAnswer" class="answer" role="group" aria-label="La tua risposta">
+    <button type="button" data-a="si">Ci sono</button>
+    <button type="button" data-a="forse">Forse</button>
+    <button type="button" data-a="no">Non posso</button>
+  </div>
+  <div class="members-head"><p class="acc-title">Chi viene</p><span id="gCount" class="muted"></span></div>
+  <ul id="gMembers" class="members"></ul>
+  <form id="gAddForm" class="add-person" hidden>
+    <p class="muted">Aggiungi tu un amico: col numero gli mandi l'invito su WhatsApp.</p>
+    <div class="row">
+      <label class="sr" for="gAddName">Nome</label>
+      <input id="gAddName" type="text" maxlength="40" required placeholder="Nome" autocomplete="off">
+      <label class="sr" for="gAddPhone">Telefono</label>
+      <input id="gAddPhone" type="tel" maxlength="20" placeholder="Telefono (facoltativo)" autocomplete="off">
+    </div>
+    <button type="submit" class="btn ghost full">Aggiungi</button>
+  </form>
+  <button type="button" id="gWhatsapp" class="btn whatsapp full">Invita su WhatsApp</button>
+  <div class="row">
+    <button type="button" id="gCalendar" class="btn ghost grow">Calendario</button>
+    <a id="gRoute" class="btn ghost grow" target="_blank" rel="noopener">Percorso</a>
+  </div>
+  <button type="button" id="gCancel" class="link-btn" hidden>Annulla l'uscita</button>
+  <button type="button" id="gLeaveGroup" class="link-btn" hidden>Esci dal gruppo</button>
+</dialog>
+
 <!-- Accesso obbligatorio -->
 <dialog id="dlgGate" class="gate" aria-label="Entra in SpotIt">
   <div id="accOut" class="gate-box">
@@ -246,9 +292,10 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=20"></script>
-<script src="app.js?v=20"></script>
+<script src="config.js?v=21"></script>
+<script src="app.js?v=21"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=20"></script>
+<script src="account.js?v=21"></script>
+<script src="groups.js?v=21"></script>
 </body>
 </html>

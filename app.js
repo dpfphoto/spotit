@@ -805,12 +805,18 @@ function whenLabel(t) {
 let outing = null;
 $('pOuting').onclick = () => {
   const p = current(); if (!p) return;
-  const t = new Date(Date.now() + 86400000); t.setHours(20, 30, 0, 0);
+  // Stasera alle 20:30, o tra un'ora se è già tardi; dopo le 23 domani sera
+  const t = new Date();
+  const soon = new Date(Date.now() + 3600000);
+  soon.setMinutes(Math.ceil(soon.getMinutes() / 30) * 30, 0, 0);
+  if (t.getHours() >= 23) { t.setDate(t.getDate() + 1); t.setHours(20, 30, 0, 0); }
+  else if (soon.getHours() * 60 + soon.getMinutes() <= 20 * 60 + 30) t.setHours(20, 30, 0, 0);
+  else t.setTime(soon.getTime());
   outing = outingFromPlace(p);
   $('oPlace').textContent = p.name;
   $('oDate').value = `${t.getFullYear()}-${pad2(t.getMonth() + 1)}-${pad2(t.getDate())}`;
   $('oDate').min = new Date().toISOString().slice(0, 10);
-  $('oTime').value = '20:30';
+  $('oTime').value = `${pad2(t.getHours())}:${pad2(t.getMinutes())}`;
   $('oMsg').value = '';
   $('dlgOuting').showModal();
 };
@@ -973,7 +979,7 @@ if ('serviceWorker' in navigator) {
 places = places.map(cleanPlace).filter(Boolean);
 render();
 setView('map');
-if (!/^#[su]=/.test(location.hash) && !location.search) locate();
+if (!/^#[sug]=/.test(location.hash) && !location.search) locate();
 checkIncoming();
 checkInvite();
 checkShareTarget();
