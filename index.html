@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="SpotIt">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=21">
+<link rel="stylesheet" href="styles.css?v=22">
 </head>
 <body>
 <header class="top">
@@ -43,6 +43,7 @@
 
 <main>
   <div id="map" aria-label="Mappa dei tuoi posti"></div>
+  <button type="button" id="tripBtn" class="trip-btn" hidden></button>
   <section id="list" hidden></section>
 </main>
 
@@ -225,6 +226,9 @@
     <p class="acc-title">Chi sei?</p>
     <div id="gClaimList" class="claim-list"></div>
   </div>
+  <label id="gPhoneBox" class="field" hidden>Il tuo numero (facoltativo, lo vede solo chi organizza)
+    <input id="gMyPhone" type="tel" maxlength="20" placeholder="Es. 333 1234567" autocomplete="tel">
+  </label>
   <p class="acc-title">Ci sei?</p>
   <div id="gAnswer" class="answer" role="group" aria-label="La tua risposta">
     <button type="button" data-a="si">Ci sono</button>
@@ -233,6 +237,7 @@
   </div>
   <div class="members-head"><p class="acc-title">Chi viene</p><span id="gCount" class="muted"></span></div>
   <ul id="gMembers" class="members"></ul>
+  <button type="button" id="gNotify" class="btn ghost full notify-btn" hidden>🔔 Avvisami quando qualcuno dice "Ci sono"</button>
   <form id="gAddForm" class="add-person" hidden>
     <p class="muted">Aggiungi tu un amico: col numero gli mandi l'invito su WhatsApp.</p>
     <div class="row">
@@ -292,10 +297,10 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=21"></script>
-<script src="app.js?v=21"></script>
+<script src="config.js?v=22"></script>
+<script src="app.js?v=22"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=21"></script>
-<script src="groups.js?v=21"></script>
+<script src="account.js?v=22"></script>
+<script src="groups.js?v=22"></script>
 </body>
 </html>

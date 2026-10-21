@@ -1,5 +1,5 @@
 // Cache dell'app per l'uso offline e l'installazione
-const CACHE = 'spotit-v21';
+const CACHE = 'spotit-v22';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'config.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
   'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'vendor/supabase/supabase.js', 'account.js', 'groups.js'];
@@ -30,4 +30,27 @@ self.addEventListener('fetch', e => {
     caches.open(CACHE).then(c => c.put(req, copy));
     return res;
   }).catch(() => caches.match(req)));
+});
+
+// Notifiche (es. un amico ha risposto "Ci sono")
+self.addEventListener('push', e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch { d = { title: 'SpotIt', body: e.data && e.data.text() }; }
+  e.waitUntil(self.registration.showNotification(d.title || 'SpotIt', {
+    body: d.body || '',
+    icon: 'icons/icon-192.png',
+    badge: 'icons/icon-192.png',
+    tag: d.tag,
+    data: { url: d.url || './' }
+  }));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || './';
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    for (const c of list) {
+      if (c.url.startsWith(self.registration.scope)) { c.navigate(url); return c.focus(); }
+    }
+    return self.clients.openWindow(url);
+  }));
 });

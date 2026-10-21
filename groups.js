@@ -12,7 +12,7 @@
   }
   const sb = AUTH.sb;
   const PENDING_KEY = 'spotit.pendingGroup';
-  // I numeri di telefono restano solo su questo telefono: { idPartecipante: numero }
+  // Numeri scritti dall'organizzatore prima che esistesse l'archivio dei numeri: { idPartecipante: numero }
   const PHONES_KEY = 'spotit.phones';
   let phones = load(PHONES_KEY, {});
   const STATUS = {
@@ -93,6 +93,11 @@
     if (data) {
       data.members = (data.outing_members || []).sort((a, b) => a.created_at.localeCompare(b.created_at));
       data.joined = true;
+      // I numeri li vede solo l'organizzatore
+      if (me() && data.owner === me().id) {
+        const { data: ph } = await sb.rpc('outing_phones', { oid: id });
+        for (const r of ph || []) { const m = data.members.find(x => x.id === r.id); if (m) m.phone = r.phone; }
+      }
       return data;
     }
     // Non ne faccio ancora parte: anteprima dal link
@@ -162,6 +167,8 @@
     // "Chi sei?": solo per chi arriva dal link ed è stato aggiunto a mano dall'organizzatore
     const free = g.joined ? [] : g.members.filter(m => !m.joined);
     $('gClaim').hidden = !free.length;
+    $('gPhoneBox').hidden = g.joined;
+    if (!g.joined && !$('gMyPhone').value) $('gMyPhone').value = prefs.phone || '';
     $('gClaimList').replaceChildren(...free.map(m => el('button', {
       type: 'button', class: 'chip', 'aria-pressed': String(claimId === m.id),
       onclick: () => { claimId = claimId === m.id ? null : m.id; drawGroup(); }
@@ -177,10 +184,11 @@
     $('gCount').textContent = `${yes} ${yes === 1 ? 'c\'è' : 'ci sono'} su ${g.members.length}`;
     $('gMembers').replaceChildren(...g.members.map(m => {
       const st = STATUS[m.status] || STATUS.invitato;
-      const phone = isOwner && phones[m.id];
+      const phone = isOwner && (m.phone || phones[m.id]);
       const isMe = u && (m.user_id === u.id);
       return el('li', {},
-        el('span', { class: 'm-name' }, m.name + (isMe ? ' (tu)' : '')),
+        el('span', { class: 'm-name' }, m.name + (isMe ? ' (tu)' : ''),
+          phone ? el('small', { class: 'm-phone' }, '+' + phone) : ''),
         el('span', { class: `m-status ${st.cls}` }, st.label),
         phone ? el('a', {
           class: 'm-wa', target: '_blank', rel: 'noopener', 'aria-label': `Manda l'invito a ${m.name} su WhatsApp`,
@@ -192,6 +200,8 @@
     }));
 
     $('gAddForm').hidden = !isOwner;
+    $('gNotify').hidden = !isOwner;
+    if (isOwner) drawNotify();
     $('gCancel').hidden = !isOwner;
     $('gLeaveGroup').hidden = isOwner || !mine;
   }
@@ -205,13 +215,26 @@
     const u = me(); if (!u) return;
     try {
       const mine = group.joined ? group.members.find(m => m.user_id === u.id) : null;
+      let memberId = mine && mine.id;
       if (mine) {
         const { error } = await sb.from('outing_members').update({ status: a }).eq('id', mine.id);
         if (error) throw error;
       } else {
-        const { error } = await sb.rpc('join_outing', { oid: group.id, claim: claimId, display_name: myName(), answer: a });
+        const raw = $('gMyPhone').value.trim();
+        const myPhone = raw ? normPhone(raw) : '';
+        if (raw && !myPhone) { toast('Numero non valido: scrivilo con il prefisso, es. +39 333 1234567'); return; }
+        if (myPhone) { prefs.phone = raw; savePrefs(); }
+        const args = { oid: group.id, claim: claimId, display_name: myName(), answer: a };
+        let { data, error } = await sb.rpc('join_outing', myPhone ? { ...args, my_phone: myPhone } : args);
+        // archivio non ancora aggiornato per i numeri: entro comunque
+        if (error && myPhone) ({ data, error } = await sb.rpc('join_outing', args));
         if (error) throw error;
+        memberId = data;
         saveGroupPlace(group);
+      }
+      // Avviso all'organizzatore (una volta sola per persona)
+      if (a === 'si' && memberId && group.owner !== u.id) {
+        sb.functions.invoke('notify-outing', { body: { action: 'going', member_id: memberId } }).catch(() => {});
       }
       toast(a === 'si' ? 'Perfetto, ci sei!' : a === 'forse' ? 'Segnato come forse' : 'Ok, avviso il gruppo che non puoi');
       const g = await fetchGroup(group.id);
@@ -240,11 +263,16 @@
     if (!name) return;
     if (rawPhone && !phone) { toast('Numero non valido: scrivilo con il prefisso, es. +39 333 1234567'); return; }
     try {
-      const { data, error } = await sb.from('outing_members').insert({ outing_id: group.id, name, status: 'invitato' }).select().single();
+      const row = { outing_id: group.id, name, status: 'invitato' };
+      let { data, error } = await sb.from('outing_members').insert(phone ? { ...row, phone } : row).select('id').single();
+      if (error && phone) {
+        // archivio non ancora aggiornato per i numeri: il numero resta su questo telefono
+        ({ data, error } = await sb.from('outing_members').insert(row).select('id').single());
+        if (!error) { phones[data.id] = phone; save(PHONES_KEY, phones); }
+      }
       if (error) throw error;
       $('gAddName').value = ''; $('gAddPhone').value = '';
       if (phone) {
-        phones[data.id] = phone; save(PHONES_KEY, phones);
         window.open(`https://wa.me/${phone}?text=${encodeURIComponent(inviteText(group, name))}`, '_blank', 'noopener');
       } else toast(`${name} aggiunto`);
       const g = await fetchGroup(group.id);
@@ -279,6 +307,51 @@
     $('dlgGroup').close();
   };
 
+  // ---------- Notifiche all'organizzatore ----------
+
+  const pushOk = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  async function currentSub() {
+    if (!pushOk) return null;
+    const reg = await navigator.serviceWorker.getRegistration();
+    return reg ? reg.pushManager.getSubscription() : null;
+  }
+  async function drawNotify() {
+    const b = $('gNotify');
+    const on = pushOk && Notification.permission === 'granted' && await currentSub();
+    b.textContent = on ? '🔔 Notifiche attive: ti avviso quando qualcuno dice "Ci sono"' : '🔔 Avvisami quando qualcuno dice "Ci sono"';
+    b.classList.toggle('on', !!on);
+  }
+  function b64ToBytes(b64) {
+    const s = atob((b64 + '='.repeat((4 - b64.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/'));
+    return Uint8Array.from(s, c => c.charCodeAt(0));
+  }
+  $('gNotify').onclick = async () => {
+    if (isIos && !isStandalone) {
+      toast('Su iPhone le notifiche arrivano solo se SpotIt è sulla schermata Home: Condividi → Aggiungi alla schermata Home');
+      return;
+    }
+    if (!pushOk) { toast('Questo telefono non supporta le notifiche dal browser'); return; }
+    // Il permesso va chiesto subito, dentro il tocco
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { toast('Notifiche non permesse: puoi attivarle dalle impostazioni del telefono'); return; }
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        const { data, error } = await sb.functions.invoke('notify-outing', { body: { action: 'key' } });
+        if (error || !data || !data.publicKey) throw error || new Error('chiave');
+        sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(data.publicKey) });
+      }
+      const j = sub.toJSON();
+      const { error } = await sb.from('push_subscriptions').upsert({ endpoint: j.endpoint, user_id: me().id, p256dh: j.keys.p256dh, auth: j.keys.auth });
+      if (error) throw error;
+      toast('Fatto: ti avviso quando qualcuno dice "Ci sono"');
+    } catch {
+      toast('Non riesco ad attivare le notifiche ora. Riprova tra poco.');
+    }
+    drawNotify();
+  };
+
   // ---------- Inviti ----------
 
   $('gWhatsapp').onclick = () => {
@@ -301,8 +374,31 @@
       if (error) throw error;
       upcoming = data || [];
       render();
+      drawTripBtn();
     } catch { /* la lista resta quella di prima */ }
   }
+  // Sulla mappa: pulsante per la prossima uscita
+  function dayLabel(t) {
+    const d = new Date(t), now = new Date();
+    const tm = new Date(now); tm.setDate(now.getDate() + 1);
+    const hhmm = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    if (d.toDateString() === now.toDateString()) return `${d.getHours() >= 18 ? 'stasera' : 'oggi'} alle ${hhmm}`;
+    if (d.toDateString() === tm.toDateString()) return `domani alle ${hhmm}`;
+    return d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric' }) + ` alle ${hhmm}`;
+  }
+  function drawTripBtn() {
+    const b = $('tripBtn');
+    const g = upcoming[0];
+    b.hidden = !g || view !== 'map';
+    if (!g) return;
+    const yes = (g.outing_members || []).filter(m => m.status === 'si').length;
+    b.textContent = `🍽️ ${(g.place && g.place.n) || 'Uscita'} · ${dayLabel(g.starts_at)}`;
+    b.setAttribute('aria-label', `Apri l'uscita: ${yes} ci sono`);
+    b.onclick = () => openGroup(g.id);
+  }
+  $('tabMap').addEventListener('click', drawTripBtn);
+  $('tabList').addEventListener('click', drawTripBtn);
+
   const renderPlaces = renderList;
   renderList = function (list) {
     renderPlaces(list);
