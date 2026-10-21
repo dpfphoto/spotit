@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="SpotIt">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=12">
+<link rel="stylesheet" href="styles.css?v=13">
 </head>
 <body>
 <header class="top">
@@ -70,6 +70,7 @@
   </div>
   <form id="addStep2" hidden>
     <div id="draftSuggest" class="suggest"></div>
+    <figure id="draftCover" class="cover" hidden><img alt=""><figcaption></figcaption></figure>
     <label class="field">Nome del posto
       <input id="draftName" type="text" required maxlength="80" placeholder="Es. Trattoria da Gino">
     </label>
@@ -92,6 +93,7 @@
     <h2 id="pName"></h2>
     <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
   </div>
+  <figure id="pCover" class="cover" hidden><img alt=""><figcaption></figcaption></figure>
   <p id="pAddress" class="muted"></p>
   <p id="pFrom" class="from" hidden></p>
   <fieldset class="verdicts" id="pVerdicts"><legend>Il tuo giudizio</legend></fieldset>
@@ -123,6 +125,7 @@
     <h2 id="sTitle"></h2>
     <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
   </div>
+  <figure id="sCover" class="cover" hidden><img alt=""><figcaption></figcaption></figure>
   <div class="card">
     <div id="sName" class="card-title"></div>
     <div id="sAddress" class="muted"></div>
@@ -170,7 +173,7 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=12"></script>
-<script src="app.js?v=12"></script>
+<script src="config.js?v=13"></script>
+<script src="app.js?v=13"></script>
 </body>
 </html>

@@ -45,6 +45,8 @@ function cleanPlace(p) {
     note: String(p.note || '').slice(0, 280),
     from: String(p.from || '').slice(0, 40),
     gid: /^[A-Za-z0-9_-]{10,300}$/.test(p.gid || '') ? p.gid : '',
+    gphoto: /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/.test(p.gphoto || '') && String(p.gphoto).length < 1000 ? p.gphoto : '',
+    gphotoBy: String(p.gphotoBy || '').slice(0, 80),
     createdAt: Number(p.createdAt) || Date.now()
   };
 }
@@ -236,6 +238,27 @@ function parseMapsLink(text) {
 const GOOGLE_KEY = (window.SPOTIT_CONFIG && window.SPOTIT_CONFIG.googlePlacesKey) || '';
 
 // Ricerca con Google Places (New): trova i locali come Google Maps
+// Prima foto del locale su Google: salvo solo il riferimento, l'immagine la carica Google
+function googlePhoto(r) {
+  const ph = r.photos && r.photos[0];
+  if (!ph) return {};
+  const by = ph.authorAttributions && ph.authorAttributions[0];
+  return { gphoto: ph.name, gphotoBy: (by && by.displayName) || '' };
+}
+function gPhotoUrl(name, w = 800) {
+  return `https://places.googleapis.com/v1/${name}/media?maxWidthPx=${w}&key=${encodeURIComponent(GOOGLE_KEY)}`;
+}
+function showCover(box, p) {
+  const ok = GOOGLE_KEY && p && p.gphoto;
+  box.hidden = !ok;
+  if (!ok) return;
+  const img = box.querySelector('img');
+  img.referrerPolicy = 'no-referrer-when-downgrade';
+  img.onerror = () => { box.hidden = true; };
+  img.src = gPhotoUrl(p.gphoto);
+  box.querySelector('figcaption').textContent = p.gphotoBy ? `Foto: ${p.gphotoBy} su Google` : 'Foto da Google';
+}
+
 async function googleSearch(q) {
   const body = { textQuery: q, languageCode: 'it', regionCode: 'IT', pageSize: 6 };
   if (lastPos) body.locationBias = { circle: { center: { latitude: lastPos.lat, longitude: lastPos.lng }, radius: 30000 } };
@@ -246,7 +269,7 @@ async function googleSearch(q) {
     headers: {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': GOOGLE_KEY,
-      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location'
+      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.photos'
     },
     body: JSON.stringify(body)
   });
@@ -257,7 +280,8 @@ async function googleSearch(q) {
     address: r.formattedAddress || '',
     lat: r.location.latitude,
     lng: r.location.longitude,
-    gid: r.id
+    gid: r.id,
+    ...googlePhoto(r)
   }));
 }
 
@@ -349,7 +373,8 @@ async function suggestHere(pos, d) {
   const meters = r => Math.round(Math.hypot((r.lat - pos.lat) * 111320, (r.lng - pos.lng) * 111320 * Math.cos(pos.lat * Math.PI / 180)) / 10) * 10;
   box.replaceChildren(el('span', { class: 'muted' }, 'Locali qui intorno, tocca quello giusto:'), ...near.map(r => el('button', {
     type: 'button', class: 'chip', onclick: () => {
-      Object.assign(d, { name: r.name, address: r.address || d.address, lat: r.lat, lng: r.lng, gid: r.gid });
+      Object.assign(d, { name: r.name, address: r.address || d.address, lat: r.lat, lng: r.lng, gid: r.gid, gphoto: r.gphoto || '', gphotoBy: r.gphotoBy || '' });
+      showCover($('draftCover'), d);
       $('draftName').value = r.name;
       $('draftAddress').textContent = d.address;
       box.replaceChildren();
@@ -400,7 +425,7 @@ async function googleNearby(pos, radius = 120) {
     headers: {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': GOOGLE_KEY,
-      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location'
+      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.photos'
     },
     body: JSON.stringify({
       maxResultCount: radius > 200 ? 20 : 6,
@@ -418,7 +443,8 @@ async function googleNearby(pos, radius = 120) {
     address: r.formattedAddress || '',
     lat: r.location.latitude,
     lng: r.location.longitude,
-    gid: r.id
+    gid: r.id,
+    ...googlePhoto(r)
   })).filter(r => r.name);
 }
 
@@ -429,6 +455,7 @@ function startDraft(d) {
   $('draftName').value = d.name;
   $('draftAddress').textContent = d.address;
   $('draftSuggest').replaceChildren();
+  showCover($('draftCover'), d);
   $('draftNote').value = '';
   drawDraftVerdicts();
   drawDraftPhotos();
@@ -557,6 +584,7 @@ function openPlace(id) {
   $('pFrom').textContent = p.from ? `Consigliato da ${p.from}` : '';
   $('pNote').value = p.note;
   $('pDirections').href = mapsUrl(p);
+  showCover($('pCover'), p);
   drawPlaceVerdicts(p);
   $('pPhotos').replaceChildren();
   $('pAttach').checked = false;
@@ -605,7 +633,7 @@ function appUrl() { return location.origin + location.pathname; }
 
 function shareText(p) {
   const by = prefs.name || 'Un amico';
-  const data = { n: p.name, a: p.address, la: +p.lat.toFixed(6), lo: +p.lng.toFixed(6), v: p.verdict, t: p.note, b: prefs.name, g: p.gid || undefined };
+  const data = { n: p.name, a: p.address, la: +p.lat.toFixed(6), lo: +p.lng.toFixed(6), v: p.verdict, t: p.note, b: prefs.name, g: p.gid || undefined, f: p.gphoto || undefined, fb: p.gphotoBy || undefined };
   const url = `${appUrl()}#s=${encode(data)}`;
   return { text: `${by} ti consiglia "${p.name}" (${V[p.verdict].label}) su SpotIt`, url };
 }
@@ -656,12 +684,13 @@ function checkIncoming() {
   history.replaceState(null, '', appUrl());
   let d;
   try { d = decode(m[1]); } catch { toast('Link non valido'); return; }
-  const p = cleanPlace({ name: d.n, address: d.a, lat: d.la, lng: d.lo, verdict: d.v, note: d.t, from: d.b, gid: d.g });
+  const p = cleanPlace({ name: d.n, address: d.a, lat: d.la, lng: d.lo, verdict: d.v, note: d.t, from: d.b, gid: d.g, gphoto: d.f, gphotoBy: d.fb });
   if (!p) { toast('Link non valido'); return; }
   incoming = { ...p, mine: p.verdict === 'sconsigliato' || p.verdict === 'nonandarci' ? 'nonandarci' : 'andarci' };
   $('sTitle').textContent = p.from ? `${p.from} ti consiglia` : 'Ti hanno consigliato';
   $('sName').textContent = p.name;
   $('sAddress').textContent = p.address;
+  showCover($('sCover'), p);
   $('sBadge').replaceWith(Object.assign(badge(p.verdict), { id: 'sBadge' }));
   $('sNote').hidden = !p.note;
   $('sNote').textContent = p.note ? `"${p.note}"` : '';
