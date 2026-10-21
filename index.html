@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="SpotIt">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=26">
+<link rel="stylesheet" href="styles.css?v=27">
 </head>
 <body>
 <header class="top">
@@ -67,6 +67,7 @@
   </div>
   <div id="addStep1">
     <button type="button" id="btnHere" class="btn primary full">Sono qui: aggiungi questo posto</button>
+    <button type="button" id="btnEvent" class="btn ghost full event-btn">🎉 Evento privato: festa, cena a casa…</button>
     <p class="muted">Oppure cercalo per nome:</p>
     <form id="searchForm" class="row">
       <label class="sr" for="searchInput">Nome del posto o link di Google Maps</label>
@@ -231,6 +232,7 @@
       <li><button type="button" data-go="map"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg><span>Mappa</span></button></li>
       <li><button type="button" data-go="list"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg><span>Lista dei posti</span></button></li>
       <li><button type="button" data-go="trips"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg><span>Le tue uscite</span></button></li>
+      <li><button type="button" data-go="event"><span class="menu-emoji" aria-hidden="true">🎉</span><span>Evento privato</span></button></li>
       <li><button type="button" data-go="add"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Salva un posto</span></button></li>
       <li><button type="button" data-go="profile"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg><span>Il tuo profilo</span></button></li>
       <li><button type="button" data-go="invite"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg><span>Invita un amico</span></button></li>
@@ -242,6 +244,38 @@
     </ul>
   </nav>
   <p id="menuVersion" class="drawer-foot muted"></p>
+</dialog>
+
+<!-- Evento privato: lo vedono solo le persone del gruppo -->
+<dialog id="dlgEvent" class="sheet">
+  <div class="sheet-head">
+    <h2>Evento privato</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+  </div>
+  <label class="field">Nome dell'evento
+    <input id="eName" type="text" maxlength="80" placeholder="Es. Festa di Marco" autocomplete="off">
+  </label>
+  <p class="acc-title">Dove</p>
+  <div id="eChosen" class="event-where" hidden><span id="eChosenText"></span><button type="button" id="eChange" class="link-btn">Cambia</button></div>
+  <div id="ePick">
+    <form id="eSearch" class="row">
+      <label class="sr" for="eAddr">Indirizzo</label>
+      <input id="eAddr" type="search" placeholder="Via, numero e città" autocomplete="off">
+      <button type="submit" class="btn primary">Cerca</button>
+    </form>
+    <p id="eMsg" class="muted"></p>
+    <ul id="eResults" class="results"></ul>
+    <button type="button" id="eHere" class="btn ghost full">📍 Usa la mia posizione</button>
+  </div>
+  <div class="row">
+    <label class="field grow">Giorno <input id="eDate" type="date"></label>
+    <label class="field grow">Ora <input id="eTime" type="time"></label>
+  </div>
+  <label class="field">Messaggio (facoltativo)
+    <input id="eMsgText" type="text" maxlength="120" placeholder="Es. porta qualcosa da bere">
+  </label>
+  <p class="muted">🔒 Lo vedono solo le persone che inviti. Dopo la festa resta sulla mappa in rosso finché non lo elimini.</p>
+  <button type="button" id="eCreate" class="btn primary full">Crea l'evento e invita</button>
 </dialog>
 
 <!-- Uscita di gruppo -->
@@ -333,10 +367,10 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=26"></script>
-<script src="app.js?v=26"></script>
+<script src="config.js?v=27"></script>
+<script src="app.js?v=27"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=26"></script>
-<script src="groups.js?v=26"></script>
+<script src="account.js?v=27"></script>
+<script src="groups.js?v=27"></script>
 </body>
 </html>

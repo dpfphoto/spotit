@@ -249,3 +249,11 @@ textarea { resize: vertical; }
 .drawer-list svg { color: var(--brand); flex: none; }
 .drawer-list .danger, .drawer-list .danger svg { color: #B42318; }
 .drawer-foot { padding: 12px 20px calc(12px + env(safe-area-inset-bottom)); font-size: 13px; }
+
+/* Eventi privati */
+.event-btn { margin-top: 8px; }
+.event-where { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px; margin-bottom: 12px; border-radius: 12px; background: #F5F3FF; font-weight: 600; }
+.event-where .link-btn { margin: 0; flex: none; }
+.ev-pin { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 18px; background: #7C3AED; border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.35); font-size: 17px; line-height: 1; }
+.ev-pin.past { background: #DC2626; filter: saturate(.9); }
+.menu-emoji { width: 22px; text-align: center; font-size: 18px; }

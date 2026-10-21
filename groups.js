@@ -8,6 +8,7 @@
     $('oCreate').hidden = true;
     $('oOld').hidden = false;
     $('oMine').hidden = false;
+    $('btnEvent').hidden = true;
     return;
   }
   const sb = AUTH.sb;
@@ -45,12 +46,17 @@
   let travel = null;
   let pollTimer = null;
   let upcoming = [];
+  let events = [];       // eventi privati di cui faccio parte, anche passati
 
   function me() { return AUTH.user(); }
   function myName() {
     const u = me();
     return prefs.name || (u && u.email ? u.email.split('@')[0] : '') || 'Amico';
   }
+  // Evento privato (festa, cena a casa): non è un locale, sta solo sulla mappa di chi è nel gruppo
+  function isEvent(g) { return !!(g && g.place && g.place.pv); }
+  // Finita la festa: dopo 12 ore dall'inizio diventa "passato"
+  function isPast(g) { return new Date(g.starts_at).getTime() + 12 * 3600000 < Date.now(); }
   function groupUrl(id) { return `${appUrl()}#g=${id}`; }
   function asOuting(g) {
     const p = g.place || {};
@@ -72,6 +78,7 @@
   function inviteText(g, name) {
     const o = asOuting(g);
     const hi = name ? `Ciao ${name}! ` : '';
+    if (isEvent(g)) return `${hi}${myName()} ti invita a "${o.n}"${o.a ? ` (${o.a})` : ''} ${whenLabel(o.t)}${o.m ? `. ${o.m}` : ''}. Ci sei? Rispondi qui: ${groupUrl(g.id)}`;
     return `${hi}${myName()} organizza un'uscita da "${o.n}" ${whenLabel(o.t)}${o.m ? ` (${o.m})` : ''}. Ci sei? Rispondi qui: ${groupUrl(g.id)}`;
   }
 
@@ -100,6 +107,79 @@
       toast('Non riesco a creare l\'uscita ora. Controlla la connessione e riprova.');
     }
     btn.disabled = false; btn.textContent = 'Crea l\'uscita';
+  };
+
+  // ---------- Evento privato ----------
+
+  let evPlace = null; // { a, la, lo }
+  function setEvPlace(p) {
+    evPlace = p;
+    $('eChosen').hidden = !p;
+    $('ePick').hidden = !!p;
+    $('eChosenText').textContent = p ? `📍 ${p.a}` : '';
+  }
+  $('btnEvent').onclick = () => {
+    $('dlgAdd').close();
+    const t = new Date();
+    if (t.getHours() >= 20) t.setDate(t.getDate() + 1);
+    t.setHours(21, 0, 0, 0);
+    $('eName').value = ''; $('eAddr').value = ''; $('eMsgText').value = '';
+    $('eMsg').textContent = ''; $('eResults').replaceChildren();
+    $('eDate').value = `${t.getFullYear()}-${pad2(t.getMonth() + 1)}-${pad2(t.getDate())}`;
+    $('eDate').min = new Date().toISOString().slice(0, 10);
+    $('eTime').value = '21:00';
+    setEvPlace(null);
+    $('dlgEvent').showModal();
+  };
+  $('eChange').onclick = () => { setEvPlace(null); $('eAddr').focus(); };
+  $('eSearch').onsubmit = async e => {
+    e.preventDefault();
+    const q = $('eAddr').value.trim(); if (!q) return;
+    $('eMsg').textContent = 'Cerco…'; $('eResults').replaceChildren();
+    let data;
+    try {
+      try { data = GOOGLE_KEY ? await googleSearch(q) : await osmSearch(q); }
+      catch (err) { if (!GOOGLE_KEY) throw err; data = await osmSearch(q); }
+    } catch { $('eMsg').textContent = 'Ricerca non disponibile ora. Prova con "Usa la mia posizione".'; return; }
+    $('eMsg').textContent = data.length ? 'Tocca l\'indirizzo giusto:' : 'Non trovo questo indirizzo. Aggiungi la città.';
+    $('eResults').replaceChildren(...data.map(r => el('li', {}, el('button', {
+      type: 'button',
+      onclick: () => setEvPlace({ a: [r.name, r.address].filter(Boolean).join(', ').slice(0, 160), la: +r.lat.toFixed(6), lo: +r.lng.toFixed(6) })
+    }, el('span', { class: 'name' }, r.name), el('span', { class: 'addr' }, r.address)))));
+  };
+  $('eHere').onclick = async () => {
+    const b = $('eHere');
+    b.disabled = true; b.textContent = 'Cerco la tua posizione…';
+    try {
+      const pos = await getPosition(false);
+      const a = await reverseAddress(pos).catch(() => '');
+      setEvPlace({ a: a || 'La mia posizione', la: +pos.lat.toFixed(6), lo: +pos.lng.toFixed(6) });
+    } catch { toast('Posizione non disponibile: scrivi l\'indirizzo'); }
+    b.disabled = false; b.textContent = '📍 Usa la mia posizione';
+  };
+  $('eCreate').onclick = async () => {
+    const name = $('eName').value.trim();
+    if (!name) { toast('Dai un nome all\'evento'); $('eName').focus(); return; }
+    if (!evPlace) { toast('Scegli dove si fa'); return; }
+    if (!$('eDate').value || !$('eTime').value) { toast('Scegli giorno e ora'); return; }
+    if (!me()) { toast('Entra con il tuo account per creare l\'evento'); return; }
+    const btn = $('eCreate');
+    btn.disabled = true; btn.textContent = 'Creo…';
+    try {
+      const place = { n: name.slice(0, 80), a: evPlace.a, la: evPlace.la, lo: evPlace.lo, pv: 1 };
+      const { data, error } = await sb.from('outings')
+        .insert({ owner_name: myName(), place, starts_at: `${$('eDate').value}T${$('eTime').value}`, note: $('eMsgText').value.trim() })
+        .select().single();
+      if (error) throw error;
+      const { error: e2 } = await sb.from('outing_members').insert({ outing_id: data.id, user_id: me().id, name: myName(), status: 'si' });
+      if (e2) throw e2;
+      $('dlgEvent').close();
+      await openGroup(data.id);
+      toast('Evento creato: ora invita gli amici');
+    } catch {
+      toast('Non riesco a creare l\'evento ora. Controlla la connessione e riprova.');
+    }
+    btn.disabled = false; btn.textContent = 'Crea l\'evento e invita';
   };
 
   // ---------- Apri ----------
@@ -134,10 +214,13 @@
     group = g; claimId = null; travel = null;
     const p = placeOf(g);
     showCover($('gCover'), p);
-    $('gTitle').textContent = g.owner === (me() && me().id) ? 'La tua uscita' : (g.owner_name ? `${g.owner_name} ti invita` : 'Sei invitato');
+    const ev = isEvent(g);
+    $('gTitle').textContent = g.owner === (me() && me().id) ? (ev ? 'Il tuo evento' : 'La tua uscita') : (g.owner_name ? `${g.owner_name} ti invita` : 'Sei invitato');
     $('gName').textContent = p.name;
     $('gAddress').textContent = p.address;
-    $('gWhen').textContent = whenLabel(g.starts_at);
+    $('gWhen').textContent = (ev && isPast(g) ? 'Passato · ' : '') + whenLabel(g.starts_at) + (ev ? ' · 🔒 privato' : '');
+    $('gCancel').textContent = ev ? (isPast(g) ? 'Elimina l\'evento' : 'Annulla l\'evento per tutti') : 'Annulla l\'uscita';
+    $('gLeaveGroup').textContent = ev ? 'Togli dalla mia mappa' : 'Esci dal gruppo';
     $('gNote').hidden = !g.note;
     $('gNote').textContent = g.note ? `"${g.note}"` : '';
     $('gRoute').href = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;
@@ -263,6 +346,7 @@
 
   // Chi entra nel gruppo trova il posto anche tra i suoi, come "Andarci"
   function saveGroupPlace(g) {
+    if (isEvent(g)) return; // l'evento privato sta già sulla mappa come evento
     const p = placeOf(g);
     if (!p.name || places.some(x => x.name === p.name && Math.abs(x.lat - p.lat) < 1e-5)) return;
     const c = cleanPlace({ ...p, gid: (g.place && g.place.g) || '', from: g.owner_name || '', verdict: 'andarci', id: uid(), createdAt: Date.now() });
@@ -308,17 +392,18 @@
   }
 
   $('gCancel').onclick = async () => {
-    if (!group || !confirm('Annullare l\'uscita per tutti?')) return;
+    const ev = isEvent(group);
+    if (!group || !confirm(ev ? 'Eliminare l\'evento per tutti? Sparisce dalla mappa di tutti.' : 'Annullare l\'uscita per tutti?')) return;
     const { error } = await sb.from('outings').delete().eq('id', group.id);
     if (error) { toast('Non riesco ad annullarla ora'); return; }
     $('dlgGroup').close();
-    toast('Uscita annullata');
+    toast(ev ? 'Evento eliminato' : 'Uscita annullata');
   };
 
   $('gLeaveGroup').onclick = async () => {
     const u = me();
     const mine = group && u && group.members.find(m => m.user_id === u.id);
-    if (!mine || !confirm('Uscire da questo gruppo?')) return;
+    if (!mine || !confirm(isEvent(group) ? 'Togliere l\'evento dalla tua mappa? Esci anche dal gruppo.' : 'Uscire da questo gruppo?')) return;
     const { error } = await sb.from('outing_members').delete().eq('id', mine.id);
     if (error) { toast('Non riesco ora, riprova'); return; }
     $('dlgGroup').close();
@@ -384,15 +469,32 @@
     return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T00:00`;
   }
   async function loadUpcoming() {
-    if (!me()) { upcoming = []; return; }
+    if (!me()) { upcoming = []; events = []; drawEvents(); return; }
     try {
       const { data, error } = await sb.from('outings').select('id, place, starts_at, owner_name, outing_members(status)')
-        .gte('starts_at', today()).order('starts_at').limit(10);
+        .order('starts_at').limit(200);
       if (error) throw error;
-      upcoming = data || [];
+      const all = data || [];
+      upcoming = all.filter(g => g.starts_at >= today() && !(isEvent(g) && isPast(g))).slice(0, 10);
+      events = all.filter(isEvent);
       render();
+      drawEvents();
       drawTripBtn();
     } catch { /* la lista resta quella di prima */ }
+  }
+  // Sulla mappa: gli eventi privati, in rosso quando sono passati
+  const evLayer = L.layerGroup().addTo(map);
+  function drawEvents() {
+    evLayer.clearLayers();
+    for (const g of events) {
+      const p = g.place || {};
+      if (!Number.isFinite(p.la) || !Number.isFinite(p.lo)) continue;
+      const past = isPast(g);
+      const icon = L.divIcon({ className: '', html: `<span class="ev-pin${past ? ' past' : ''}">🎉</span>`, iconSize: [36, 36], iconAnchor: [18, 18] });
+      L.marker([p.la, p.lo], { icon, title: p.n, alt: `${p.n}, evento ${past ? 'passato' : 'privato'}`, zIndexOffset: 500 })
+        .on('click', () => openGroup(g.id))
+        .addTo(evLayer);
+    }
   }
   // Sulla mappa: pulsante per la prossima uscita
   function dayLabel(t) {
@@ -409,7 +511,7 @@
     b.hidden = !g || view !== 'map';
     if (!g) return;
     const yes = (g.outing_members || []).filter(m => m.status === 'si').length;
-    b.textContent = `🍽️ ${(g.place && g.place.n) || 'Uscita'} · ${dayLabel(g.starts_at)}`;
+    b.textContent = `${isEvent(g) ? '🎉' : '🍽️'} ${(g.place && g.place.n) || 'Uscita'} · ${dayLabel(g.starts_at)}`;
     b.setAttribute('aria-label', `Apri l'uscita: ${yes} ci sono`);
     b.onclick = () => openGroup(g.id);
   }
@@ -425,7 +527,7 @@
       ...upcoming.map(g => {
         const yes = (g.outing_members || []).filter(m => m.status === 'si').length;
         return el('button', { type: 'button', class: 'item trip', onclick: () => openGroup(g.id) },
-          el('span', { class: 'trip-ico', 'aria-hidden': 'true' }, '🍽️'),
+          el('span', { class: 'trip-ico', 'aria-hidden': 'true' }, isEvent(g) ? '🎉' : '🍽️'),
           el('span', { class: 'txt' }, el('div', { class: 'name' }, (g.place && g.place.n) || 'Uscita'),
             el('div', { class: 'addr when' }, whenLabel(g.starts_at))),
           el('span', { class: 'side' }, el('span', { class: 'dist' }, `${yes} ci sono`)));
