@@ -21,6 +21,23 @@
     no: { label: 'Non può', cls: 'no' },
     invitato: { label: 'Invitato', cls: 'wait' }
   };
+  // Servizio notifiche: Authorization con la chiave anon (accettata dal gateway), l'utente in x-user-token
+  async function callNotify(body) {
+    const { data } = await sb.auth.getSession();
+    const token = data.session && data.session.access_token;
+    const res = await fetch(`${window.SPOTIT_CONFIG.supabaseUrl}/functions/v1/notify-outing`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: window.SPOTIT_CONFIG.supabaseKey,
+        Authorization: `Bearer ${window.SPOTIT_CONFIG.supabaseKey}`,
+        ...(token ? { 'x-user-token': token } : {})
+      },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error('notify ' + res.status);
+    return res.json();
+  }
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
   let group = null;      // uscita aperta: { id, owner, owner_name, place, starts_at, note, members }
@@ -234,7 +251,7 @@
       }
       // Avviso all'organizzatore (una volta sola per persona)
       if (a === 'si' && memberId && group.owner !== u.id) {
-        sb.functions.invoke('notify-outing', { body: { action: 'going', member_id: memberId } }).catch(() => {});
+        callNotify({ action: 'going', member_id: memberId }).catch(() => {});
       }
       toast(a === 'si' ? 'Perfetto, ci sei!' : a === 'forse' ? 'Segnato come forse' : 'Ok, avviso il gruppo che non puoi');
       const g = await fetchGroup(group.id);
@@ -338,8 +355,8 @@
       const reg = await navigator.serviceWorker.ready;
       let sub = await reg.pushManager.getSubscription();
       if (!sub) {
-        const { data, error } = await sb.functions.invoke('notify-outing', { body: { action: 'key' } });
-        if (error || !data || !data.publicKey) throw error || new Error('chiave');
+        const data = await callNotify({ action: 'key' });
+        if (!data || !data.publicKey) throw new Error('chiave');
         sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(data.publicKey) });
       }
       const j = sub.toJSON();

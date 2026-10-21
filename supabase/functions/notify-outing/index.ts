@@ -6,7 +6,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 const APP_URL = 'https://dpfphoto.github.io/spotit/';
 const cors = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-user-token'
 };
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
@@ -33,7 +33,9 @@ Deno.serve(async req => {
     const body = await req.json().catch(() => ({}));
     if (body.action === 'key') return json({ publicKey: keys.publicKey });
 
-    const jwt = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+    // I token degli utenti sono firmati con la chiave nuova del progetto: l'app li manda in x-user-token
+    // (Authorization porta la chiave pubblica anon, che il gateway di Supabase accetta)
+    const jwt = req.headers.get('x-user-token') || (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
     const { data: auth } = await admin.auth.getUser(jwt);
     const user = auth && auth.user;
     if (!user) return json({ error: 'accesso richiesto' }, 401);
