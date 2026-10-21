@@ -340,6 +340,8 @@ async function suggestHere(pos, d) {
   box.replaceChildren(el('span', { class: 'muted' }, 'Cerco i locali qui intorno…'));
   let near = [];
   try { near = GOOGLE_KEY ? await googleNearby(pos, 500) : await osmNearby(pos, 500, 10); } catch { near = []; }
+  // se Google non risponde, provo i dati gratuiti
+  if (!near.length && GOOGLE_KEY) { try { near = await osmNearby(pos, 500, 10); } catch { near = []; } }
   if (draft !== d) return;
   if (!near.length) { box.replaceChildren(el('span', { class: 'muted' }, 'Nessun locale trovato qui intorno: scrivi tu il nome.')); return; }
   const meters = r => Math.round(Math.hypot((r.lat - pos.lat) * 111320, (r.lng - pos.lng) * 111320 * Math.cos(pos.lat * Math.PI / 180)) / 10) * 10;
@@ -397,7 +399,9 @@ async function googleNearby(pos, radius = 120) {
       'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location'
     },
     body: JSON.stringify({
-      maxResultCount: radius > 200 ? 15 : 6,
+      maxResultCount: radius > 200 ? 20 : 6,
+      // solo locali, niente fermate del bus o bancomat
+      includedTypes: ['restaurant', 'cafe', 'bar', 'bakery', 'meal_takeaway', 'ice_cream_shop', 'night_club', 'lodging', 'tourist_attraction', 'museum'],
       rankPreference: 'DISTANCE',
       languageCode: 'it',
       locationRestriction: { circle: { center: { latitude: pos.lat, longitude: pos.lng }, radius } }
