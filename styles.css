@@ -81,7 +81,7 @@ dialog::backdrop { background: rgba(15,23,32,.45); }
 .grow { flex: 1; }
 .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 16px 0 8px; }
 .full { width: 100%; }
-input[type="search"], input[type="text"], input[type="email"], input[type="tel"], input[type="date"], input[type="time"], textarea {
+input[type="search"], input[type="text"], input[type="email"], input[type="password"], input[type="tel"], input[type="date"], input[type="time"], textarea {
   width: 100%; min-height: 48px; padding: 12px 14px; border-radius: 14px; border: 1px solid #C3CAD1; background: #fff; font-size: 16px;
 }
 textarea { resize: vertical; }
@@ -289,3 +289,5 @@ textarea { resize: vertical; }
 .pu-votes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
 .pu-notes { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 8px; }
 .pu-notes li { padding: 10px 12px; border-radius: 12px; background: var(--soft); font-style: italic; }
+.em-form { display: grid; gap: 4px; margin-top: 10px; text-align: left; }
+.em-form .row .link-btn { margin: 4px 0; }

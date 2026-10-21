@@ -154,7 +154,7 @@
     const full = user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name);
     if (!prefs.name && full) { prefs.name = String(full).slice(0, 40); savePrefs(); $('myName').value = prefs.name; }
     if (fromLogin) toast(`Sei dentro come ${user.email || 'utente'}: i tuoi posti ora sono salvati online`);
-    syncProfile().catch(() => {});
+    syncProfile().catch(() => {}).then(showWelcome);
     runSync();
     for (const fn of readyFns) fn(user);
   }
@@ -232,16 +232,111 @@
     if (error) $('accMsg').textContent = 'Accesso con Google non disponibile ora. Riprova tra poco.';
   };
 
-  // Accesso con link via email (riserva)
-  $('accEmailForm').onsubmit = async e => {
+  // Accesso con email e password per chi non ha Google: registrazione confermata con un codice via email
+  let codeMode = null; // 'signup' o 'recovery'
+  const emMsg = t => { $('accMsg').textContent = t; };
+  function askCode(mode, email) {
+    codeMode = mode;
+    $('emForm').hidden = true;
+    $('emCodeForm').hidden = false;
+    $('emNewPassBox').hidden = mode !== 'recovery';
+    $('emCode').value = ''; $('emNewPass').value = '';
+    $('emCodeMsg').textContent = `Ti ho mandato un codice a ${email}. Scrivilo qui (guarda anche nello spam).`;
+    emMsg('');
+    $('emCode').focus();
+  }
+  function readEmail() {
+    const email = $('emEmail').value.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(email)) { emMsg('Scrivi la tua email'); $('emEmail').focus(); return null; }
+    return email;
+  }
+  function readPass() {
+    const pw = $('emPass').value;
+    if (pw.length < 8) { emMsg('La password deve avere almeno 8 caratteri'); $('emPass').focus(); return null; }
+    return pw;
+  }
+  $('emForm').onsubmit = async e => {
     e.preventDefault();
-    const email = $('accEmail').value.trim();
-    if (!email) return;
-    $('accMsg').textContent = 'Invio il link…';
-    const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: appUrl() } });
-    $('accMsg').textContent = error
-      ? 'Non riesco a mandare l\'email ora. Prova con "Entra con Google".'
-      : `Ti ho mandato un link a ${email}: aprilo da questo telefono (guarda anche nello spam).`;
+    const email = readEmail(); if (!email) return;
+    const pw = readPass(); if (!pw) return;
+    emMsg('Entro…');
+    const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+    if (!error) { emMsg(''); return; }
+    if (/confirm/i.test(error.message)) {
+      await sb.auth.resend({ type: 'signup', email });
+      askCode('signup', email);
+    } else emMsg(/invalid/i.test(error.message)
+      ? 'Email o password sbagliate. Se non hai ancora un account tocca "Crea account".'
+      : 'Non riesco a entrare ora. Riprova tra poco.');
+  };
+  $('emSignup').onclick = async () => {
+    const email = readEmail(); if (!email) return;
+    const pw = readPass(); if (!pw) return;
+    emMsg('Creo l\'account…');
+    const { data, error } = await sb.auth.signUp({ email, password: pw });
+    if (error) {
+      emMsg(/registered|exists/i.test(error.message) ? 'Questa email ha già un account: tocca "Entra".'
+        : /password/i.test(error.message) ? 'Password troppo semplice: usa lettere e numeri.'
+        : 'Non riesco a mandare il codice ora. Riprova tra poco.');
+      return;
+    }
+    if (data.session) { emMsg(''); return; } // conferma email non richiesta
+    askCode('signup', email);
+  };
+  $('emForgot').onclick = async () => {
+    const email = readEmail(); if (!email) return;
+    emMsg('Invio il codice…');
+    const { error } = await sb.auth.resetPasswordForEmail(email);
+    if (error) { emMsg('Non riesco a mandare il codice ora. Riprova tra poco.'); return; }
+    askCode('recovery', email);
+  };
+  $('emResend').onclick = async () => {
+    const email = readEmail(); if (!email) return;
+    const { error } = codeMode === 'recovery' ? await sb.auth.resetPasswordForEmail(email) : await sb.auth.resend({ type: 'signup', email });
+    toast(error ? 'Aspetta un minuto e riprova' : 'Codice rimandato');
+  };
+  $('emBack').onclick = () => { $('emCodeForm').hidden = true; $('emForm').hidden = false; emMsg(''); };
+  $('emCodeForm').onsubmit = async e => {
+    e.preventDefault();
+    const email = readEmail(); if (!email) return;
+    const token = $('emCode').value.replace(/\D/g, '');
+    if (token.length < 6) { emMsg('Scrivi il codice che hai ricevuto'); return; }
+    if (codeMode === 'recovery' && $('emNewPass').value.length < 8) { emMsg('La nuova password deve avere almeno 8 caratteri'); return; }
+    emMsg('Controllo il codice…');
+    const { error } = await sb.auth.verifyOtp({ email, token, type: codeMode === 'recovery' ? 'recovery' : 'signup' });
+    if (error) { emMsg('Codice sbagliato o scaduto. Controlla o fattelo rimandare.'); return; }
+    if (codeMode === 'recovery') {
+      const { error: e2 } = await sb.auth.updateUser({ password: $('emNewPass').value });
+      if (e2) { emMsg('Non riesco a cambiare la password ora. Riprova.'); return; }
+      toast('Password cambiata');
+    }
+    emMsg('');
+    $('emCodeForm').hidden = true; $('emForm').hidden = false;
+  };
+
+  // Dopo la registrazione con email: nome e telefono
+  function needsWelcome() {
+    const viaEmail = user && user.app_metadata && user.app_metadata.provider === 'email';
+    return viaEmail && (!prefs.name || !prefs.phone);
+  }
+  function showWelcome() {
+    if (!needsWelcome()) return;
+    $('wName').value = prefs.name || '';
+    $('wPhone').value = prefs.phone || '';
+    if (!$('dlgWelcome').open) $('dlgWelcome').showModal();
+  }
+  $('dlgWelcome').addEventListener('cancel', e => e.preventDefault());
+  $('wForm').onsubmit = async e => {
+    e.preventDefault();
+    const name = $('wName').value.trim().slice(0, 40);
+    const phone = $('wPhone').value.trim().slice(0, 20);
+    if (!name) { $('wName').focus(); return; }
+    if (phone.replace(/\D/g, '').length < 8) { toast('Numero non valido: es. 333 1234567'); $('wPhone').focus(); return; }
+    prefs.name = name; prefs.phone = phone; savePrefs();
+    $('myName').value = name; $('myPhone').value = phone;
+    $('dlgWelcome').close();
+    sb.from('profiles').upsert({ id: user.id, name }).then(() => {}, () => {});
+    toast(`Benvenuto ${name.split(' ')[0]}!`);
   };
   $('accLogout').onclick = async () => {
     if (!confirm('Uscire dall\'account? Per usare SpotIt dovrai rientrare.')) return;

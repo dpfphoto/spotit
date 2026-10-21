@@ -754,12 +754,14 @@ function checkShareTarget() {
 
 $('btnSettings').onclick = () => {
   $('myName').value = prefs.name;
+  $('myPhone').value = prefs.phone || '';
   const box = $('counts');
   box.replaceChildren(...VERDICTS.map(v => el('div', { style: `background:${v.bg};color:${v.color}` },
     el('b', {}, String(places.filter(p => p.verdict === v.id).length)), v.label)));
   $('dlgSettings').showModal();
 };
 $('myName').onchange = () => { prefs.name = $('myName').value.trim().slice(0, 40); savePrefs(); };
+$('myPhone').onchange = () => { prefs.phone = $('myPhone').value.trim().slice(0, 20); savePrefs(); };
 $('btnInvite').onclick = () => {
   const by = prefs.name ? `${prefs.name} ti invita su SpotIt` : 'Prova SpotIt';
   window.open('https://wa.me/?text=' + encodeURIComponent(`${by}: salva i posti dove vuoi andare o tornare e scopri quelli che consigliano gli amici. ${appUrl()}`), '_blank', 'noopener');
@@ -946,7 +948,7 @@ $('iSave').onclick = () => {
 
 // ---------- Aggiornamenti ----------
 // Ogni pubblicazione alza APP_VERSION qui e in version.json: se online c'è un numero più alto propongo "Aggiorna"
-const APP_VERSION = 29;
+const APP_VERSION = 30;
 $('versionText').textContent = `Versione ${APP_VERSION}`;
 async function latestVersion() {
   const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });

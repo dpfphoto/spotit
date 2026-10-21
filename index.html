@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="SpotIt">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=29">
+<link rel="stylesheet" href="styles.css?v=30">
 </head>
 <body>
 <header class="top">
@@ -206,6 +206,9 @@
   <label class="field">Il tuo nome (lo vedono gli amici quando condividi)
     <input id="myName" type="text" maxlength="40" placeholder="Es. Flavio">
   </label>
+  <label class="field">Il tuo telefono (lo vede solo chi organizza un'uscita)
+    <input id="myPhone" type="tel" maxlength="20" placeholder="Es. 333 1234567" autocomplete="tel">
+  </label>
   <label id="shareBox" class="check"><input id="shareToggle" type="checkbox" checked> <span>Mostra i miei posti sulla mappa di tutti<small>Sempre anonimi: si vedono il posto, il giudizio e la nota, mai chi l'ha salvato</small></span></label>
   <div id="counts" class="counts"></div>
   <section id="account" class="account" hidden>
@@ -386,17 +389,43 @@
     <div id="gsiBtn" class="gsi-btn"></div>
     <button type="button" id="accGoogle" class="btn google full" hidden><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6C6.6 42.6 14.6 48 24 48z"/></svg> Entra con Google</button>
     <button type="button" id="accGoogleAlt" class="link-btn" hidden>Il pulsante non funziona? Usa l'accesso Google alternativo</button>
-    <details class="acc-email">
-      <summary>Oppure entra con un link via email</summary>
-      <form id="accEmailForm" class="row">
-        <label class="sr" for="accEmail">La tua email</label>
-        <input id="accEmail" type="email" required autocomplete="email" placeholder="La tua email">
-        <button type="submit" class="btn primary">Invia link</button>
+    <details class="acc-email" id="emBox">
+      <summary>Non hai Google? Entra con email e password</summary>
+      <form id="emForm" class="em-form">
+        <label class="field">Email <input id="emEmail" type="email" required autocomplete="email" placeholder="La tua email"></label>
+        <label class="field">Password <input id="emPass" type="password" minlength="8" autocomplete="current-password" placeholder="Almeno 8 caratteri"></label>
+        <div class="row">
+          <button type="submit" id="emLogin" class="btn primary grow">Entra</button>
+          <button type="button" id="emSignup" class="btn ghost grow">Crea account</button>
+        </div>
+        <button type="button" id="emForgot" class="link-btn">Password dimenticata?</button>
+      </form>
+      <form id="emCodeForm" class="em-form" hidden>
+        <p id="emCodeMsg" class="muted"></p>
+        <label class="field">Codice <input id="emCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="Es. 123456"></label>
+        <label id="emNewPassBox" class="field" hidden>Nuova password <input id="emNewPass" type="password" minlength="8" autocomplete="new-password" placeholder="Almeno 8 caratteri"></label>
+        <button type="submit" class="btn primary full">Conferma</button>
+        <div class="row">
+          <button type="button" id="emResend" class="link-btn">Rimanda il codice</button>
+          <button type="button" id="emBack" class="link-btn">Cambia email</button>
+        </div>
       </form>
     </details>
     <p id="accMsg" class="muted" role="status"></p>
     <p class="muted small"><a href="privacy.html" target="_blank" rel="noopener">Privacy</a></p>
   </div>
+</dialog>
+
+<!-- Scheda da compilare dopo la registrazione con email -->
+<dialog id="dlgWelcome" class="gate" aria-label="Completa il profilo">
+  <form id="wForm" class="gate-box">
+    <img src="icons/icon-192.png" alt="" class="gate-logo" width="88" height="88">
+    <h2>Ci sei quasi</h2>
+    <p class="muted">Come ti chiami? Il nome lo vedono gli amici nei gruppi, il telefono solo chi organizza.</p>
+    <label class="field">Nome <input id="wName" type="text" required maxlength="40" autocomplete="name" placeholder="Es. Marco Rossi"></label>
+    <label class="field">Telefono <input id="wPhone" type="tel" required maxlength="20" autocomplete="tel" placeholder="Es. 333 1234567"></label>
+    <button type="submit" class="btn primary full">Inizia</button>
+  </form>
 </dialog>
 
 <!-- Guida installazione iPhone -->
@@ -417,11 +446,11 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=29"></script>
-<script src="app.js?v=29"></script>
+<script src="config.js?v=30"></script>
+<script src="app.js?v=30"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=29"></script>
-<script src="groups.js?v=29"></script>
-<script src="layers.js?v=29"></script>
+<script src="account.js?v=30"></script>
+<script src="groups.js?v=30"></script>
+<script src="layers.js?v=30"></script>
 </body>
 </html>
