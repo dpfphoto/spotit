@@ -58,7 +58,7 @@
     <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
   </div>
   <div id="addStep1">
-    <button type="button" id="btnHere" class="btn primary full">Sono davanti al posto: trovalo qui</button>
+    <button type="button" id="btnHere" class="btn primary full">Sono qui: aggiungi questo posto</button>
     <p class="muted">Oppure cercalo per nome:</p>
     <form id="searchForm" class="row">
       <label class="sr" for="searchInput">Nome del posto o link di Google Maps</label>
@@ -69,8 +69,9 @@
     <ul id="results" class="results"></ul>
   </div>
   <form id="addStep2" hidden>
+    <div id="draftSuggest" class="suggest"></div>
     <label class="field">Nome del posto
-      <input id="draftName" type="text" required maxlength="80">
+      <input id="draftName" type="text" required maxlength="80" placeholder="Es. Trattoria da Gino">
     </label>
     <p id="draftAddress" class="muted"></p>
     <fieldset class="verdicts" id="draftVerdicts"><legend>Che ne pensi?</legend></fieldset>

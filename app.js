@@ -124,8 +124,7 @@ async function locate() {
     const pos = await getPosition();
     if (meMarker) meMarker.remove();
     meMarker = L.circleMarker([pos.lat, pos.lng], { radius: 8, color: '#fff', weight: 3, fillColor: '#2563EB', fillOpacity: 1 }).addTo(map);
-    map.setView([pos.lat, pos.lng], 17);
-    loadNearby(pos);
+    map.setView([pos.lat, pos.lng], 16);
   } catch {
     toast('Posizione non disponibile: controlla i permessi');
   }
@@ -134,47 +133,6 @@ async function locate() {
 // ---------- Locali intorno a te sulla mappa ----------
 // Puntini bianchi: i locali vicini da toccare e salvare al volo
 
-const nearLayer = L.layerGroup().addTo(map);
-const areaBtn = el('button', { type: 'button', class: 'area-btn', hidden: '', onclick: () => loadNearby(centerOf(map), radiusOfView()) }, 'Cerca locali in questa zona');
-$('map').parentElement.append(areaBtn);
-let nearLoading = false;
-
-function centerOf(m) { const c = m.getCenter(); return { lat: c.lat, lng: c.lng }; }
-function radiusOfView() {
-  const b = map.getBounds();
-  return Math.min(800, Math.round(map.distance(b.getCenter(), b.getNorthEast()) * 0.7));
-}
-
-async function loadNearby(pos, radius) {
-  if (nearLoading) { toast('Sto già cercando, un attimo…'); return; }
-  nearLoading = true;
-  areaBtn.disabled = true;
-  areaBtn.textContent = 'Cerco…';
-  toast('Cerco i locali qui intorno…');
-  try {
-    let list = GOOGLE_KEY ? await googleNearby(pos) : await osmNearby(pos, radius || 250, 40);
-    if (!list.length && !GOOGLE_KEY && !radius) list = await osmNearby(pos, 600, 40);
-    const isSaved = r => places.some(p => p.name === r.name && Math.abs(p.lat - r.lat) < 0.0005 && Math.abs(p.lng - r.lng) < 0.0005);
-    nearLayer.clearLayers();
-    for (const r of list.filter(r => !isSaved(r))) {
-      const icon = L.divIcon({ className: 'near', html: `<span class="near-ico">${r.emoji || '📍'}</span><span class="near-name">${esc(r.name)}</span>`, iconSize: [44, 44], iconAnchor: [22, 22] });
-      L.marker([r.lat, r.lng], { icon, title: r.name, alt: r.name, riseOnHover: true })
-        .on('click', () => { openAdd(''); startDraft(r); })
-        .addTo(nearLayer);
-    }
-    toast(list.length ? 'Tocca un locale sulla mappa per salvarlo' : 'Nessun locale trovato qui intorno');
-  } catch {
-    toast('I locali non rispondono ora, riprova tra poco');
-  }
-  nearLoading = false;
-  areaBtn.disabled = false;
-  areaBtn.textContent = 'Cerca locali in questa zona';
-  areaBtn.hidden = true;
-}
-
-map.on('moveend', () => {
-  if (view === 'map' && map.getZoom() >= 15 && !nearLoading) areaBtn.hidden = false;
-});
 
 let fittedOnce = false;
 function renderMap(list) {
@@ -237,7 +195,6 @@ function setView(v) {
   $('tabList').setAttribute('aria-selected', String(v === 'list'));
   $('list').hidden = v !== 'list';
   locateBtn.hidden = v !== 'map';
-  if (v !== 'map') areaBtn.hidden = true;
   if (v === 'map') setTimeout(() => map.invalidateSize(), 0);
 }
 $('tabMap').onclick = () => setView('map');
@@ -345,42 +302,54 @@ async function search(raw) {
 
 $('searchForm').onsubmit = e => { e.preventDefault(); search($('searchInput').value); };
 
+// Sono nel posto: apro subito la scheda sul punto GPS, nome e indirizzo arrivano dopo se possibile
 $('btnHere').onclick = async () => {
   $('searchMsg').textContent = 'Cerco la tua posizione…';
-  try {
-    const pos = await getPosition();
-    const here = { name: '', address: 'Posizione attuale', lat: pos.lat, lng: pos.lng, gid: '' };
-    let near = [];
-    $('searchMsg').textContent = 'Cerco i locali qui intorno…';
-    let failed = false;
-    try {
-      near = GOOGLE_KEY ? await googleNearby(pos) : await osmNearby(pos, 150);
-      // Il GPS al chiuso può sbagliare di qualche centinaio di metri: allarga la ricerca
-      if (!near.length && !GOOGLE_KEY) near = await osmNearby(pos, 500);
-    } catch { failed = true; }
-    // Il posto davanti a cui sei: i locali più vicini, il primo è quasi sempre quello giusto
-    $('searchMsg').textContent = near.length ? 'Sei davanti a uno di questi?'
-      : failed ? 'Non riesco a cercare i locali vicini in questo momento. Riprova tra poco, oppure salva il punto e scrivi tu il nome.'
-      : 'Non ho trovato locali qui vicino. Puoi salvare il punto e scrivere tu il nome.';
-    $('results').replaceChildren(...near.map(r => el('li', {}, el('button', {
-      type: 'button', onclick: () => startDraft(r)
-    }, el('span', { class: 'name' }, r.name), el('span', { class: 'addr' }, r.address)))),
-    el('li', {}, el('button', { type: 'button', onclick: () => startDraft(here) },
-      el('span', { class: 'name' }, 'Non è in elenco'), el('span', { class: 'addr' }, 'Salva questo punto e scrivi tu il nome'))));
-  } catch {
+  let pos;
+  try { pos = await getPosition(); } catch {
     $('searchMsg').textContent = 'Posizione non disponibile: controlla i permessi del browser.';
+    return;
   }
+  $('searchMsg').textContent = '';
+  startDraft({ name: '', address: '', lat: pos.lat, lng: pos.lng, gid: '' });
+  const d = draft;
+  $('draftAddress').textContent = 'Cerco l\'indirizzo…';
+  suggestHere(pos, d);
+  const addr = await reverseAddress(pos).catch(() => '');
+  if (draft !== d) return;
+  if (!d.address) { d.address = addr; $('draftAddress').textContent = addr || 'Posizione salvata'; }
 };
+
+// Indirizzo della posizione (gratis, OpenStreetMap)
+async function reverseAddress(pos) {
+  const ctl = new AbortController();
+  setTimeout(() => ctl.abort(), 8000);
+  const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&accept-language=it&lat=${pos.lat}&lon=${pos.lng}`, { signal: ctl.signal });
+  if (!res.ok) return '';
+  const a = (await res.json()).address || {};
+  const street = [a.road || a.pedestrian || a.square, a.house_number].filter(Boolean).join(' ');
+  return [street, a.city || a.town || a.village || a.suburb].filter(Boolean).join(', ');
+}
+
+// Propone i nomi dei locali più vicini: un tocco e nome/indirizzo si compilano
+async function suggestHere(pos, d) {
+  const box = $('draftSuggest');
+  box.replaceChildren();
+  let near = [];
+  try { near = GOOGLE_KEY ? await googleNearby(pos) : await osmNearby(pos, 120, 5); } catch { return; }
+  if (draft !== d || !near.length) return;
+  box.replaceChildren(el('span', { class: 'muted' }, 'Sei in uno di questi?'), ...near.map(r => el('button', {
+    type: 'button', class: 'chip', onclick: () => {
+      Object.assign(d, { name: r.name, address: r.address || d.address, lat: r.lat, lng: r.lng, gid: r.gid });
+      $('draftName').value = r.name;
+      $('draftAddress').textContent = d.address;
+      box.replaceChildren();
+    }
+  }, r.name)));
+}
 
 // Locali vicini da OpenStreetMap (gratis), usato finché non c'è la chiave Google
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-
-function osmEmoji(t) {
-  const k = t.amenity || t.shop || t.tourism || '';
-  return ({ restaurant: '🍝', fast_food: '🍔', bar: '🍸', pub: '🍺', biergarten: '🍺', cafe: '☕', ice_cream: '🍦',
-    food_court: '🍽️', bakery: '🥐', pastry: '🍰', confectionery: '🍬', wine: '🍷', deli: '🧀',
-    hotel: '🏨', guest_house: '🏡', museum: '🏛️', attraction: '⭐' })[k] || '📍';
-}
 
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 
@@ -408,7 +377,7 @@ async function osmNearby(pos, radius, limit = 8) {
     const t = e.tags || {};
     const lat = e.lat ?? (e.center && e.center.lat), lng = e.lon ?? (e.center && e.center.lon);
     const street = [t['addr:street'], t['addr:housenumber']].filter(Boolean).join(' ');
-    return { name: t.name, address: [street, t['addr:city']].filter(Boolean).join(', '), lat, lng, gid: '', emoji: osmEmoji(t) };
+    return { name: t.name, address: [street, t['addr:city']].filter(Boolean).join(', '), lat, lng, gid: '' };
   }).filter(r => r.name && Number.isFinite(r.lat))
     .sort((a, b) => dist(a, pos) - dist(b, pos))
     .slice(0, limit);
@@ -446,6 +415,7 @@ function startDraft(d) {
   $('addStep2').hidden = false;
   $('draftName').value = d.name;
   $('draftAddress').textContent = d.address;
+  $('draftSuggest').replaceChildren();
   $('draftNote').value = '';
   drawDraftVerdicts();
   drawDraftPhotos();

@@ -157,3 +157,5 @@ textarea { resize: vertical; }
 .photo-view .btn.ghost { color: #fff; border-color: #fff; background: transparent; }
 .check { display: flex; align-items: center; gap: 10px; margin: 4px 0 12px; font-weight: 600; }
 .check input { width: 22px; height: 22px; accent-color: #0F766E; }
+.suggest { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+.suggest:empty { display: none; }
