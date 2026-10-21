@@ -14,6 +14,9 @@
   // Ultima versione di ogni posto allineata con l'archivio online: serve a capire cosa è cambiato
   let sync = load(SYNC_KEY, { uid: null, snap: {} });
   let syncing = false, again = false;
+  // Ritorno da Google o dal link email: dopo l'accesso lo dico chiaramente
+  const fromLogin = /access_token=|[?&]code=/.test(location.hash + location.search);
+  const loginError = /error_description=/.test(location.hash + location.search);
 
   $('account').hidden = false;
 
@@ -143,9 +146,12 @@
     if (!user || !changedUser) return;
     // Su questo telefono entra un altro account: ricomincio l'allineamento da capo
     if (sync.uid !== user.id) { sync = { uid: user.id, snap: {} }; saveSync(); }
+    if (fromLogin) toast(`Sei dentro come ${user.email || 'utente'}: i tuoi posti ora sono salvati online`);
     syncProfile().catch(() => {});
     runSync();
   }
+
+  if (loginError) toast('Accesso non riuscito, riprova dal Profilo');
 
   sb.auth.onAuthStateChange((_event, session) => { onUser(session ? session.user : null); });
   sb.auth.getSession().then(({ data }) => onUser(data.session ? data.session.user : null));
