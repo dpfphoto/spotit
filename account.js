@@ -131,12 +131,16 @@
 
   function setSyncMsg(t) { $('accSync').textContent = t; }
 
+  // Senza account l'app non si usa: la schermata di accesso copre tutto finché non entri
+  const gate = $('dlgGate');
+  gate.addEventListener('cancel', e => e.preventDefault());
   function showAccount() {
-    $('accOut').hidden = !!user;
     $('accIn').hidden = !user;
-    $('localNote').hidden = !!user;
     $('btnSettings').classList.toggle('signed', !!user);
     if (user) $('accWho').textContent = user.email || 'utente';
+    if (user && gate.open) gate.close();
+    // Riaperta sopra a tutto, anche sopra un posto ricevuto da un amico, che resta lì sotto
+    if (!user && !gate.open) { $('dlgSettings').close(); gate.showModal(); }
   }
 
   async function onUser(u) {
@@ -156,7 +160,60 @@
   sb.auth.onAuthStateChange((_event, session) => { onUser(session ? session.user : null); });
   sb.auth.getSession().then(({ data }) => onUser(data.session ? data.session.user : null));
 
-  // Accesso con Google (si torna nell'app già dentro)
+  // Accesso con Google dentro l'app (Google mostra "SpotIt"): il pulsante lo disegna Google
+  const gsiBox = $('gsiBtn');
+  function showClassicGoogle() {
+    gsiBox.hidden = true;
+    $('accGoogle').hidden = false;
+    $('accGoogleAlt').hidden = true;
+  }
+  async function sha256Hex(text) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  async function startGsi() {
+    if (!CFG.googleClientId || !window.google || !google.accounts || !crypto.subtle) return showClassicGoogle();
+    // Il nonce lega il token di Google a questo tentativo di accesso
+    const nonce = [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
+    google.accounts.id.initialize({
+      client_id: CFG.googleClientId,
+      nonce: await sha256Hex(nonce),
+      ux_mode: 'popup',
+      context: 'signin',
+      itp_support: true,
+      use_fedcm_for_button: true,
+      callback: async resp => {
+        $('accMsg').textContent = 'Entro…';
+        const { error } = await sb.auth.signInWithIdToken({ provider: 'google', token: resp.credential, nonce });
+        if (error) {
+          $('accMsg').textContent = 'Accesso non riuscito. Prova con l\'accesso alternativo qui sotto.';
+          showClassicGoogle();
+          return;
+        }
+        $('accMsg').textContent = '';
+        toast('Sei dentro: i tuoi posti ora sono salvati online');
+        startGsi(); // nonce nuovo per un eventuale accesso futuro
+      }
+    });
+    gsiBox.replaceChildren();
+    google.accounts.id.renderButton(gsiBox, {
+      type: 'standard', theme: 'outline', size: 'large', shape: 'pill', text: 'continue_with',
+      logo_alignment: 'center', locale: 'it', width: Math.min(360, Math.max(240, gsiBox.clientWidth || 320))
+    });
+    $('accGoogleAlt').hidden = false;
+  }
+  if (CFG.googleClientId) {
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client?hl=it';
+    s.async = true;
+    s.onload = () => startGsi().catch(showClassicGoogle);
+    s.onerror = showClassicGoogle;
+    document.head.append(s);
+    setTimeout(() => { if (!gsiBox.childElementCount) showClassicGoogle(); }, 8000);
+  } else showClassicGoogle();
+  $('accGoogleAlt').onclick = () => $('accGoogle').click();
+
+  // Accesso con Google classico, passando dalla pagina di Google (riserva)
   $('accGoogle').onclick = async () => {
     $('accMsg').textContent = 'Ti porto da Google…';
     const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: appUrl() } });
@@ -175,9 +232,9 @@
       : `Ti ho mandato un link a ${email}: aprilo da questo telefono (guarda anche nello spam).`;
   };
   $('accLogout').onclick = async () => {
-    if (!confirm('Uscire dall\'account? I posti restano su questo telefono.')) return;
+    if (!confirm('Uscire dall\'account? Per usare SpotIt dovrai rientrare.')) return;
     await sb.auth.signOut();
-    toast('Sei uscito');
+    if (window.google && google.accounts) google.accounts.id.disableAutoSelect();
   };
 
   // Al ritorno nell'app riallinea (es. posti aggiunti da un altro telefono)

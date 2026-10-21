@@ -179,3 +179,17 @@ textarea { resize: vertical; }
 .acc-email summary { cursor: pointer; color: var(--muted); font-size: 14px; margin: 6px 0; }
 .icon-btn.signed { position: relative; }
 .icon-btn.signed::after { content: ''; position: absolute; right: 4px; bottom: 4px; width: 10px; height: 10px; border-radius: 5px; background: #16A34A; border: 2px solid #fff; }
+
+/* Schermata di accesso obbligatorio */
+.gate { width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; padding: 0; border: 0; background: var(--bg); color: var(--ink); }
+.gate::backdrop { background: var(--bg); }
+.gate-box { box-sizing: border-box; max-width: 420px; min-height: 100%; margin: 0 auto; padding: 48px 24px calc(32px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; justify-content: center; text-align: center; }
+.gate-logo { width: 88px; height: 88px; border-radius: 22px; margin: 0 auto 16px; }
+.gate h2 { margin: 0 0 8px; font-size: 26px; }
+.gate .btn.google { margin-top: 24px; min-height: 52px; font-size: 16px; }
+.gate .acc-email { text-align: left; }
+.gate .small { font-size: 13px; margin-top: 18px; }
+.gsi-btn { display: flex; justify-content: center; min-height: 44px; margin-top: 24px; }
+.gsi-btn[hidden] { display: none; }
+.link-btn { border: 0; background: none; color: var(--muted); font-size: 13px; text-decoration: underline; margin: 12px auto 4px; padding: 6px; }
+.gate :focus:not(:focus-visible) { outline: none; }

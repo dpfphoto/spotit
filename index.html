@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="SpotIt">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=18">
+<link rel="stylesheet" href="styles.css?v=20">
 </head>
 <body>
 <header class="top">
@@ -191,20 +191,6 @@
   </label>
   <div id="counts" class="counts"></div>
   <section id="account" class="account" hidden>
-    <div id="accOut">
-      <p class="acc-title">Entra per non perdere i tuoi posti</p>
-      <p class="muted">I posti si salvano online e li ritrovi su ogni telefono. Niente password da ricordare.</p>
-      <button type="button" id="accGoogle" class="btn google full"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6C6.6 42.6 14.6 48 24 48z"/></svg> Entra con Google</button>
-      <details class="acc-email">
-        <summary>Oppure entra con un link via email</summary>
-        <form id="accEmailForm" class="row">
-          <label class="sr" for="accEmail">La tua email</label>
-          <input id="accEmail" type="email" required autocomplete="email" placeholder="La tua email">
-          <button type="submit" class="btn primary">Invia link</button>
-        </form>
-      </details>
-      <p id="accMsg" class="muted"></p>
-    </div>
     <div id="accIn" hidden>
       <p class="acc-title">✓ Sei dentro come <span id="accWho"></span></p>
       <p id="accSync" class="muted"></p>
@@ -212,13 +198,34 @@
     </div>
     <p class="muted"><a href="privacy.html" target="_blank" rel="noopener">Privacy</a></p>
   </section>
-  <p id="localNote" class="muted">Per ora i tuoi posti sono salvati solo su questo telefono. Fai ogni tanto una copia di sicurezza.</p>
   <div class="row">
     <button type="button" id="btnExport" class="btn ghost grow">Scarica copia</button>
     <label class="btn ghost grow" for="importFile">Ripristina copia</label>
     <input id="importFile" type="file" accept="application/json" class="sr">
   </div>
   <button type="button" id="btnInvite" class="btn primary full">Invita un amico su WhatsApp</button>
+</dialog>
+
+<!-- Accesso obbligatorio -->
+<dialog id="dlgGate" class="gate" aria-label="Entra in SpotIt">
+  <div id="accOut" class="gate-box">
+    <img src="icons/icon-192.png" alt="" class="gate-logo" width="88" height="88">
+    <h2>Benvenuto su SpotIt</h2>
+    <p class="muted">Salva i posti dove vuoi andare o tornare e consigliali agli amici. Entra per iniziare: i tuoi posti restano al sicuro e li ritrovi su ogni telefono.</p>
+    <div id="gsiBtn" class="gsi-btn"></div>
+    <button type="button" id="accGoogle" class="btn google full" hidden><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6C6.6 42.6 14.6 48 24 48z"/></svg> Entra con Google</button>
+    <button type="button" id="accGoogleAlt" class="link-btn" hidden>Il pulsante non funziona? Usa l'accesso Google alternativo</button>
+    <details class="acc-email">
+      <summary>Oppure entra con un link via email</summary>
+      <form id="accEmailForm" class="row">
+        <label class="sr" for="accEmail">La tua email</label>
+        <input id="accEmail" type="email" required autocomplete="email" placeholder="La tua email">
+        <button type="submit" class="btn primary">Invia link</button>
+      </form>
+    </details>
+    <p id="accMsg" class="muted" role="status"></p>
+    <p class="muted small"><a href="privacy.html" target="_blank" rel="noopener">Privacy</a></p>
+  </div>
 </dialog>
 
 <!-- Guida installazione iPhone -->
@@ -239,9 +246,9 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=18"></script>
-<script src="app.js?v=18"></script>
+<script src="config.js?v=20"></script>
+<script src="app.js?v=20"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=18"></script>
+<script src="account.js?v=20"></script>
 </body>
 </html>
