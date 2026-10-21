@@ -128,6 +128,7 @@
     $('eDate').value = `${t.getFullYear()}-${pad2(t.getMonth() + 1)}-${pad2(t.getDate())}`;
     $('eDate').min = new Date().toISOString().slice(0, 10);
     $('eTime').value = '21:00';
+    $('ePublic').checked = false;
     setEvPlace(null);
     $('dlgEvent').showModal();
   };
@@ -168,7 +169,7 @@
     try {
       const place = { n: name.slice(0, 80), a: evPlace.a, la: evPlace.la, lo: evPlace.lo, pv: 1 };
       const { data, error } = await sb.from('outings')
-        .insert({ owner_name: myName(), place, starts_at: `${$('eDate').value}T${$('eTime').value}`, note: $('eMsgText').value.trim() })
+        .insert({ owner_name: myName(), place, starts_at: `${$('eDate').value}T${$('eTime').value}`, note: $('eMsgText').value.trim(), is_public: $('ePublic').checked })
         .select().single();
       if (error) throw error;
       const { error: e2 } = await sb.from('outing_members').insert({ outing_id: data.id, user_id: me().id, name: myName(), status: 'si' });
@@ -219,7 +220,7 @@
     $('gTitle').textContent = g.owner === (me() && me().id) ? (ev ? 'Il tuo evento' : 'La tua uscita') : (g.owner_name ? `${g.owner_name} ti invita` : 'Sei invitato');
     $('gName').textContent = p.name;
     $('gAddress').textContent = p.address;
-    $('gWhen').textContent = (ev && isPast(g) ? 'Passato · ' : '') + whenLabel(g.starts_at) + (ev ? ' · 🔒 privato' : '');
+    $('gWhen').textContent = (ev && isPast(g) ? 'Passato · ' : '') + whenLabel(g.starts_at) + (ev ? (g.is_public ? ' · 🌍 pubblico' : ' · 🔒 privato') : '');
     $('gCancel').textContent = ev ? (isPast(g) ? 'Elimina l\'evento' : 'Annulla l\'evento per tutti') : 'Annulla l\'uscita';
     $('gLeaveGroup').textContent = ev ? 'Togli dalla mia mappa' : 'Esci dal gruppo';
     $('gNote').hidden = !g.note;
@@ -304,6 +305,8 @@
     $('gNotify').hidden = !isOwner;
     if (isOwner) drawNotify();
     $('gCancel').hidden = !isOwner;
+    $('gPublicBox').hidden = !(isOwner && isEvent(g));
+    $('gPublic').checked = !!g.is_public;
     $('gLeaveGroup').hidden = isOwner || !mine;
   }
 
@@ -402,6 +405,16 @@
     toast(ev ? 'Evento eliminato' : 'Uscita annullata');
   };
 
+  $('gPublic').addEventListener('change', async () => {
+    if (!group) return;
+    const on = $('gPublic').checked;
+    const { error } = await sb.from('outings').update({ is_public: on }).eq('id', group.id);
+    if (error) { $('gPublic').checked = !on; toast('Non riesco a cambiarlo ora. Riprova.'); return; }
+    group.is_public = on;
+    $('gWhen').textContent = $('gWhen').textContent.replace(/ · (🔒 privato|🌍 pubblico)$/, on ? ' · 🌍 pubblico' : ' · 🔒 privato');
+    toast(on ? 'Ora l\'evento è sulla mappa di tutti, senza i nomi' : 'Ora l\'evento lo vedono solo gli invitati');
+  });
+
   $('gLeaveGroup').onclick = async () => {
     const u = me();
     const mine = group && u && group.members.find(m => m.user_id === u.id);
@@ -481,6 +494,7 @@
       checkNews(all);
       upcoming = all.filter(g => g.starts_at >= today() && !(isEvent(g) && isPast(g))).slice(0, 10);
       events = all.filter(isEvent);
+      window.SPOTIT_MY_OUTINGS = new Set(all.map(g => g.id)); // i miei eventi pubblici non li ripeto nel livello di tutti
       render();
       drawEvents();
       drawTripBtn();

@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="SpotIt">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=28">
+<link rel="stylesheet" href="styles.css?v=29">
 </head>
 <body>
 <header class="top">
@@ -55,6 +55,9 @@
 <main>
   <div id="map" aria-label="Mappa dei tuoi posti"></div>
   <button type="button" id="tripBtn" class="trip-btn" hidden></button>
+  <button type="button" id="btnLayers" class="layers-btn" aria-haspopup="dialog" aria-label="Livelli della mappa">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="m2 13 10 5 10-5"/><path d="m2 17.5 10 5 10-5" opacity=".5"/></svg>
+  </button>
   <section id="list" hidden></section>
 </main>
 
@@ -203,6 +206,7 @@
   <label class="field">Il tuo nome (lo vedono gli amici quando condividi)
     <input id="myName" type="text" maxlength="40" placeholder="Es. Flavio">
   </label>
+  <label id="shareBox" class="check"><input id="shareToggle" type="checkbox" checked> <span>Mostra i miei posti sulla mappa di tutti<small>Sempre anonimi: si vedono il posto, il giudizio e la nota, mai chi l'ha salvato</small></span></label>
   <div id="counts" class="counts"></div>
   <section id="account" class="account" hidden>
     <div id="accIn" hidden>
@@ -250,6 +254,37 @@
   <p id="menuVersion" class="drawer-foot muted"></p>
 </dialog>
 
+<!-- Livelli della mappa -->
+<dialog id="dlgLayers" class="sheet">
+  <div class="sheet-head">
+    <h2>Cosa vedere sulla mappa</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+  </div>
+  <div class="layer-opts" role="radiogroup" aria-label="Livello">
+    <button type="button" role="radio" data-layer="all"><span class="lo-ico" aria-hidden="true">🌍</span><span><strong>I posti di tutti</strong><small>I tuoi più quelli salvati dagli altri, anonimi, e gli eventi pubblici</small></span></button>
+    <button type="button" role="radio" data-layer="mine"><span class="lo-ico" aria-hidden="true">📍</span><span><strong>Solo i miei</strong><small>I posti che hai salvato tu e i tuoi eventi</small></span></button>
+  </div>
+</dialog>
+
+<!-- Posto o evento di un altro utente (anonimo) -->
+<dialog id="dlgPublic" class="sheet">
+  <div class="sheet-head">
+    <h2 id="puName"></h2>
+    <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+  </div>
+  <figure id="puCover" class="cover" hidden><img alt=""><figcaption></figcaption></figure>
+  <p id="puAddress" class="muted"></p>
+  <p id="puWhen" class="when" hidden></p>
+  <p id="puNote" class="quote" hidden></p>
+  <p id="puCount" class="pu-count"></p>
+  <div id="puVotes" class="pu-votes"></div>
+  <ul id="puNotes" class="pu-notes" hidden></ul>
+  <div class="row">
+    <a id="puRoute" class="btn ghost grow" target="_blank" rel="noopener">Percorso</a>
+    <button type="button" id="puSave" class="btn primary grow">Salva tra i miei</button>
+  </div>
+</dialog>
+
 <!-- Notifiche -->
 <dialog id="dlgNotif" class="sheet">
   <div class="sheet-head">
@@ -287,7 +322,8 @@
   <label class="field">Messaggio (facoltativo)
     <input id="eMsgText" type="text" maxlength="120" placeholder="Es. porta qualcosa da bere">
   </label>
-  <p class="muted">🔒 Lo vedono solo le persone che inviti. Dopo la festa resta sulla mappa in rosso finché non lo elimini.</p>
+  <label class="check"><input id="ePublic" type="checkbox"> <span>🌍 Rendilo pubblico sulla mappa<small>Lo vedono tutti gli utenti, senza i nomi di chi c'è</small></span></label>
+  <p class="muted">🔒 Se non lo rendi pubblico lo vedono solo le persone che inviti. Dopo la festa resta sulla tua mappa in rosso finché non lo elimini.</p>
   <button type="button" id="eCreate" class="btn primary full">Crea l'evento e invita</button>
 </dialog>
 
@@ -305,6 +341,7 @@
     <p id="gNote" class="quote" hidden></p>
   </div>
   <div id="gLeave" class="leave" hidden></div>
+  <label id="gPublicBox" class="check" hidden><input id="gPublic" type="checkbox"> <span>🌍 Pubblico sulla mappa<small>Lo vedono tutti gli utenti, senza i nomi di chi c'è</small></span></label>
   <div id="gClaim" class="claim" hidden>
     <p class="acc-title">Chi sei?</p>
     <div id="gClaimList" class="claim-list"></div>
@@ -380,10 +417,11 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=28"></script>
-<script src="app.js?v=28"></script>
+<script src="config.js?v=29"></script>
+<script src="app.js?v=29"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=28"></script>
-<script src="groups.js?v=28"></script>
+<script src="account.js?v=29"></script>
+<script src="groups.js?v=29"></script>
+<script src="layers.js?v=29"></script>
 </body>
 </html>
