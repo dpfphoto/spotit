@@ -158,17 +158,26 @@ function renderMap(list) {
 function renderFilters() {
   const box = $('filters');
   box.replaceChildren();
-  const all = el('button', { type: 'button', class: 'chip', 'aria-pressed': String(filter === null), onclick: () => { filter = null; render(); } }, `Tutti ${places.length}`);
+  const all = el('button', { type: 'button', class: 'chip', 'aria-pressed': String(filter === null), onclick: () => { filter = null; render(); focusFilter(); } }, `Tutti ${places.length}`);
   box.append(all);
   for (const v of VERDICTS) {
     const n = places.filter(p => p.verdict === v.id).length;
     box.append(el('button', {
       type: 'button', class: 'chip', 'aria-pressed': String(filter === v.id),
-      onclick: () => { filter = filter === v.id ? null : v.id; render(); }
+      onclick: () => { filter = filter === v.id ? null : v.id; render(); focusFilter(); }
     }, el('span', { class: 'dot', style: `background:${v.color}` }), `${v.label} ${n}`));
   }
 }
 
+// Dopo aver scelto un filtro: avvisa se è vuoto, altrimenti inquadra quei posti
+function focusFilter() {
+  const list = filter ? places.filter(p => p.verdict === filter) : places;
+  if (!list.length) {
+    toast(filter ? `Nessun posto "${V[filter].label}" ancora` : 'Non hai ancora salvato nessun posto');
+    return;
+  }
+  if (view === 'map') map.fitBounds(L.latLngBounds(list.map(p => [p.lat, p.lng])).pad(0.2), { maxZoom: 16 });
+}
 function renderList(list) {
   const box = $('list');
   box.replaceChildren();
