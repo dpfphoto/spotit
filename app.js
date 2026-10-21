@@ -178,6 +178,16 @@ function focusFilter() {
   }
   if (view === 'map') map.fitBounds(L.latLngBounds(list.map(p => [p.lat, p.lng])).pad(0.2), { maxZoom: 16 });
 }
+function metersBetween(a, b) {
+  const R = 6371000, rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function formatDistance(m) {
+  if (m < 1000) return `${Math.round(m / 10) * 10} m`;
+  return `${(m / 1000).toLocaleString('it-IT', { maximumFractionDigits: m < 10000 ? 1 : 0 })} km`;
+}
 function renderList(list) {
   const box = $('list');
   box.replaceChildren();
@@ -187,11 +197,14 @@ function renderList(list) {
       : 'Non hai ancora salvato nessun posto. Tocca "Salva un posto" per iniziare.'));
     return;
   }
-  for (const p of [...list].sort((a, b) => b.createdAt - a.createdAt)) {
+  // Con la posizione nota: i più vicini in alto, con la distanza; altrimenti i più recenti
+  const d = p => lastPos ? metersBetween(lastPos, p) : 0;
+  const sorted = [...list].sort((a, b) => lastPos ? d(a) - d(b) : b.createdAt - a.createdAt);
+  for (const p of sorted) {
     box.append(el('button', { type: 'button', class: 'item', onclick: () => openPlace(p.id) },
       el('span', { class: 'dot', style: `background:${V[p.verdict].color}` }),
       el('span', { class: 'txt' }, el('div', { class: 'name' }, p.name), el('div', { class: 'addr' }, p.address || '')),
-      badge(p.verdict)));
+      el('span', { class: 'side' }, badge(p.verdict), lastPos ? el('span', { class: 'dist' }, formatDistance(d(p))) : '')));
   }
 }
 
@@ -209,6 +222,8 @@ function setView(v) {
   $('list').hidden = v !== 'list';
   locateBtn.hidden = v !== 'map';
   if (v === 'map') setTimeout(() => map.invalidateSize(), 0);
+  // aggiorna le distanze con la posizione attuale
+  if (v === 'list') getPosition().then(render).catch(() => {});
 }
 $('tabMap').onclick = () => setView('map');
 $('tabList').onclick = () => setView('list');
