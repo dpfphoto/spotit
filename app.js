@@ -946,7 +946,7 @@ $('iSave').onclick = () => {
 
 // ---------- Aggiornamenti ----------
 // Ogni pubblicazione alza APP_VERSION qui e in version.json: se online c'è un numero più alto propongo "Aggiorna"
-const APP_VERSION = 25;
+const APP_VERSION = 26;
 $('versionText').textContent = `Versione ${APP_VERSION}`;
 async function latestVersion() {
   const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
@@ -974,6 +974,34 @@ $('updateBtn').onclick = async () => {
   location.reload();
 };
 $('btnCheckUpdate').onclick = () => checkUpdate(true);
+
+// ---------- Menu (tre lineette) ----------
+$('menuVersion').textContent = `Versione ${APP_VERSION}`;
+$('btnMenu').onclick = () => {
+  const auth = window.SPOTIT_AUTH;
+  const u = auth && auth.user();
+  $('menuWho').textContent = u ? (prefs.name ? `${prefs.name} · ${u.email || ''}` : (u.email || '')) : '';
+  $('dlgMenu').querySelector('[data-go="logout"]').parentElement.hidden = !u;
+  $('dlgMenu').showModal();
+};
+// Tocco fuori dal menu: si chiude
+$('dlgMenu').addEventListener('click', e => { if (e.target === $('dlgMenu')) $('dlgMenu').close(); });
+$('dlgMenu').addEventListener('click', e => {
+  const b = e.target.closest('[data-go]');
+  if (!b) return;
+  $('dlgMenu').close();
+  const go = b.dataset.go;
+  if (go === 'map') setView('map');
+  else if (go === 'list') setView('list');
+  else if (go === 'trips') { setView('list'); $('list').scrollTop = 0; }
+  else if (go === 'add') $('fab').click();
+  else if (go === 'profile') $('btnSettings').click();
+  else if (go === 'invite') $('btnInvite').click();
+  else if (go === 'export') $('btnExport').click();
+  else if (go === 'import') $('importFile').click();
+  else if (go === 'update') checkUpdate(true);
+  else if (go === 'logout') $('accLogout').click();
+});
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(false); });
 setTimeout(() => checkUpdate(false), 3000);
 
