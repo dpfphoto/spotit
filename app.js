@@ -788,6 +788,152 @@ $('importFile').onchange = async e => {
   e.target.value = '';
 };
 
+// ---------- Uscite con gli amici ----------
+// Niente account per ora: l'invito è un link con posto, giorno e ora.
+// Chi lo apre vede quando partire da dove si trova e mette il promemoria nel calendario.
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+function outingFromPlace(p) {
+  return { n: p.name, a: p.address, la: +p.lat.toFixed(6), lo: +p.lng.toFixed(6), g: p.gid || undefined, f: p.gphoto || undefined, fb: p.gphotoBy || undefined };
+}
+function whenLabel(t) {
+  const d = new Date(t);
+  return d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }) + ' alle ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+}
+
+let outing = null;
+$('pOuting').onclick = () => {
+  const p = current(); if (!p) return;
+  const t = new Date(Date.now() + 86400000); t.setHours(20, 30, 0, 0);
+  outing = outingFromPlace(p);
+  $('oPlace').textContent = p.name;
+  $('oDate').value = `${t.getFullYear()}-${pad2(t.getMonth() + 1)}-${pad2(t.getDate())}`;
+  $('oDate').min = new Date().toISOString().slice(0, 10);
+  $('oTime').value = '20:30';
+  $('oMsg').value = '';
+  $('dlgOuting').showModal();
+};
+function readOuting() {
+  if (!$('oDate').value || !$('oTime').value) { toast('Scegli giorno e ora'); return null; }
+  return { ...outing, t: `${$('oDate').value}T${$('oTime').value}`, m: $('oMsg').value.trim() || undefined, b: prefs.name || undefined };
+}
+function inviteText(o) {
+  const who = prefs.name || 'Un amico';
+  const url = `${appUrl()}#u=${encode(o)}`;
+  return `${who} ti invita da "${o.n}" ${whenLabel(o.t)}${o.m ? ` (${o.m})` : ''}. Apri per sapere quando partire: ${url}`;
+}
+$('oWhatsapp').onclick = () => {
+  const o = readOuting(); if (!o) return;
+  if (!prefs.name) toast('Suggerimento: metti il tuo nome nel profilo');
+  window.open('https://wa.me/?text=' + encodeURIComponent(inviteText(o)), '_blank', 'noopener');
+};
+$('oMore').onclick = async () => {
+  const o = readOuting(); if (!o) return;
+  const text = inviteText(o);
+  if (navigator.share) { try { await navigator.share({ title: o.n, text }); } catch { /* annullato */ } }
+  else { try { await navigator.clipboard.writeText(text); toast('Invito copiato'); } catch { prompt('Copia l\'invito', text); } }
+};
+$('oMine').onclick = async () => {
+  const o = readOuting(); if (!o) return;
+  const travel = lastPos ? await travelMinutes(lastPos, { lat: o.la, lng: o.lo }) : null;
+  downloadIcs(o, travel);
+};
+
+// Tempo di viaggio in auto: Google se disponibile, altrimenti una stima dalla distanza
+async function travelMinutes(from, to) {
+  if (GOOGLE_KEY) {
+    try {
+      const res = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
+        method: 'POST',
+        referrerPolicy: 'no-referrer-when-downgrade',
+        headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': GOOGLE_KEY, 'X-Goog-FieldMask': 'routes.duration' },
+        body: JSON.stringify({
+          origin: { location: { latLng: { latitude: from.lat, longitude: from.lng } } },
+          destination: { location: { latLng: { latitude: to.lat, longitude: to.lng } } },
+          travelMode: 'DRIVE'
+        })
+      });
+      if (res.ok) {
+        const r = (await res.json()).routes;
+        const sec = r && r[0] && parseInt(r[0].duration, 10);
+        if (sec) return { min: Math.ceil(sec / 60), exact: true };
+      }
+    } catch { /* uso la stima */ }
+  }
+  // in città circa 25 km/h considerando le curve delle strade
+  const km = metersBetween(from, to) * 1.3 / 1000;
+  return { min: Math.max(5, Math.ceil(km / 25 * 60)), exact: false };
+}
+
+const MARGIN_MIN = 10;
+function icsDate(d) {
+  return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}T${pad2(d.getHours())}${pad2(d.getMinutes())}00`;
+}
+function icsEscape(s) { return String(s || '').replace(/[\;,]/g, c => '\\' + c).replace(/\n/g, '\\n'); }
+function downloadIcs(o, travel) {
+  const start = new Date(o.t);
+  const end = new Date(start.getTime() + 2 * 3600000);
+  const before = (travel ? travel.min : 30) + MARGIN_MIN;
+  const lines = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//SpotIt//IT', 'BEGIN:VEVENT',
+    `UID:${uid()}@spotit`, `DTSTAMP:${icsDate(new Date())}`,
+    `DTSTART:${icsDate(start)}`, `DTEND:${icsDate(end)}`,
+    `SUMMARY:${icsEscape(o.n)}${o.m ? ' - ' + icsEscape(o.m) : ''}`,
+    `LOCATION:${icsEscape(o.a || o.n)}`,
+    `DESCRIPTION:${icsEscape('Uscita organizzata con SpotIt' + (o.b ? ' da ' + o.b : ''))}`,
+    `GEO:${o.la};${o.lo}`,
+    'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${icsEscape('È ora di partire per ' + o.n)}`, `TRIGGER:-PT${before}M`, 'END:VALARM',
+    'END:VEVENT', 'END:VCALENDAR'
+  ];
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar' });
+  const a = el('a', { href: URL.createObjectURL(blob), download: 'uscita-spotit.ics' });
+  document.body.append(a); a.click(); a.remove();
+  toast(`Promemoria ${before} minuti prima`);
+}
+
+let invite = null;
+async function checkInvite() {
+  const m = location.hash.match(/^#u=([A-Za-z0-9_-]+)/);
+  if (!m) return;
+  history.replaceState(null, '', appUrl());
+  let o;
+  try { o = decode(m[1]); } catch { toast('Invito non valido'); return; }
+  const p = cleanPlace({ name: o.n, address: o.a, lat: o.la, lng: o.lo, gid: o.g, gphoto: o.f, gphotoBy: o.fb, from: o.b, verdict: 'andarci' });
+  if (!p || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(o.t || '')) { toast('Invito non valido'); return; }
+  invite = { o: { ...o, n: p.name, a: p.address, b: p.from, m: String(o.m || '').slice(0, 120) }, p, travel: null };
+  $('iTitle').textContent = p.from ? `${p.from} ti invita` : 'Sei invitato';
+  showCover($('iCover'), p);
+  $('iName').textContent = p.name;
+  $('iAddress').textContent = p.address;
+  $('iWhen').textContent = whenLabel(o.t);
+  $('iMsg').hidden = !invite.o.m;
+  $('iMsg').textContent = invite.o.m ? `"${invite.o.m}"` : '';
+  $('iRoute').href = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;
+  $('iLeave').textContent = 'Calcolo quando partire da dove sei…';
+  map.setView([p.lat, p.lng], 15);
+  $('dlgInvite').showModal();
+  try {
+    const pos = await getPosition();
+    invite.travel = await travelMinutes(pos, p);
+    const leave = new Date(new Date(o.t).getTime() - (invite.travel.min + MARGIN_MIN) * 60000);
+    const hhmm = leave.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    $('iLeave').replaceChildren(el('strong', {}, `Parti alle ${hhmm}`),
+      ` · ${invite.travel.exact ? '' : 'circa '}${invite.travel.min} min in auto, con ${MARGIN_MIN} min di margine`);
+  } catch {
+    $('iLeave').textContent = 'Attiva la posizione per sapere a che ora partire.';
+  }
+}
+$('iCalendar').onclick = () => { if (invite) downloadIcs(invite.o, invite.travel); };
+$('iSave').onclick = () => {
+  if (!invite) return;
+  const p = invite.p;
+  if (!places.some(x => x.name === p.name && Math.abs(x.lat - p.lat) < 1e-5)) {
+    places.push(cleanPlace({ ...p, id: uid(), createdAt: Date.now(), note: invite.o.m || '' }));
+    persist();
+  }
+  toast('Salvato tra i tuoi posti come "Andarci"');
+};
+
 // ---------- Installazione ----------
 
 const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -826,6 +972,7 @@ if ('serviceWorker' in navigator) {
 places = places.map(cleanPlace).filter(Boolean);
 render();
 setView('map');
-if (!/^#s=/.test(location.hash) && !location.search) locate();
+if (!/^#[su]=/.test(location.hash) && !location.search) locate();
 checkIncoming();
+checkInvite();
 checkShareTarget();

@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="SpotIt">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=15">
+<link rel="stylesheet" href="styles.css?v=16">
 </head>
 <body>
 <header class="top">
@@ -107,7 +107,51 @@
     <button type="button" id="pShare" class="btn whatsapp">WhatsApp</button>
     <button type="button" id="pShareMore" class="btn ghost">Altro</button>
   </div>
+  <button type="button" id="pOuting" class="btn primary full">Organizza un'uscita qui</button>
   <button type="button" id="pDelete" class="btn danger-link">Elimina questo posto</button>
+</dialog>
+
+<!-- Organizza un'uscita -->
+<dialog id="dlgOuting" class="sheet">
+  <div class="sheet-head">
+    <h2>Organizza un'uscita</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+  </div>
+  <p id="oPlace" class="card-title"></p>
+  <div class="row">
+    <label class="field grow">Giorno <input id="oDate" type="date" required></label>
+    <label class="field grow">Ora <input id="oTime" type="time" required></label>
+  </div>
+  <label class="field">Messaggio (facoltativo)
+    <input id="oMsg" type="text" maxlength="120" placeholder="Es. cena di compleanno di Marco">
+  </label>
+  <p class="muted">Ogni amico vedrà a che ora partire da dove si trova e potrà mettere il promemoria nel calendario.</p>
+  <div class="row">
+    <button type="button" id="oWhatsapp" class="btn whatsapp grow">Invita su WhatsApp</button>
+    <button type="button" id="oMore" class="btn ghost">Altro</button>
+  </div>
+  <button type="button" id="oMine" class="btn ghost full">Aggiungi anche al mio calendario</button>
+</dialog>
+
+<!-- Invito a un'uscita ricevuto -->
+<dialog id="dlgInvite" class="sheet">
+  <div class="sheet-head">
+    <h2 id="iTitle"></h2>
+    <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+  </div>
+  <figure id="iCover" class="cover" hidden><img alt=""><figcaption></figcaption></figure>
+  <div class="card">
+    <div id="iName" class="card-title"></div>
+    <div id="iAddress" class="muted"></div>
+    <div id="iWhen" class="when"></div>
+    <p id="iMsg" class="quote" hidden></p>
+  </div>
+  <div id="iLeave" class="leave"></div>
+  <button type="button" id="iCalendar" class="btn primary full">Aggiungi al calendario con promemoria</button>
+  <div class="row">
+    <a id="iRoute" class="btn ghost grow" target="_blank" rel="noopener">Percorso in Maps</a>
+    <button type="button" id="iSave" class="btn ghost grow">Salva il posto</button>
+  </div>
 </dialog>
 
 <!-- Foto a tutto schermo -->
@@ -173,7 +217,7 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=15"></script>
-<script src="app.js?v=15"></script>
+<script src="config.js?v=16"></script>
+<script src="app.js?v=16"></script>
 </body>
 </html>
