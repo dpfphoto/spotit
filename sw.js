@@ -1,11 +1,11 @@
 // Cache dell'app per l'uso offline e l'installazione
-const CACHE = 'spotit-v9';
+const CACHE = 'spotit-v10';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'config.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
   'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
@@ -21,11 +21,11 @@ self.addEventListener('fetch', e => {
   if (url.origin !== location.origin) return; // mappe e ricerca sempre dalla rete
   if (req.mode === 'navigate') {
     // rete prima, così gli aggiornamenti arrivano subito; offline usa la copia
-    e.respondWith(fetch(req).catch(() => caches.match('index.html')));
+    e.respondWith(fetch(req.url, { cache: 'no-cache' }).catch(() => caches.match('index.html')));
     return;
   }
-  // rete prima anche per i file dell'app, così ogni aggiornamento arriva subito; la copia serve offline
-  e.respondWith(fetch(req).then(res => {
+  // rete prima anche per i file dell'app, senza la cache del browser (GitHub la tiene 10 minuti)
+  e.respondWith(fetch(req.url, { cache: 'no-cache' }).then(res => {
     const copy = res.clone();
     caches.open(CACHE).then(c => c.put(req, copy));
     return res;

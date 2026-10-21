@@ -159,3 +159,5 @@ textarea { resize: vertical; }
 .check input { width: 22px; height: 22px; accent-color: #0F766E; }
 .suggest { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
 .suggest:empty { display: none; }
+.suggest .muted { width: 100%; margin: 0; }
+.chip .dist { font-weight: 400; color: var(--muted); }

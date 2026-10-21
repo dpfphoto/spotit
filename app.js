@@ -108,13 +108,15 @@ const locateBtn = el('button', { type: 'button', class: 'locate', 'aria-label': 
 locateBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path></svg>';
 $('map').parentElement.append(locateBtn);
 
-function getPosition() {
+// fresh: false accetta la posizione appena letta (è immediata)
+function getPosition(fresh = true) {
+  if (!fresh && lastPos) return Promise.resolve(lastPos);
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) return reject(new Error('no-geo'));
     navigator.geolocation.getCurrentPosition(
       p => { lastPos = { lat: p.coords.latitude, lng: p.coords.longitude }; resolve(lastPos); },
       reject,
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
     );
   });
 }
@@ -304,13 +306,14 @@ $('searchForm').onsubmit = e => { e.preventDefault(); search($('searchInput').va
 
 // Sono nel posto: apro subito la scheda sul punto GPS, nome e indirizzo arrivano dopo se possibile
 $('btnHere').onclick = async () => {
-  $('searchMsg').textContent = 'Cerco la tua posizione…';
+  const btn = $('btnHere');
+  btn.disabled = true;
+  btn.textContent = 'Cerco la tua posizione…';
   let pos;
-  try { pos = await getPosition(); } catch {
-    $('searchMsg').textContent = 'Posizione non disponibile: controlla i permessi del browser.';
-    return;
-  }
-  $('searchMsg').textContent = '';
+  try { pos = await getPosition(false); } catch { pos = null; }
+  btn.disabled = false;
+  btn.textContent = 'Sono qui: aggiungi questo posto';
+  if (!pos) { toast('Posizione non disponibile: controlla i permessi di posizione'); return; }
   startDraft({ name: '', address: '', lat: pos.lat, lng: pos.lng, gid: '' });
   const d = draft;
   $('draftAddress').textContent = 'Cerco l\'indirizzo…';
@@ -334,18 +337,20 @@ async function reverseAddress(pos) {
 // Propone i nomi dei locali più vicini: un tocco e nome/indirizzo si compilano
 async function suggestHere(pos, d) {
   const box = $('draftSuggest');
-  box.replaceChildren();
+  box.replaceChildren(el('span', { class: 'muted' }, 'Cerco i locali qui intorno…'));
   let near = [];
-  try { near = GOOGLE_KEY ? await googleNearby(pos) : await osmNearby(pos, 120, 5); } catch { return; }
-  if (draft !== d || !near.length) return;
-  box.replaceChildren(el('span', { class: 'muted' }, 'Sei in uno di questi?'), ...near.map(r => el('button', {
+  try { near = GOOGLE_KEY ? await googleNearby(pos, 500) : await osmNearby(pos, 500, 10); } catch { near = []; }
+  if (draft !== d) return;
+  if (!near.length) { box.replaceChildren(el('span', { class: 'muted' }, 'Nessun locale trovato qui intorno: scrivi tu il nome.')); return; }
+  const meters = r => Math.round(Math.hypot((r.lat - pos.lat) * 111320, (r.lng - pos.lng) * 111320 * Math.cos(pos.lat * Math.PI / 180)) / 10) * 10;
+  box.replaceChildren(el('span', { class: 'muted' }, 'Locali qui intorno, tocca quello giusto:'), ...near.map(r => el('button', {
     type: 'button', class: 'chip', onclick: () => {
       Object.assign(d, { name: r.name, address: r.address || d.address, lat: r.lat, lng: r.lng, gid: r.gid });
       $('draftName').value = r.name;
       $('draftAddress').textContent = d.address;
       box.replaceChildren();
     }
-  }, r.name)));
+  }, r.name, el('span', { class: 'dist' }, `${meters(r)} m`))));
 }
 
 // Locali vicini da OpenStreetMap (gratis), usato finché non c'è la chiave Google
@@ -383,7 +388,7 @@ async function osmNearby(pos, radius, limit = 8) {
     .slice(0, limit);
 }
 
-async function googleNearby(pos) {
+async function googleNearby(pos, radius = 120) {
   const res = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
     method: 'POST',
     headers: {
@@ -392,10 +397,10 @@ async function googleNearby(pos) {
       'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location'
     },
     body: JSON.stringify({
-      maxResultCount: 6,
+      maxResultCount: radius > 200 ? 15 : 6,
       rankPreference: 'DISTANCE',
       languageCode: 'it',
-      locationRestriction: { circle: { center: { latitude: pos.lat, longitude: pos.lng }, radius: 120 } }
+      locationRestriction: { circle: { center: { latitude: pos.lat, longitude: pos.lng }, radius } }
     })
   });
   if (!res.ok) throw new Error(res.status);
