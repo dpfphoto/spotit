@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="SpotIt">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=27">
+<link rel="stylesheet" href="styles.css?v=28">
 </head>
 <body>
 <header class="top">
@@ -25,6 +25,10 @@
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
   </button>
   <h1>SpotIt</h1>
+  <button type="button" id="btnBell" class="icon-btn bell-btn" aria-label="Notifiche" hidden>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+    <span id="bellCount" class="bell-count" hidden></span>
+  </button>
   <div class="seg" role="tablist" aria-label="Vista">
     <button type="button" id="tabMap" role="tab" aria-selected="true">Mappa</button>
     <button type="button" id="tabList" role="tab" aria-selected="false">Lista</button>
@@ -246,6 +250,15 @@
   <p id="menuVersion" class="drawer-foot muted"></p>
 </dialog>
 
+<!-- Notifiche -->
+<dialog id="dlgNotif" class="sheet">
+  <div class="sheet-head">
+    <h2>Notifiche</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+  </div>
+  <ul id="notifList" class="notif-list"></ul>
+</dialog>
+
 <!-- Evento privato: lo vedono solo le persone del gruppo -->
 <dialog id="dlgEvent" class="sheet">
   <div class="sheet-head">
@@ -367,10 +380,10 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=27"></script>
-<script src="app.js?v=27"></script>
+<script src="config.js?v=28"></script>
+<script src="app.js?v=28"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=27"></script>
-<script src="groups.js?v=27"></script>
+<script src="account.js?v=28"></script>
+<script src="groups.js?v=28"></script>
 </body>
 </html>

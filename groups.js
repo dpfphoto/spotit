@@ -190,6 +190,7 @@
     if (data) {
       data.members = (data.outing_members || []).sort((a, b) => a.created_at.localeCompare(b.created_at));
       data.joined = true;
+      remember(data, data.members); // quello che vedo aperto non diventa una notifica dopo
       // I numeri li vede solo l'organizzatore
       if (me() && data.owner === me().id) {
         const { data: ph } = await sb.rpc('outing_phones', { oid: id });
@@ -396,6 +397,7 @@
     if (!group || !confirm(ev ? 'Eliminare l\'evento per tutti? Sparisce dalla mappa di tutti.' : 'Annullare l\'uscita per tutti?')) return;
     const { error } = await sb.from('outings').delete().eq('id', group.id);
     if (error) { toast('Non riesco ad annullarla ora'); return; }
+    forget(group.id);
     $('dlgGroup').close();
     toast(ev ? 'Evento eliminato' : 'Uscita annullata');
   };
@@ -406,6 +408,7 @@
     if (!mine || !confirm(isEvent(group) ? 'Togliere l\'evento dalla tua mappa? Esci anche dal gruppo.' : 'Uscire da questo gruppo?')) return;
     const { error } = await sb.from('outing_members').delete().eq('id', mine.id);
     if (error) { toast('Non riesco ora, riprova'); return; }
+    forget(group.id);
     $('dlgGroup').close();
   };
 
@@ -469,12 +472,13 @@
     return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T00:00`;
   }
   async function loadUpcoming() {
-    if (!me()) { upcoming = []; events = []; drawEvents(); return; }
+    if (!me()) { upcoming = []; events = []; drawEvents(); drawBell(); return; }
     try {
-      const { data, error } = await sb.from('outings').select('id, place, starts_at, owner_name, outing_members(status)')
+      const { data, error } = await sb.from('outings').select('id, owner, place, starts_at, owner_name, outing_members(id, user_id, name, status)')
         .order('starts_at').limit(200);
       if (error) throw error;
       const all = data || [];
+      checkNews(all);
       upcoming = all.filter(g => g.starts_at >= today() && !(isEvent(g) && isPast(g))).slice(0, 10);
       events = all.filter(isEvent);
       render();
@@ -482,6 +486,98 @@
       drawTripBtn();
     } catch { /* la lista resta quella di prima */ }
   }
+  // ---------- Notifiche (campanella in alto) ----------
+  // All'apertura confronto le uscite con l'ultima volta: chi ha risposto, cosa è cambiato, cosa c'è oggi
+  const SEEN_KEY = 'spotit.seen', NOTIF_KEY = 'spotit.notifs';
+  let seen = load(SEEN_KEY, null);   // { idUscita: { n, t, m: { idPartecipante: [nome, stato] } } }
+  let notifs = load(NOTIF_KEY, []);  // [{ k, ico, text, go, at, read }]
+  $('btnBell').hidden = false;
+
+  function notify(k, ico, text, go) {
+    if (notifs.some(x => x.k === k)) return;
+    notifs.unshift({ k, ico, text, go, at: Date.now(), read: false });
+    notifs = notifs.slice(0, 40);
+    save(NOTIF_KEY, notifs);
+    drawBell(true);
+  }
+  window.spotitNotify = notify;
+  function remember(g, members) {
+    if (!seen) seen = {};
+    const m = {};
+    for (const x of members || []) m[x.id] = [x.name, x.status];
+    seen[g.id] = { n: (g.place && g.place.n) || 'Uscita', t: g.starts_at, ev: isEvent(g) ? 1 : 0, m };
+    save(SEEN_KEY, seen);
+  }
+  function forget(id) { if (seen && seen[id]) { delete seen[id]; save(SEEN_KEY, seen); } }
+  function checkNews(all) {
+    const u = me(); if (!u) return;
+    const first = !seen;
+    const old = seen || {};
+    const now = new Date();
+    for (const g of all) {
+      const members = g.outing_members || [];
+      const name = (g.place && g.place.n) || 'Uscita';
+      const prev = old[g.id];
+      if (!first && prev) {
+        for (const x of members) {
+          if (x.user_id === u.id) continue;
+          const was = prev.m[x.id];
+          const st = (STATUS[x.status] || STATUS.invitato).label.toLowerCase();
+          if (!was && x.status !== 'invitato') notify(`j-${x.id}-${x.status}`, '👋', `${x.name} è entrato in "${name}": ${st}`, g.id);
+          else if (was && was[1] !== x.status && x.status !== 'invitato') notify(`s-${x.id}-${x.status}-${Date.now()}`, x.status === 'si' ? '✅' : x.status === 'no' ? '❌' : '🤔', `${x.name}: ${st} per "${name}"`, g.id);
+        }
+        if (prev.t !== g.starts_at) notify(`t-${g.id}-${g.starts_at}`, '🕒', `"${name}" ha un nuovo orario: ${whenLabel(g.starts_at)}`, g.id);
+      }
+      // Promemoria del giorno
+      const d = new Date(g.starts_at);
+      if (d.toDateString() === now.toDateString() && d > now) {
+        notify(`oggi-${g.id}-${g.starts_at}`, isEvent(g) ? '🎉' : '🍽️', `Oggi ${dayLabel(g.starts_at).replace(/^(oggi|stasera) /, '')}: "${name}"`, g.id);
+      }
+      remember(g, members);
+    }
+    // Uscite sparite: annullate dall'organizzatore (o mi hanno tolto)
+    if (!first) {
+      for (const id of Object.keys(old)) {
+        if (all.some(g => g.id === id)) continue;
+        if (new Date(old[id].t) > now) notify(`x-${id}`, '🚫', `"${old[id].n}" è stato annullato`, null);
+        forget(id);
+      }
+    }
+  }
+  function ago(ts) {
+    const m = Math.round((Date.now() - ts) / 60000);
+    if (m < 1) return 'adesso';
+    if (m < 60) return `${m} min fa`;
+    const h = Math.round(m / 60);
+    if (h < 24) return `${h} ${h === 1 ? 'ora' : 'ore'} fa`;
+    return new Date(ts).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+  }
+  function drawBell(ring) {
+    const n = notifs.filter(x => !x.read).length;
+    $('bellCount').hidden = !n;
+    $('bellCount').textContent = n > 9 ? '9+' : String(n);
+    $('btnBell').setAttribute('aria-label', n ? `Notifiche: ${n} nuove` : 'Notifiche');
+    if (ring && n) { const b = $('btnBell'); b.classList.remove('ring'); void b.offsetWidth; b.classList.add('ring'); }
+  }
+  $('btnBell').onclick = () => {
+    const list = $('notifList');
+    list.replaceChildren(...(notifs.length ? notifs.map(x => el('li', {}, el('button', {
+      type: 'button', class: x.read ? '' : 'new',
+      onclick: () => {
+        $('dlgNotif').close();
+        if (x.go === 'update') $('updateBtn').click();
+        else if (x.go) openGroup(x.go);
+      }
+    }, el('span', { class: 'n-ico', 'aria-hidden': 'true' }, x.ico),
+      el('span', { class: 'n-txt' }, x.text, el('span', { class: 'n-time' }, ago(x.at)))))) :
+      [el('li', { class: 'notif-empty' }, 'Nessuna notifica. Qui vedi chi risponde alle tue uscite e i promemoria del giorno.')]));
+    $('dlgNotif').showModal();
+    notifs.forEach(x => { x.read = true; });
+    save(NOTIF_KEY, notifs);
+    drawBell();
+  };
+  drawBell();
+
   // Sulla mappa: gli eventi privati, in rosso quando sono passati
   const evLayer = L.layerGroup().addTo(map);
   function drawEvents() {

@@ -946,7 +946,7 @@ $('iSave').onclick = () => {
 
 // ---------- Aggiornamenti ----------
 // Ogni pubblicazione alza APP_VERSION qui e in version.json: se online c'è un numero più alto propongo "Aggiorna"
-const APP_VERSION = 27;
+const APP_VERSION = 28;
 $('versionText').textContent = `Versione ${APP_VERSION}`;
 async function latestVersion() {
   const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
@@ -956,7 +956,7 @@ async function latestVersion() {
 async function checkUpdate(manual) {
   try {
     const v = await latestVersion();
-    if (v > APP_VERSION) $('updateBanner').hidden = false;
+    if (v > APP_VERSION) { $('updateBanner').hidden = false; if (window.spotitNotify) window.spotitNotify(`update-${v}`, '⬆️', 'C\'è una nuova versione di SpotIt: tocca per aggiornare', 'update'); }
     else if (manual) toast('Hai già l\'ultima versione');
   } catch {
     if (manual) toast('Non riesco a controllare ora: sei connesso?');
