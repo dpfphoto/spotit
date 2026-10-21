@@ -241,6 +241,8 @@ async function googleSearch(q) {
   if (lastPos) body.locationBias = { circle: { center: { latitude: lastPos.lat, longitude: lastPos.lng }, radius: 30000 } };
   const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
     method: 'POST',
+    // la chiave è limitata a dpfphoto.github.io/spotit/: Google deve vedere l'indirizzo completo
+    referrerPolicy: 'no-referrer-when-downgrade',
     headers: {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': GOOGLE_KEY,
@@ -393,6 +395,8 @@ async function osmNearby(pos, radius, limit = 8) {
 async function googleNearby(pos, radius = 120) {
   const res = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
     method: 'POST',
+    // la chiave è limitata a dpfphoto.github.io/spotit/: Google deve vedere l'indirizzo completo
+    referrerPolicy: 'no-referrer-when-downgrade',
     headers: {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': GOOGLE_KEY,
@@ -401,7 +405,7 @@ async function googleNearby(pos, radius = 120) {
     body: JSON.stringify({
       maxResultCount: radius > 200 ? 20 : 6,
       // solo locali, niente fermate del bus o bancomat
-      includedTypes: ['restaurant', 'cafe', 'bar', 'bakery', 'meal_takeaway', 'ice_cream_shop', 'night_club', 'lodging', 'tourist_attraction', 'museum'],
+      includedTypes: ['restaurant', 'cafe', 'bar', 'bakery', 'meal_takeaway', 'ice_cream_shop', 'night_club', 'lodging', 'museum'],
       rankPreference: 'DISTANCE',
       languageCode: 'it',
       locationRestriction: { circle: { center: { latitude: pos.lat, longitude: pos.lng }, radius } }
