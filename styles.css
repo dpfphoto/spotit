@@ -225,3 +225,7 @@ textarea { resize: vertical; }
 .notify-btn.on { background: #ECFDF5; border-color: #A7F3D0; color: #065F46; }
 .trip-btn { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 460; max-width: calc(100% - 32px); min-height: 44px; padding: 0 16px; border-radius: 22px; border: 0; background: #0F766E; color: #fff; font-weight: 700; font-size: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .trip-btn[hidden] { display: none; }
+.banner.update { background: #0F766E; color: #fff; font-weight: 600; }
+.banner.update .btn { background: #fff; color: #0F766E; }
+.version-row { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+.version-row .link-btn { margin: 0; }

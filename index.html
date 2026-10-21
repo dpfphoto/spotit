@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="SpotIt">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=24">
+<link rel="stylesheet" href="styles.css?v=25">
 </head>
 <body>
 <header class="top">
@@ -31,6 +31,10 @@
   </button>
 </header>
 
+<div id="updateBanner" class="banner update" role="status" hidden>
+  <span>È pronta una nuova versione di SpotIt</span>
+  <button type="button" id="updateBtn" class="btn small primary">Aggiorna</button>
+</div>
 <div id="installBanner" class="banner" hidden>
   <span id="installText"></span>
   <button type="button" id="installBtn" class="btn small primary"></button>
@@ -206,6 +210,10 @@
     <input id="importFile" type="file" accept="application/json" class="sr">
   </div>
   <button type="button" id="btnInvite" class="btn primary full">Invita un amico su WhatsApp</button>
+  <div class="version-row">
+    <span id="versionText" class="muted"></span>
+    <button type="button" id="btnCheckUpdate" class="link-btn">Cerca aggiornamenti</button>
+  </div>
 </dialog>
 
 <!-- Uscita di gruppo -->
@@ -297,10 +305,10 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=24"></script>
-<script src="app.js?v=24"></script>
+<script src="config.js?v=25"></script>
+<script src="app.js?v=25"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=24"></script>
-<script src="groups.js?v=24"></script>
+<script src="account.js?v=25"></script>
+<script src="groups.js?v=25"></script>
 </body>
 </html>

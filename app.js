@@ -944,6 +944,39 @@ $('iSave').onclick = () => {
   toast('Salvato tra i tuoi posti come "Andarci"');
 };
 
+// ---------- Aggiornamenti ----------
+// Ogni pubblicazione alza APP_VERSION qui e in version.json: se online c'è un numero più alto propongo "Aggiorna"
+const APP_VERSION = 25;
+$('versionText').textContent = `Versione ${APP_VERSION}`;
+async function latestVersion() {
+  const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(res.status);
+  return Number((await res.json()).v) || 0;
+}
+async function checkUpdate(manual) {
+  try {
+    const v = await latestVersion();
+    if (v > APP_VERSION) $('updateBanner').hidden = false;
+    else if (manual) toast('Hai già l\'ultima versione');
+  } catch {
+    if (manual) toast('Non riesco a controllare ora: sei connesso?');
+  }
+}
+$('updateBtn').onclick = async () => {
+  $('updateBtn').disabled = true;
+  $('updateBtn').textContent = 'Aggiorno…';
+  try {
+    // Via le copie salvate dei file, così ricarico tutto dalla rete
+    const reg = 'serviceWorker' in navigator && await navigator.serviceWorker.getRegistration();
+    if (reg) await reg.update().catch(() => {});
+    if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
+  } catch { /* ricarico comunque */ }
+  location.reload();
+};
+$('btnCheckUpdate').onclick = () => checkUpdate(true);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(false); });
+setTimeout(() => checkUpdate(false), 3000);
+
 // ---------- Installazione ----------
 
 const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
