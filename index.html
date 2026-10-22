@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="WeSpot">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=40">
+<link rel="stylesheet" href="styles.css?v=41">
 </head>
 <body>
 <header class="top">
@@ -386,6 +386,10 @@
     <button type="button" data-a="forse">Forse</button>
     <button type="button" data-a="no">Non posso</button>
   </div>
+  <div id="gCalAsk" class="cal-ask" hidden>
+    <span>📅 Vuoi aggiungerlo al calendario?</span>
+    <div class="row"><button type="button" id="gCalYes" class="btn primary small">Sì</button><button type="button" id="gCalNo" class="btn ghost small">No</button></div>
+  </div>
   <div class="members-head"><p class="acc-title">Chi viene</p><span id="gCount" class="muted"></span></div>
   <ul id="gMembers" class="members"></ul>
   <label id="gArriveBox" class="check" hidden><input id="gArrive" type="checkbox"> <span>📍 Fai sapere al gruppo quando arrivo<small>Mentre l'app è aperta, vicino all'ora dell'uscita. Si vede solo "In arrivo" o "Arrivato", mai dove sei.</small></span></label>
@@ -475,11 +479,11 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=40"></script>
-<script src="app.js?v=40"></script>
+<script src="config.js?v=41"></script>
+<script src="app.js?v=41"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=40"></script>
-<script src="groups.js?v=40"></script>
-<script src="layers.js?v=40"></script>
+<script src="account.js?v=41"></script>
+<script src="groups.js?v=41"></script>
+<script src="layers.js?v=41"></script>
 </body>
 </html>

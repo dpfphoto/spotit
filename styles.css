@@ -302,3 +302,6 @@ textarea { resize: vertical; }
 .em-form .row .link-btn { margin: 4px 0; }
 .kind-chips { display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 12px; }
 .kind-chip[aria-pressed="true"] { background: #0F766E; color: #fff; border-color: #0F766E; }
+
+.cal-ask { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; background: #ECFDF5; border-radius: 14px; padding: 10px 12px; margin: -6px 0 16px; font-weight: 600; }
+.cal-ask .row { display: flex; gap: 8px; }

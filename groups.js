@@ -220,6 +220,7 @@
     let g;
     try { g = await fetchGroup(id); } catch { toast('Non riesco ad aprire l\'uscita ora. Riprova tra poco.'); return; }
     if (!g) { toast('Questa uscita non esiste più'); return; }
+    $('gCalAsk').hidden = true;
     group = g; claimId = null; travel = null;
     const p = placeOf(g);
     showCover($('gCover'), p);
@@ -342,6 +343,7 @@
     try {
       const mine = group.joined ? group.members.find(m => m.user_id === u.id) : null;
       let memberId = mine && mine.id;
+      const wasYes = !!mine && mine.status === 'si';
       if (mine) {
         const { error } = await sb.from('outing_members').update({ status: a }).eq('id', mine.id);
         if (error) throw error;
@@ -365,6 +367,8 @@
       toast(a === 'si' ? 'Perfetto, ci sei!' : a === 'forse' ? 'Segnato come forse' : 'Ok, avviso il gruppo che non puoi');
       const g = await fetchGroup(group.id);
       if (g) { group = g; drawGroup(); }
+      // Appena confermi la presenza: proposta di metterlo in calendario (il tocco su "Sì" scarica il promemoria)
+      $('gCalAsk').hidden = !(a === 'si' && !wasYes);
     } catch {
       toast('Non riesco a salvare la risposta ora. Riprova.');
     }
@@ -612,6 +616,8 @@
     if (!group) return;
     window.open('https://wa.me/?text=' + encodeURIComponent(inviteText(group)), '_blank', 'noopener');
   };
+  $('gCalYes').onclick = () => { $('gCalAsk').hidden = true; if (group) downloadIcs(asOuting(group), travel); };
+  $('gCalNo').onclick = () => { $('gCalAsk').hidden = true; };
   $('gCalendar').onclick = () => { if (group) downloadIcs(asOuting(group), travel); };
 
   // ---------- Le tue uscite (in cima alla lista) ----------
