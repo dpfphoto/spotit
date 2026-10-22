@@ -175,6 +175,7 @@
     btn.disabled = true; btn.textContent = 'Creo…';
     try {
       const place = { n: name.slice(0, 80), a: evPlace.a, la: evPlace.la, lo: evPlace.lo, pv: 1 };
+      if (okLogo(prefs.logo)) place.ic = prefs.logo;
       const { data, error } = await sb.from('outings')
         .insert({ owner_name: myName(), place, starts_at: `${$('eDate').value}T${$('eTime').value}`, note: $('eMsgText').value.trim(), is_public: $('ePublic').checked })
         .select().single();
@@ -453,6 +454,7 @@
   $('gNameEdit').onclick = () => {
     if (!group) return;
     $('gNameText').value = (group.place && group.place.n) || '';
+    $('gOwnerText').value = group.owner_name || '';
     $('gNameForm').hidden = false; $('gName').hidden = true; $('gNameEdit').hidden = true;
     $('gNameText').focus();
   };
@@ -463,14 +465,15 @@
     const n = $('gNameText').value.trim().slice(0, 80);
     if (!n) { toast('Scrivi un titolo'); return; }
     const place = { ...group.place, n };
+    const owner_name = $('gOwnerText').value.trim().slice(0, 60) || group.owner_name;
     try {
-      const { error } = await sb.from('outings').update({ place }).eq('id', group.id);
+      const { error } = await sb.from('outings').update({ place, owner_name }).eq('id', group.id);
       if (error) throw error;
-      group.place = place;
+      group.place = place; group.owner_name = owner_name;
       $('gName').textContent = n;
       $('gNameForm').hidden = true; $('gName').hidden = false;
       drawGroup(); loadUpcoming();
-      toast('Titolo aggiornato');
+      toast('Salvato');
     } catch { toast('Non riesco a salvare ora. Riprova.'); }
   };
   $('gNoteCancel').onclick = () => { $('gNoteForm').hidden = true; drawGroup(); };
@@ -767,6 +770,55 @@
   };
   drawBell();
 
+  // Logo di chi organizza al posto del 🎉 (solo immagini piccole incorporate)
+  function okLogo(s) { return typeof s === 'string' && s.length < 60000 && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(s); }
+  function pinHtml(ic, cls) { return okLogo(ic) ? `<span class="${cls} logo"><img src="${ic}" alt=""></span>` : `<span class="${cls}">🎉</span>`; }
+  window.spotitPinHtml = pinHtml;
+  function shrinkLogo(file) {
+    return new Promise((res, rej) => {
+      const img = new Image();
+      img.onload = () => {
+        const s = 96, c = document.createElement('canvas'); c.width = c.height = s;
+        const k = Math.max(s / img.width, s / img.height), w = img.width * k, h = img.height * k;
+        c.getContext('2d').drawImage(img, (s - w) / 2, (s - h) / 2, w, h);
+        URL.revokeObjectURL(img.src);
+        let d = c.toDataURL('image/webp', 0.85);
+        if (!d.startsWith('data:image/webp')) d = c.toDataURL('image/png');
+        res(d);
+      };
+      img.onerror = rej;
+      img.src = URL.createObjectURL(file);
+    });
+  }
+  function drawLogo() {
+    const ok = okLogo(prefs.logo);
+    $('logoPrev').hidden = !ok;
+    $('logoPrev').replaceChildren(...(ok ? [el('img', { src: prefs.logo, alt: 'Il tuo logo' })] : []));
+    $('logoDel').hidden = !ok;
+    $('logoLabel').textContent = ok ? 'Cambia logo' : 'Scegli il logo';
+  }
+  // Metto (o tolgo) il logo anche sugli eventi che organizzo e non sono ancora passati
+  async function applyLogo() {
+    const u = me(); if (!u) return;
+    for (const g of events.filter(g => g.owner === u.id && !isPast(g))) {
+      const place = { ...g.place };
+      if (okLogo(prefs.logo)) place.ic = prefs.logo; else delete place.ic;
+      const { error } = await sb.from('outings').update({ place }).eq('id', g.id);
+      if (!error) g.place = place;
+    }
+    drawEvents();
+  }
+  $('logoFile').addEventListener('change', async () => {
+    const file = $('logoFile').files[0]; $('logoFile').value = '';
+    if (!file) return;
+    try { prefs.logo = await shrinkLogo(file); } catch { toast('Non riesco a leggere questa immagine'); return; }
+    if (!okLogo(prefs.logo)) { delete prefs.logo; toast('Immagine troppo grande, provane un\'altra'); return; }
+    savePrefs(); drawLogo(); toast('Logo salvato');
+    applyLogo().catch(() => {});
+  });
+  $('logoDel').onclick = () => { delete prefs.logo; savePrefs(); drawLogo(); applyLogo().catch(() => {}); };
+  drawLogo();
+
   // Sulla mappa: gli eventi privati, in rosso quando sono passati
   const evLayer = L.layerGroup().addTo(map);
   function drawEvents() {
@@ -775,7 +827,7 @@
       const p = g.place || {};
       if (!Number.isFinite(p.la) || !Number.isFinite(p.lo)) continue;
       const past = isPast(g);
-      const icon = L.divIcon({ className: '', html: `<span class="ev-pin${past ? ' past' : ''}">🎉</span>`, iconSize: [36, 36], iconAnchor: [18, 18] });
+      const icon = L.divIcon({ className: '', html: pinHtml(p.ic, `ev-pin${past ? ' past' : ''}`), iconSize: [36, 36], iconAnchor: [18, 18] });
       L.marker([p.la, p.lo], { icon, title: p.n, alt: `${p.n}, evento ${past ? 'passato' : 'privato'}`, zIndexOffset: 500 })
         .on('click', () => openGroup(g.id))
         .addTo(evLayer);

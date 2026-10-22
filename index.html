@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="WeSpot">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=42">
+<link rel="stylesheet" href="styles.css?v=43">
 </head>
 <body>
 <header class="top">
@@ -217,6 +217,15 @@
   <label class="field">Il tuo telefono (lo vede solo chi organizza un'uscita)
     <input id="myPhone" type="tel" maxlength="20" placeholder="Es. 333 1234567" autocomplete="tel">
   </label>
+  <div class="logo-box">
+    <p class="acc-title">Il tuo logo sulla mappa</p>
+    <p class="muted small">Al posto del 🎉 sugli eventi che organizzi. Lo vedono tutti gli invitati.</p>
+    <div class="row">
+      <span id="logoPrev" class="ev-pin logo" hidden></span>
+      <label class="btn ghost small">🖼️ <span id="logoLabel">Scegli il logo</span><input id="logoFile" type="file" accept="image/*" class="sr"></label>
+      <button type="button" id="logoDel" class="btn ghost small" hidden>Togli</button>
+    </div>
+  </div>
   <label id="shareBox" class="check"><input id="shareToggle" type="checkbox" checked> <span>Mostra i miei posti sulla mappa di tutti<small>Sempre anonimi: si vedono il posto, il giudizio e la nota, mai chi l'ha salvato</small></span></label>
   <div id="counts" class="counts"></div>
   <section id="account" class="account" hidden>
@@ -362,13 +371,14 @@
   <div class="card">
     <div id="gName" class="card-title"></div>
     <form id="gNameForm" class="note-form" hidden>
-      <input id="gNameText" maxlength="80" placeholder="Es. Addestramento al parco">
+      <label class="mini-label">Titolo<input id="gNameText" maxlength="80" placeholder="Es. Addestramento al parco"></label>
+      <label class="mini-label">Chi invita (la scritta in alto che vedono gli invitati)<input id="gOwnerText" maxlength="60" placeholder="Es. Gruppo Operativo Soccorso"></label>
       <div class="row"><button type="submit" class="btn small">Salva</button><button type="button" id="gNameCancel" class="btn ghost small">Annulla</button></div>
     </form>
     <div id="gAddress" class="muted"></div>
     <div id="gWhen" class="when"></div>
     <p id="gNote" class="quote" hidden></p>
-    <button type="button" id="gNameEdit" class="link-btn" hidden>✏️ Modifica il titolo</button>
+    <button type="button" id="gNameEdit" class="link-btn" hidden>✏️ Modifica titolo e scritta in alto</button>
     <button type="button" id="gNoteEdit" class="link-btn" hidden>✏️ Modifica la nota</button>
     <form id="gNoteForm" class="note-form" hidden>
       <textarea id="gNoteText" maxlength="120" rows="2" placeholder="Es. Porto io il dolce, parcheggio dietro"></textarea>
@@ -484,11 +494,11 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=42"></script>
-<script src="app.js?v=42"></script>
+<script src="config.js?v=43"></script>
+<script src="app.js?v=43"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=42"></script>
-<script src="groups.js?v=42"></script>
-<script src="layers.js?v=42"></script>
+<script src="account.js?v=43"></script>
+<script src="groups.js?v=43"></script>
+<script src="layers.js?v=43"></script>
 </body>
 </html>
