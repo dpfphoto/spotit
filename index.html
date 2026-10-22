@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="WeSpot">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=41">
+<link rel="stylesheet" href="styles.css?v=42">
 </head>
 <body>
 <header class="top">
@@ -361,9 +361,14 @@
   </div>
   <div class="card">
     <div id="gName" class="card-title"></div>
+    <form id="gNameForm" class="note-form" hidden>
+      <input id="gNameText" maxlength="80" placeholder="Es. Addestramento al parco">
+      <div class="row"><button type="submit" class="btn small">Salva</button><button type="button" id="gNameCancel" class="btn ghost small">Annulla</button></div>
+    </form>
     <div id="gAddress" class="muted"></div>
     <div id="gWhen" class="when"></div>
     <p id="gNote" class="quote" hidden></p>
+    <button type="button" id="gNameEdit" class="link-btn" hidden>✏️ Modifica il titolo</button>
     <button type="button" id="gNoteEdit" class="link-btn" hidden>✏️ Modifica la nota</button>
     <form id="gNoteForm" class="note-form" hidden>
       <textarea id="gNoteText" maxlength="120" rows="2" placeholder="Es. Porto io il dolce, parcheggio dietro"></textarea>
@@ -479,11 +484,11 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=41"></script>
-<script src="app.js?v=41"></script>
+<script src="config.js?v=42"></script>
+<script src="app.js?v=42"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=41"></script>
-<script src="groups.js?v=41"></script>
-<script src="layers.js?v=41"></script>
+<script src="account.js?v=42"></script>
+<script src="groups.js?v=42"></script>
+<script src="layers.js?v=42"></script>
 </body>
 </html>

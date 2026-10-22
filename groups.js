@@ -232,6 +232,7 @@
     $('gCancel').textContent = ev ? (isPast(g) ? 'Elimina l\'evento' : 'Annulla l\'evento per tutti') : 'Annulla l\'uscita';
     $('gLeaveGroup').textContent = ev ? 'Togli dalla mia mappa' : 'Esci dal gruppo';
     $('gNoteForm').hidden = true;
+    $('gNameForm').hidden = true; $('gName').hidden = false;
     showNote(g);
     $('gRoute').href = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;
     drawGroup();
@@ -321,6 +322,7 @@
     $('gPublicBox').hidden = !(isOwner && isEvent(g));
     $('gCoverBox').hidden = !isOwner;
     $('gNoteEdit').hidden = !isOwner || !$('gNoteForm').hidden;
+    $('gNameEdit').hidden = !isOwner || !$('gNameForm').hidden;
     const pl = g.place || {};
     $('gAppt').hidden = isEvent(g) || pl.la == null || !window.spotitMyVerdict
       || window.spotitMyVerdict({ name: pl.n || '', lat: pl.la, lng: pl.lo }) === 'appuntamento';
@@ -447,6 +449,29 @@
     $('gNoteText').value = group.note || '';
     $('gNoteForm').hidden = false; $('gNoteEdit').hidden = true;
     $('gNoteText').focus();
+  };
+  $('gNameEdit').onclick = () => {
+    if (!group) return;
+    $('gNameText').value = (group.place && group.place.n) || '';
+    $('gNameForm').hidden = false; $('gName').hidden = true; $('gNameEdit').hidden = true;
+    $('gNameText').focus();
+  };
+  $('gNameCancel').onclick = () => { $('gNameForm').hidden = true; $('gName').hidden = false; drawGroup(); };
+  $('gNameForm').onsubmit = async e => {
+    e.preventDefault();
+    if (!group) return;
+    const n = $('gNameText').value.trim().slice(0, 80);
+    if (!n) { toast('Scrivi un titolo'); return; }
+    const place = { ...group.place, n };
+    try {
+      const { error } = await sb.from('outings').update({ place }).eq('id', group.id);
+      if (error) throw error;
+      group.place = place;
+      $('gName').textContent = n;
+      $('gNameForm').hidden = true; $('gName').hidden = false;
+      drawGroup(); loadUpcoming();
+      toast('Titolo aggiornato');
+    } catch { toast('Non riesco a salvare ora. Riprova.'); }
   };
   $('gNoteCancel').onclick = () => { $('gNoteForm').hidden = true; drawGroup(); };
   $('gNoteForm').onsubmit = async e => {

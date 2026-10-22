@@ -217,7 +217,7 @@ textarea { resize: vertical; }
 .m-status.here { background: #0F766E; color: #fff; }
 .link-btn { background: none; border: 0; padding: 6px 0 0; color: var(--accent, #0F766E); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .note-form { margin-top: 8px; }
-.note-form textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 10px; border: 1px solid #D1D5DB; border-radius: 12px; resize: vertical; }
+.note-form textarea, .note-form input { width: 100%; box-sizing: border-box; font: inherit; padding: 10px; border: 1px solid #D1D5DB; border-radius: 12px; resize: vertical; }
 .note-form .row { display: flex; gap: 8px; margin-top: 6px; }
 .m-status.wait { background: var(--soft); color: var(--muted); }
 .m-wa { font-size: 12px; font-weight: 700; color: #fff; background: #128C4B; padding: 6px 10px; border-radius: 10px; text-decoration: none; }
