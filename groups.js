@@ -842,15 +842,27 @@
     if (d.toDateString() === tm.toDateString()) return `domani alle ${hhmm}`;
     return d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric' }) + ` alle ${hhmm}`;
   }
+  function tripLabel(g) { return `${isEvent(g) ? '🎉' : '🍽️'} ${(g.place && g.place.n) || 'Uscita'} · ${dayLabel(g.starts_at)}`; }
   function drawTripBtn() {
-    const b = $('tripBtn');
     const g = upcoming[0];
-    b.hidden = !g || view !== 'map';
+    $('tripBox').hidden = !g || view !== 'map';
     if (!g) return;
+    const b = $('tripBtn');
     const yes = (g.outing_members || []).filter(m => m.status === 'si').length;
-    b.textContent = `${isEvent(g) ? '🎉' : '🍽️'} ${(g.place && g.place.n) || 'Uscita'} · ${dayLabel(g.starts_at)}`;
+    b.textContent = tripLabel(g);
     b.setAttribute('aria-label', `Apri l'uscita: ${yes} ci sono`);
     b.onclick = () => openGroup(g.id);
+    // Altre uscite in programma: freccetta che apre l'elenco
+    const rest = upcoming.slice(1);
+    const more = $('tripMoreBtn'), list = $('tripMore');
+    more.hidden = !rest.length;
+    if (!rest.length) { list.hidden = true; return; }
+    const open = !list.hidden;
+    more.textContent = `${open ? '▴' : '▾'} +${rest.length}`;
+    more.setAttribute('aria-expanded', String(open));
+    more.setAttribute('aria-label', open ? 'Nascondi le altre uscite' : `Mostra altre ${rest.length} uscite`);
+    more.onclick = () => { list.hidden = !list.hidden; drawTripBtn(); };
+    list.replaceChildren(...rest.map(o => el('button', { type: 'button', class: 'trip-btn', onclick: () => { list.hidden = true; drawTripBtn(); openGroup(o.id); } }, tripLabel(o))));
   }
   $('tabMap').addEventListener('click', drawTripBtn);
   $('tabList').addEventListener('click', drawTripBtn);
