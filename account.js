@@ -223,6 +223,19 @@
   function setSyncMsg(t) { $('accSync').textContent = t; }
 
   // Senza account l'app non si usa: la schermata di accesso copre tutto finché non entri
+  // Benvenuto: prima la presentazione, con "Accedi" in alto; poi la pagina di accesso
+  const welcome = $('accOut');
+  function gateView(login) {
+    welcome.classList.toggle('is-login', login);
+    $('gateLogin').hidden = login; $('gateBack').hidden = !login;
+    $('dlgGate').scrollTop = 0;
+    if (login) { try { localStorage.setItem('spotit.welcomed', '1'); } catch {} }
+  }
+  $('gateLogin').onclick = () => gateView(true);
+  $('gateBack').onclick = () => gateView(false);
+  let welcomed = false;
+  try { welcomed = !!localStorage.getItem('spotit.welcomed'); } catch {}
+  gateView(welcomed || /access_token=|[?&]code=|error_description=/.test(location.hash + location.search));
   const gate = $('dlgGate');
   gate.addEventListener('cancel', e => e.preventDefault());
   function showAccount() {

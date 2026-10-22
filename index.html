@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="WeSpot">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=50">
+<link rel="stylesheet" href="styles.css?v=51">
 </head>
 <body>
 <header class="top">
@@ -455,7 +455,11 @@
 <!-- Accesso obbligatorio -->
 <dialog id="dlgGate" class="gate" aria-label="Entra in WeSpot">
   <div id="accOut" class="gate-box gate-welcome">
-    <div class="gate-hero">
+    <div class="gate-top">
+      <button type="button" id="gateBack" class="gate-top-btn ghost" hidden>← Indietro</button>
+      <button type="button" id="gateLogin" class="gate-top-btn">Accedi</button>
+    </div>
+    <div class="gate-hero" tabindex="-1" autofocus>
       <img src="icons/icon-192.png" alt="" class="gate-logo" width="88" height="88">
       <h2>Benvenuto su WeSpot</h2>
       <p class="gate-tag">I posti che ti piacciono, da vivere insieme.</p>
@@ -538,11 +542,11 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=50"></script>
-<script src="app.js?v=50"></script>
+<script src="config.js?v=51"></script>
+<script src="app.js?v=51"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=50"></script>
-<script src="groups.js?v=50"></script>
-<script src="layers.js?v=50"></script>
+<script src="account.js?v=51"></script>
+<script src="groups.js?v=51"></script>
+<script src="layers.js?v=51"></script>
 </body>
 </html>
