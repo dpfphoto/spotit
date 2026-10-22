@@ -11,7 +11,11 @@
   let shown = null;      // posto aperto nella scheda
   let timer = null;
   const pubLayer = L.layerGroup().addTo(map);
-  const VKEYS = ['tornarci', 'consigliato', 'andarci', 'sconsigliato', 'nonandarci'];
+  const VKEYS = ['tornarci', 'andarci', 'sconsigliato'];
+  // Chi non ha ancora aggiornato l'app può avere i giudizi vecchi: li unisco nei tre di adesso
+  function merge(p) {
+    return { ...p, tornarci: (p.tornarci || 0) + (p.consigliato || 0), sconsigliato: (p.sconsigliato || 0) + (p.nonandarci || 0), consigliato: 0, nonandarci: 0 };
+  }
 
   function total(p) { return VKEYS.reduce((n, k) => n + (p[k] || 0), 0); }
   // Il giudizio più dato; a parità vince il più positivo
@@ -51,7 +55,7 @@
       sb.rpc('public_places', box).catch(() => ({ error: true })),
       sb.rpc('public_events', { ...box, since }).catch(() => ({ error: true }))
     ]);
-    if (!a.error) pub = a.data || [];
+    if (!a.error) pub = (a.data || []).map(merge);
     if (!ev.error) pubEv = ev.data || [];
     publicKinds = pub.map(p => p.kind).filter(Boolean);
     drawPublic();

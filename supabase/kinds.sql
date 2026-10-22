@@ -35,3 +35,8 @@ language sql security definer stable set search_path = public as $$
 $$;
 
 revoke all on function public.public_places(double precision, double precision, double precision, double precision) from anon;
+
+-- Da 5 a 3 giudizi (2026-10-22): Consigliato diventa Tornarci, Non andarci diventa Sconsigliato.
+-- L'app lo fa già sul telefono di ognuno; questo sistema anche i posti di chi non l'ha ancora aperta.
+update public.places set verdict = 'tornarci' where verdict = 'consigliato';
+update public.places set verdict = 'sconsigliato' where verdict = 'nonandarci';

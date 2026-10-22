@@ -3,10 +3,10 @@
 const VERDICTS = [
   { id: 'tornarci', label: 'Tornarci', color: '#15803D', bg: '#DCFCE7' },
   { id: 'andarci', label: 'Andarci', color: '#1D4ED8', bg: '#DBEAFE' },
-  { id: 'consigliato', label: 'Consigliato', color: '#7E22CE', bg: '#F3E8FF' },
-  { id: 'sconsigliato', label: 'Sconsigliato', color: '#C2410C', bg: '#FFEDD5' },
-  { id: 'nonandarci', label: 'Non andarci', color: '#475569', bg: '#E2E8F0' }
+  { id: 'sconsigliato', label: 'Sconsigliato', color: '#C2410C', bg: '#FFEDD5' }
 ];
+// Giudizi di prima (5) uniti nei 3 di adesso
+const OLD_VERDICT = { consigliato: 'tornarci', nonandarci: 'sconsigliato' };
 const V = Object.fromEntries(VERDICTS.map(v => [v.id, v]));
 const STORE_KEY = 'spotit.places.v1';
 const PREF_KEY = 'spotit.prefs.v1';
@@ -61,7 +61,7 @@ function cleanPlace(p) {
     name,
     address: String(p.address || '').slice(0, 160),
     lat, lng,
-    verdict: V[p.verdict] ? p.verdict : 'andarci',
+    verdict: V[OLD_VERDICT[p.verdict] || p.verdict] ? (OLD_VERDICT[p.verdict] || p.verdict) : 'andarci',
     note: String(p.note || '').slice(0, 280),
     kind: normKind(p.kind),
     from: String(p.from || '').slice(0, 40),
@@ -809,7 +809,7 @@ function checkIncoming() {
   try { d = decode(m[1]); } catch { toast('Link non valido'); return; }
   const p = cleanPlace({ name: d.n, address: d.a, lat: d.la, lng: d.lo, verdict: d.v, note: d.t, from: d.b, gid: d.g, gphoto: d.f, gphotoBy: d.fb });
   if (!p) { toast('Link non valido'); return; }
-  incoming = { ...p, mine: p.verdict === 'sconsigliato' || p.verdict === 'nonandarci' ? 'nonandarci' : 'andarci' };
+  incoming = { ...p, mine: p.verdict === 'sconsigliato' ? 'sconsigliato' : 'andarci' };
   $('sTitle').textContent = p.from ? `${p.from} ti consiglia` : 'Ti hanno consigliato';
   $('sName').textContent = p.name;
   $('sAddress').textContent = p.address;
@@ -1043,7 +1043,7 @@ $('iSave').onclick = () => {
 
 // ---------- Aggiornamenti ----------
 // Ogni pubblicazione alza APP_VERSION qui e in version.json: se online c'è un numero più alto propongo "Aggiorna"
-const APP_VERSION = 32;
+const APP_VERSION = 33;
 $('versionText').textContent = `Versione ${APP_VERSION}`;
 async function latestVersion() {
   const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
@@ -1138,7 +1138,9 @@ if ('serviceWorker' in navigator) {
 
 // ---------- Avvio ----------
 
+const hadOld = places.some(p => p && OLD_VERDICT[p.verdict]);
 places = places.map(cleanPlace).filter(Boolean);
+if (hadOld) persist(); // salva subito i giudizi uniti (e li allinea online)
 render();
 setView('map');
 if (!/^#[sug]=/.test(location.hash) && !location.search) locate();
