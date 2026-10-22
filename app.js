@@ -818,10 +818,11 @@ function decode(str) {
 function appUrl() { return location.origin + location.pathname; }
 
 function shareText(p) {
-  const by = prefs.name || 'Un amico';
-  const data = { n: p.name, a: p.address, la: +p.lat.toFixed(6), lo: +p.lng.toFixed(6), v: p.verdict, t: p.note, b: prefs.name, g: p.gid || undefined, f: p.gphoto || undefined, fb: p.gphotoBy || undefined };
+  // Il mio nome va nel consiglio solo se l'ho permesso nel profilo
+  const name = prefs.showName ? prefs.name : '';
+  const data = { n: p.name, a: p.address, la: +p.lat.toFixed(6), lo: +p.lng.toFixed(6), v: p.verdict, t: p.note, b: name || undefined, g: p.gid || undefined, f: p.gphoto || undefined, fb: p.gphotoBy || undefined };
   const url = `${appUrl()}#s=${encode(data)}`;
-  return { text: `${by} ti consiglia "${p.name}" (${V[p.verdict].label}) su WeSpot`, url };
+  return { text: `${name ? name + ' ti consiglia' : 'Ti consigliano'} "${p.name}" (${V[p.verdict].label}) su WeSpot`, url };
 }
 function current() { return places.find(x => x.id === currentId); }
 
@@ -912,12 +913,14 @@ function checkShareTarget() {
 
 $('btnSettings').onclick = () => {
   $('myName').value = prefs.name;
+  $('showName').checked = !!prefs.showName;
   $('myPhone').value = prefs.phone || '';
   const box = $('counts');
   box.replaceChildren(...VERDICTS.map(v => el('div', { style: `background:${v.bg};color:${v.color}` },
     el('b', {}, String(places.filter(p => p.verdict === v.id).length)), v.label)));
   $('dlgSettings').showModal();
 };
+$('showName').onchange = () => { prefs.showName = $('showName').checked; savePrefs(); };
 $('myName').onchange = () => { prefs.name = $('myName').value.trim().slice(0, 40); savePrefs(); };
 $('myPhone').onchange = () => { prefs.phone = $('myPhone').value.trim().slice(0, 20); savePrefs(); };
 $('btnInvite').onclick = () => {
@@ -1106,7 +1109,7 @@ $('iSave').onclick = () => {
 
 // ---------- Aggiornamenti ----------
 // Ogni pubblicazione alza APP_VERSION qui e in version.json: se online c'è un numero più alto propongo "Aggiorna"
-const APP_VERSION = 44;
+const APP_VERSION = 45;
 $('versionText').textContent = `Versione ${APP_VERSION}`;
 async function latestVersion() {
   const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });

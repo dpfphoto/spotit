@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="WeSpot">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=44">
+<link rel="stylesheet" href="styles.css?v=45">
 </head>
 <body>
 <header class="top">
@@ -217,7 +217,7 @@
     <h2>Il tuo profilo</h2>
     <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
   </div>
-  <label class="field">Il tuo nome (lo vedono gli amici quando condividi)
+  <label class="field">Il tuo nome (lo vedono gli amici nei gruppi)
     <input id="myName" type="text" maxlength="40" placeholder="Es. Flavio">
   </label>
   <label class="field">Il tuo telefono (lo vede solo chi organizza un'uscita)
@@ -232,6 +232,7 @@
       <button type="button" id="logoDel" class="btn ghost small" hidden>Togli</button>
     </div>
   </div>
+  <label class="check"><input id="showName" type="checkbox"> <span>Mostra il mio nome quando consiglio un posto<small>Chi lo riceve vede "Consigliato da" e il tuo nome. Se non lo spunti, il consiglio arriva senza nome.</small></span></label>
   <label id="shareBox" class="check"><input id="shareToggle" type="checkbox" checked> <span>Mostra i miei posti sulla mappa di tutti<small>Sempre anonimi: si vedono il posto, il giudizio e la nota, mai chi l'ha salvato</small></span></label>
   <div id="counts" class="counts"></div>
   <section id="account" class="account" hidden>
@@ -500,11 +501,11 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=44"></script>
-<script src="app.js?v=44"></script>
+<script src="config.js?v=45"></script>
+<script src="app.js?v=45"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=44"></script>
-<script src="groups.js?v=44"></script>
-<script src="layers.js?v=44"></script>
+<script src="account.js?v=45"></script>
+<script src="groups.js?v=45"></script>
+<script src="layers.js?v=45"></script>
 </body>
 </html>
