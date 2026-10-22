@@ -65,8 +65,8 @@
     const d = new Date(Date.now() - 12 * 3600000);
     const since = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
     const [a, ev] = await Promise.all([
-      sb.rpc('public_places', box).catch(() => ({ error: true })),
-      sb.rpc('public_events', { ...box, since }).catch(() => ({ error: true }))
+      Promise.resolve(sb.rpc('public_places', box)).catch(() => ({ error: true })),
+      Promise.resolve(sb.rpc('public_events', { ...box, since })).catch(() => ({ error: true }))
     ]);
     if (!a.error) pub = (a.data || []).map(merge);
     if (!ev.error) pubEv = ev.data || [];
