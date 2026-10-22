@@ -827,7 +827,7 @@ function appUrl() { return location.origin + location.pathname; }
 function shareText(p) {
   // Il mio nome va nel consiglio solo se l'ho permesso nel profilo
   const name = prefs.showName ? prefs.name : '';
-  const data = { n: p.name, a: p.address, la: +p.lat.toFixed(6), lo: +p.lng.toFixed(6), v: p.verdict, t: p.note, b: name || undefined, g: p.gid || undefined, f: p.gphoto || undefined, fb: p.gphotoBy || undefined };
+  const data = { n: p.name, a: p.address, la: +p.lat.toFixed(6), lo: +p.lng.toFixed(6), v: p.verdict, t: p.note, b: name || undefined, g: p.gid || undefined };
   const url = `${appUrl()}#s=${encode(data)}`;
   return { text: `${name ? name + ' ti consiglia' : 'Ti consigliano'} "${p.name}" (${V[p.verdict].label}) su WeSpot`, url };
 }
@@ -885,6 +885,14 @@ function checkIncoming() {
   $('sName').textContent = p.name;
   $('sAddress').textContent = p.address;
   showCover($('sCover'), p);
+  // La foto non viaggia nel link (sarebbe lunghissimo): la chiedo a Google dal codice del posto
+  if (!p.gphoto && p.gid && GOOGLE_KEY) {
+    const mine = incoming;
+    fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(p.gid)}`, { headers: { 'X-Goog-Api-Key': GOOGLE_KEY, 'X-Goog-FieldMask': 'photos' } })
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { if (j && incoming === mine) { Object.assign(mine, googlePhoto(j)); showCover($('sCover'), mine); } })
+      .catch(() => {});
+  }
   $('sBadge').replaceWith(Object.assign(badge(p.verdict), { id: 'sBadge' }));
   $('sNote').hidden = !p.note;
   $('sNote').textContent = p.note ? `"${p.note}"` : '';
@@ -1116,7 +1124,7 @@ $('iSave').onclick = () => {
 
 // ---------- Aggiornamenti ----------
 // Ogni pubblicazione alza APP_VERSION qui e in version.json: se online c'è un numero più alto propongo "Aggiorna"
-const APP_VERSION = 53;
+const APP_VERSION = 54;
 $('versionText').textContent = `Versione ${APP_VERSION}`;
 async function latestVersion() {
   const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
