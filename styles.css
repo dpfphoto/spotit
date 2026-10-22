@@ -291,3 +291,5 @@ textarea { resize: vertical; }
 .pu-notes li { padding: 10px 12px; border-radius: 12px; background: var(--soft); font-style: italic; }
 .em-form { display: grid; gap: 4px; margin-top: 10px; text-align: left; }
 .em-form .row .link-btn { margin: 4px 0; }
+.kind-chips { display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 12px; }
+.kind-chip[aria-pressed="true"] { background: #0F766E; color: #fff; border-color: #0F766E; }

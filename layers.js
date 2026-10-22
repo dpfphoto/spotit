@@ -36,7 +36,7 @@
     drawMode();
     $('dlgLayers').close();
     if (mode === 'all') { toast('Ora vedi anche i posti degli altri, con il bordo tratteggiato'); fetchPublic(); }
-    else { pub = []; pubEv = []; drawPublic(); }
+    else { pub = []; pubEv = []; publicKinds = []; drawPublic(); }
   });
 
   // ---------- Posti degli altri ----------
@@ -53,6 +53,7 @@
     ]);
     if (!a.error) pub = a.data || [];
     if (!ev.error) pubEv = ev.data || [];
+    publicKinds = pub.map(p => p.kind).filter(Boolean);
     drawPublic();
   }
   function drawPublic() {
@@ -62,6 +63,7 @@
       if (!Number.isFinite(p.lat) || isMine(p)) continue;
       const v = top(p);
       if (filter && v !== filter) continue;
+      if (!matchKind(p)) continue;
       const n = total(p);
       const icon = L.divIcon({
         className: '',
@@ -109,7 +111,7 @@
     $('puAddress').textContent = p.address || '';
     showCover($('puCover'), { gphoto: p.gphoto || '', gphotoBy: p.gphoto_by || '' });
     const n = total(p);
-    $('puCount').textContent = `${n} ${n === 1 ? 'persona l\'ha salvato' : 'persone l\'hanno salvato'} su SpotIt`;
+    $('puCount').textContent = `${p.kind ? p.kind + ' · ' : ''}${n} ${n === 1 ? 'persona l\'ha salvato' : 'persone l\'hanno salvato'} su SpotIt`;
     $('puVotes').replaceChildren(...VKEYS.filter(k => p[k]).map(k =>
       el('span', { class: 'badge', style: `background:${V[k].bg};color:${V[k].color}` }, `${V[k].label} ${p[k]}`)));
     const notes = p.notes || [];
@@ -124,7 +126,7 @@
     const p = shown; if (!p) return;
     $('dlgPublic').close();
     openAdd('');
-    startDraft({ name: p.name, address: p.address || '', lat: p.lat, lng: p.lng, gid: p.gid || '', gphoto: p.gphoto || '', gphotoBy: p.gphoto_by || '' });
+    startDraft({ name: p.name, kind: p.kind || '', address: p.address || '', lat: p.lat, lng: p.lng, gid: p.gid || '', gphoto: p.gphoto || '', gphotoBy: p.gphoto_by || '' });
   };
 
   // ---------- Condivisione dei miei posti (profilo) ----------

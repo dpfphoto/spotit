@@ -28,14 +28,14 @@
   function toRow(p) {
     return {
       user_id: user.id, id: p.id, name: p.name, address: p.address, lat: p.lat, lng: p.lng,
-      verdict: p.verdict, note: p.note, from_name: p.from, gid: p.gid, gphoto: p.gphoto || '',
+      verdict: p.verdict, note: p.note, kind: p.kind || '', from_name: p.from, gid: p.gid, gphoto: p.gphoto || '',
       gphoto_by: p.gphotoBy || '', created_at: p.createdAt, updated_at: p.updatedAt, deleted: false
     };
   }
   function fromRow(r) {
     return cleanPlace({
       id: r.id, name: r.name, address: r.address, lat: r.lat, lng: r.lng, verdict: r.verdict,
-      note: r.note, from: r.from_name, gid: r.gid, gphoto: r.gphoto, gphotoBy: r.gphoto_by,
+      note: r.note, kind: r.kind, from: r.from_name, gid: r.gid, gphoto: r.gphoto, gphotoBy: r.gphoto_by,
       createdAt: r.created_at, updatedAt: r.updated_at
     });
   }
@@ -83,6 +83,8 @@
       }
       const p = fromRow(r);
       if (!p) continue;
+      // archivio senza la colonna del tipo: tengo quello scritto sul telefono
+      if (!('kind' in r) && local) p.kind = local.kind;
       if (!local) {
         // Se l'avevo già allineato e ora non c'è più, l'ho eliminato io: lo cancellerà push()
         if (sync.snap[r.id]) continue;
@@ -104,9 +106,12 @@
     const ids = new Set(places.map(p => p.id));
     const gone = Object.keys(sync.snap).filter(id => !ids.has(id));
     if (dirty.length) {
-      const { error } = await sb.from('places').upsert(dirty.map(toRow));
+      let { error } = await sb.from('places').upsert(dirty.map(toRow));
+      // archivio non ancora aggiornato col tipo di locale: carico il resto e riprovo il tipo la prossima volta
+      const noKind = error && /kind/i.test(error.message || '');
+      if (noKind) ({ error } = await sb.from('places').upsert(dirty.map(p => { const { kind, ...row } = toRow(p); return row; })));
       if (error) throw error;
-      for (const p of dirty) sync.snap[p.id] = fingerprint(p);
+      if (!noKind) for (const p of dirty) sync.snap[p.id] = fingerprint(p);
       persistLocal();
     }
     if (gone.length) {

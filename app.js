@@ -25,12 +25,32 @@ function save(key, value) {
 let places = load(STORE_KEY, []);
 let prefs = load(PREF_KEY, { name: '', installDismissed: false });
 let filter = null;
+let kindFilter = null; // tipo di locale scelto nel filtro
+// Tipi di partenza; l'elenco cresce con quelli scritti da te e dagli altri
+const KIND_BASE = ['Bar', 'Caffetteria', 'Ristorante', 'Trattoria', 'Osteria', 'Pizzeria', 'Ristorante di pesce', 'Ristorante giapponese', 'Hamburgeria', 'Pub', 'Birreria', 'Enoteca', 'Cocktail bar', 'Gelateria', 'Pasticceria', 'Panetteria', 'Street food', 'Agriturismo', 'Hotel', 'B&B', 'Museo', 'Negozio'];
+let publicKinds = [];
+function usedKinds() {
+  const n = new Map();
+  for (const p of places) if (p.kind) n.set(p.kind, (n.get(p.kind) || 0) + 1);
+  for (const k of publicKinds) if (k) n.set(k, (n.get(k) || 0) + 1);
+  return [...n.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'it')).map(e => e[0]);
+}
+function refreshKinds() {
+  const all = [...new Set([...usedKinds(), ...KIND_BASE])];
+  $('kindList').replaceChildren(...all.map(k => el('option', { value: k })));
+}
+function matchKind(p) { return !kindFilter || (p.kind || '').toLowerCase() === kindFilter.toLowerCase(); }
 let view = 'map';
 
 function persist() { save(STORE_KEY, places); render(); }
 function savePrefs() { save(PREF_KEY, prefs); }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
+// Tipo di locale: "pizzeria " -> "Pizzeria"
+function normKind(k) {
+  const t = String(k || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+  return t ? t[0].toLocaleUpperCase('it-IT') + t.slice(1) : '';
+}
 function cleanPlace(p) {
   const lat = Number(p.lat), lng = Number(p.lng);
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
@@ -43,6 +63,7 @@ function cleanPlace(p) {
     lat, lng,
     verdict: V[p.verdict] ? p.verdict : 'andarci',
     note: String(p.note || '').slice(0, 280),
+    kind: normKind(p.kind),
     from: String(p.from || '').slice(0, 40),
     gid: /^[A-Za-z0-9_-]{10,300}$/.test(p.gid || '') ? p.gid : '',
     gphoto: /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/.test(p.gphoto || '') && String(p.gphoto).length < 1000 ? p.gphoto : '',
@@ -161,6 +182,9 @@ function renderFilters() {
   box.replaceChildren();
   const all = el('button', { type: 'button', class: 'chip', 'aria-pressed': String(filter === null), onclick: () => { filter = null; render(); focusFilter(); } }, `Tutti ${places.length}`);
   box.append(all);
+  box.append(el('button', {
+    type: 'button', class: 'chip kind-chip', 'aria-pressed': String(!!kindFilter), onclick: openKinds
+  }, kindFilter ? `🏷️ ${kindFilter} ✕` : '🏷️ Tipo'));
   for (const v of VERDICTS) {
     const n = places.filter(p => p.verdict === v.id).length;
     box.append(el('button', {
@@ -170,11 +194,22 @@ function renderFilters() {
   }
 }
 
+// Filtro per tipo di locale: i tipi che ci sono davvero tra i tuoi posti e quelli di tutti
+function openKinds() {
+  if (kindFilter) { kindFilter = null; render(); return; }
+  const kinds = usedKinds();
+  $('kindChips').replaceChildren(...(kinds.length ? kinds.map(k => el('button', {
+    type: 'button', class: 'chip', onclick: () => { kindFilter = k; $('dlgKinds').close(); render(); focusFilter(); }
+  }, k)) : [el('p', { class: 'muted' }, 'Ancora nessun tipo: aggiungilo quando salvi un posto, o dalla sua scheda.')]));
+  $('dlgKinds').showModal();
+}
+
 // Dopo aver scelto un filtro: avvisa se è vuoto, altrimenti inquadra quei posti
 function focusFilter() {
-  const list = filter ? places.filter(p => p.verdict === filter) : places;
+  const list = places.filter(p => (!filter || p.verdict === filter) && matchKind(p));
   if (!list.length) {
-    toast(filter ? `Nessun posto "${V[filter].label}" ancora` : 'Non hai ancora salvato nessun posto');
+    if (kindFilter || filter) { if (!kindFilter) toast(`Nessun posto "${V[filter].label}" ancora`); }
+    else toast('Non hai ancora salvato nessun posto');
     return;
   }
   if (view === 'map') map.fitBounds(L.latLngBounds(list.map(p => [p.lat, p.lng])).pad(0.2), { maxZoom: 16 });
@@ -194,7 +229,7 @@ function renderList(list) {
   box.replaceChildren();
   if (!list.length) {
     box.append(el('p', { class: 'empty' }, places.length
-      ? 'Nessun posto con questo giudizio.'
+      ? (kindFilter ? `Nessun posto di tipo "${kindFilter}".` : 'Nessun posto con questo giudizio.')
       : 'Non hai ancora salvato nessun posto. Tocca "Salva un posto" per iniziare.'));
     return;
   }
@@ -204,13 +239,13 @@ function renderList(list) {
   for (const p of sorted) {
     box.append(el('button', { type: 'button', class: 'item', onclick: () => openPlace(p.id) },
       el('span', { class: 'dot', style: `background:${V[p.verdict].color}` }),
-      el('span', { class: 'txt' }, el('div', { class: 'name' }, p.name), el('div', { class: 'addr' }, p.address || '')),
+      el('span', { class: 'txt' }, el('div', { class: 'name' }, p.name), el('div', { class: 'addr' }, [p.kind, p.address].filter(Boolean).join(' · '))),
       el('span', { class: 'side' }, badge(p.verdict), lastPos ? el('span', { class: 'dist' }, formatDistance(d(p))) : '')));
   }
 }
 
 function render() {
-  const list = filter ? places.filter(p => p.verdict === filter) : places;
+  const list = places.filter(p => (!filter || p.verdict === filter) && matchKind(p));
   renderFilters();
   renderMap(list);
   renderList(list);
@@ -264,6 +299,20 @@ const GOOGLE_KEY = (window.SPOTIT_CONFIG && window.SPOTIT_CONFIG.googlePlacesKey
 
 // Ricerca con Google Places (New): trova i locali come Google Maps
 // Prima foto del locale su Google: salvo solo il riferimento, l'immagine la carica Google
+function googleKind(r) {
+  return normKind(r.primaryTypeDisplayName && r.primaryTypeDisplayName.text);
+}
+// Tipo dai dati di OpenStreetMap
+const OSM_KIND = {
+  restaurant: 'Ristorante', bar: 'Bar', cafe: 'Caffetteria', pub: 'Pub', fast_food: 'Fast food', ice_cream: 'Gelateria',
+  biergarten: 'Birreria', food_court: 'Food court', hotel: 'Hotel', guest_house: 'B&B', museum: 'Museo', attraction: 'Attrazione',
+  bakery: 'Panetteria', pastry: 'Pasticceria', confectionery: 'Pasticceria', wine: 'Enoteca', deli: 'Gastronomia'
+};
+const OSM_CUISINE = { pizza: 'Pizzeria', sushi: 'Ristorante giapponese', japanese: 'Ristorante giapponese', chinese: 'Ristorante cinese', burger: 'Hamburgeria', kebab: 'Kebab', seafood: 'Ristorante di pesce', indian: 'Ristorante indiano', mexican: 'Ristorante messicano' };
+function osmKind(t) {
+  const c = String(t.cuisine || '').split(';')[0];
+  return (OSM_CUISINE[c]) || OSM_KIND[t.amenity] || OSM_KIND[t.tourism] || OSM_KIND[t.shop] || OSM_KIND[t.type] || '';
+}
 function googlePhoto(r) {
   const ph = r.photos && r.photos[0];
   if (!ph) return {};
@@ -295,7 +344,7 @@ async function googleSearch(q, near, radius = 30000) {
     headers: {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': GOOGLE_KEY,
-      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.photos'
+      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.photos,places.primaryTypeDisplayName'
     },
     body: JSON.stringify(body)
   });
@@ -307,6 +356,7 @@ async function googleSearch(q, near, radius = 30000) {
     lat: r.location.latitude,
     lng: r.location.longitude,
     gid: r.id,
+    kind: googleKind(r),
     ...googlePhoto(r)
   }));
 }
@@ -320,7 +370,8 @@ async function osmSearch(q) {
     address: r.display_name.split(',').slice(1, 4).join(',').trim(),
     lat: Number(r.lat),
     lng: Number(r.lon),
-    gid: ''
+    gid: '',
+    kind: osmKind({ type: r.type })
   }));
 }
 
@@ -396,6 +447,7 @@ function nearChips(box, pos, d, near, title) {
   box.replaceChildren(el('span', { class: 'muted' }, title), ...near.map(r => el('button', {
     type: 'button', class: 'chip', onclick: () => {
       Object.assign(d, { name: r.name, address: r.address || d.address, lat: r.lat, lng: r.lng, gid: r.gid, gphoto: r.gphoto || '', gphotoBy: r.gphotoBy || '' });
+      if (r.kind) { d.kind = r.kind; $('draftKind').value = r.kind; }
       showCover($('draftCover'), d);
       $('draftName').value = r.name;
       $('draftAddress').textContent = d.address;
@@ -469,7 +521,7 @@ async function osmNearby(pos, radius, limit = 8) {
     const t = e.tags || {};
     const lat = e.lat ?? (e.center && e.center.lat), lng = e.lon ?? (e.center && e.center.lon);
     const street = [t['addr:street'], t['addr:housenumber']].filter(Boolean).join(' ');
-    return { name: t.name, address: [street, t['addr:city']].filter(Boolean).join(', '), lat, lng, gid: '' };
+    return { name: t.name, address: [street, t['addr:city']].filter(Boolean).join(', '), lat, lng, gid: '', kind: osmKind(t) };
   }).filter(r => r.name && Number.isFinite(r.lat))
     .sort((a, b) => dist(a, pos) - dist(b, pos))
     .slice(0, limit);
@@ -486,7 +538,7 @@ async function googleNearby(pos, radius = 120, anyType = false) {
     headers: {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': GOOGLE_KEY,
-      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.photos'
+      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.photos,places.primaryTypeDisplayName'
     },
     body: JSON.stringify({
       maxResultCount: radius > 200 ? 20 : 10,
@@ -506,6 +558,7 @@ async function googleNearby(pos, radius = 120, anyType = false) {
     lat: r.location.latitude,
     lng: r.location.longitude,
     gid: r.id,
+    kind: googleKind(r),
     ...googlePhoto(r)
   })).filter(r => r.name);
 }
@@ -515,6 +568,8 @@ function startDraft(d) {
   $('addStep1').hidden = true;
   $('addStep2').hidden = false;
   $('draftName').value = d.name;
+  $('draftKind').value = d.kind || '';
+  refreshKinds();
   $('draftAddress').textContent = d.address;
   $('draftSuggest').replaceChildren();
   showCover($('draftCover'), d);
@@ -531,7 +586,7 @@ $('btnBack').onclick = () => { $('addStep1').hidden = false; $('addStep2').hidde
 $('addStep2').onsubmit = e => {
   e.preventDefault();
   if (!draft || !draft.verdict) return;
-  const p = cleanPlace({ ...draft, name: $('draftName').value, note: $('draftNote').value, createdAt: Date.now(), id: uid() });
+  const p = cleanPlace({ ...draft, name: $('draftName').value, kind: $('draftKind').value, note: $('draftNote').value, createdAt: Date.now(), id: uid() });
   if (!p) { toast('Scrivi il nome del posto'); return; }
   places.push(p);
   persist();
@@ -645,6 +700,8 @@ function openPlace(id) {
   $('pFrom').hidden = !p.from;
   $('pFrom').textContent = p.from ? `Consigliato da ${p.from}` : '';
   $('pNote').value = p.note;
+  $('pKind').value = p.kind || '';
+  refreshKinds();
   $('pDirections').href = mapsUrl(p);
   showCover($('pCover'), p);
   drawPlaceVerdicts(p);
@@ -665,6 +722,10 @@ function mapsUrl(p) {
 function drawPlaceVerdicts(p) {
   verdictPicker($('pVerdicts'), p.verdict, v => { p.verdict = v; persist(); drawPlaceVerdicts(p); });
 }
+$('pKind').onchange = () => {
+  const p = places.find(x => x.id === currentId);
+  if (p) { p.kind = normKind($('pKind').value); $('pKind').value = p.kind; p.updatedAt = Date.now(); persist(); render(); }
+};
 $('pNote').onchange = () => {
   const p = places.find(x => x.id === currentId);
   if (p) { p.note = $('pNote').value.slice(0, 280); persist(); }
@@ -982,7 +1043,7 @@ $('iSave').onclick = () => {
 
 // ---------- Aggiornamenti ----------
 // Ogni pubblicazione alza APP_VERSION qui e in version.json: se online c'è un numero più alto propongo "Aggiorna"
-const APP_VERSION = 31;
+const APP_VERSION = 32;
 $('versionText').textContent = `Versione ${APP_VERSION}`;
 async function latestVersion() {
   const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
