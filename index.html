@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="WeSpot">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=49">
+<link rel="stylesheet" href="styles.css?v=50">
 </head>
 <body>
 <header class="top">
@@ -454,10 +454,29 @@
 
 <!-- Accesso obbligatorio -->
 <dialog id="dlgGate" class="gate" aria-label="Entra in WeSpot">
-  <div id="accOut" class="gate-box">
-    <img src="icons/icon-192.png" alt="" class="gate-logo" width="88" height="88">
-    <h2>Benvenuto su WeSpot</h2>
-    <p class="muted">Salva i posti dove vuoi andare o tornare e consigliali agli amici. Entra per iniziare: i tuoi posti restano al sicuro e li ritrovi su ogni telefono.</p>
+  <div id="accOut" class="gate-box gate-welcome">
+    <div class="gate-hero">
+      <img src="icons/icon-192.png" alt="" class="gate-logo" width="88" height="88">
+      <h2>Benvenuto su WeSpot</h2>
+      <p class="gate-tag">I posti che ti piacciono, da vivere insieme.</p>
+      <ul class="gate-feats">
+        <li><span aria-hidden="true">📍</span><div><strong>Salva i posti con un giudizio</strong><small>Tornarci, Andarci, Sconsigliato. Con foto e note.</small></div></li>
+        <li><span aria-hidden="true">👥</span><div><strong>Organizza uscite con gli amici</strong><small>Invito su WhatsApp, chi c'è e a che ora partire.</small></div></li>
+        <li><span aria-hidden="true">🌍</span><div><strong>Scopri i consigli degli altri</strong><small>Sulla stessa mappa, sempre in forma anonima.</small></div></li>
+      </ul>
+    </div>
+    <section class="gate-shots" aria-label="Come funziona">
+      <h3>Guarda come funziona</h3>
+      <div class="gate-strip" tabindex="-1">
+        <figure><img src="screens/map.jpg" alt="La mappa con i posti salvati" loading="lazy" width="360" height="780"><figcaption><strong>La tua mappa</strong>Ogni posto ha il suo colore: verde Tornarci, blu Andarci, arancio Sconsigliato, viola Appuntamento. I triangoli sono i consigli degli altri utenti.</figcaption></figure>
+        <figure><img src="screens/place.jpg" alt="La scheda di un posto" loading="lazy" width="360" height="780"><figcaption><strong>Salva un posto in due tocchi</strong>Scegli il giudizio, aggiungi foto e una nota. Dalla scheda puoi anche organizzare un'uscita.</figcaption></figure>
+        <figure><img src="screens/outing.jpg" alt="Un'uscita di gruppo" loading="lazy" width="360" height="780"><figcaption><strong>Uscite con gli amici</strong>Invito su WhatsApp, chi viene, a che ora partire e chi è già arrivato. Con un tocco lo metti nel calendario.</figcaption></figure>
+        <figure><img src="screens/community.jpg" alt="Il consiglio di un altro utente" loading="lazy" width="360" height="780"><figcaption><strong>I consigli degli altri</strong>Giudizi e commenti degli altri utenti, sempre anonimi. Se ti piace, lo salvi tra i tuoi.</figcaption></figure>
+      </div>
+    </section>
+    <div class="gate-card">
+    <p class="gate-cta">Entra per iniziare</p>
+    <p class="muted gate-sub">I tuoi posti restano al sicuro e li ritrovi su ogni telefono.</p>
     <div id="gsiBtn" class="gsi-btn"></div>
     <button type="button" id="accGoogle" class="btn google full" hidden><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6C6.6 42.6 14.6 48 24 48z"/></svg> Entra con Google</button>
     <button type="button" id="accGoogleAlt" class="link-btn" hidden>Il pulsante non funziona? Usa l'accesso Google alternativo</button>
@@ -485,6 +504,7 @@
     </details>
     <p id="accMsg" class="muted" role="status"></p>
     <p class="muted small"><a href="privacy.html" target="_blank" rel="noopener">Privacy</a></p>
+    </div>
   </div>
 </dialog>
 
@@ -518,11 +538,11 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=49"></script>
-<script src="app.js?v=49"></script>
+<script src="config.js?v=50"></script>
+<script src="app.js?v=50"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=49"></script>
-<script src="groups.js?v=49"></script>
-<script src="layers.js?v=49"></script>
+<script src="account.js?v=50"></script>
+<script src="groups.js?v=50"></script>
+<script src="layers.js?v=50"></script>
 </body>
 </html>

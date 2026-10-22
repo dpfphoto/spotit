@@ -337,3 +337,31 @@ textarea { resize: vertical; }
 .lg-dot { width: 14px; height: 14px; border-radius: 7px; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.15); flex: none; }
 .lg-tri { width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 14px solid #2563EB; flex: none; }
 .lg-ev { width: 16px; text-align: center; flex: none; }
+
+/* Schermata di benvenuto (prima dell'accesso) */
+#dlgGate { background: linear-gradient(165deg, #0F766E 0%, #115E59 55%, #134E4A 100%); }
+#dlgGate::backdrop { background: #115E59; }
+.gate-welcome { max-width: 440px; justify-content: flex-start; padding-top: calc(36px + env(safe-area-inset-top)); color: #fff; }
+.gate-hero { margin-bottom: 20px; }
+.gate-welcome .gate-logo { width: 84px; height: 84px; border-radius: 22px; box-shadow: 0 6px 20px rgba(0,0,0,.28); border: 3px solid rgba(255,255,255,.9); margin-bottom: 14px; }
+.gate-welcome h2 { color: #fff; font-size: 30px; letter-spacing: -.3px; margin-bottom: 6px; }
+.gate-tag { margin: 0 0 20px; font-size: 16px; color: #CCFBF1; }
+.gate-feats { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; text-align: left; }
+.gate-feats li { display: flex; gap: 12px; align-items: center; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18); border-radius: 16px; padding: 12px 14px; }
+.gate-feats li > span { font-size: 24px; flex: none; width: 34px; text-align: center; }
+.gate-feats strong { display: block; font-size: 15px; }
+.gate-feats small { display: block; font-size: 13px; color: #CCFBF1; margin-top: 2px; }
+.gate-card { background: #fff; color: var(--ink); border-radius: 22px; padding: 22px 18px 14px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+.gate-cta { margin: 0 0 4px; font-weight: 800; font-size: 18px; }
+.gate-sub { margin: 0 0 4px; font-size: 14px; }
+.gate-welcome .gsi-btn { margin-top: 16px; }
+.gate-card .small { margin-top: 10px; }
+
+.gate-shots { margin: 22px -24px 22px; }
+.gate-shots h3 { margin: 0 24px 10px; font-size: 16px; color: #fff; text-align: left; }
+.gate-strip { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 24px 12px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.gate-strip::-webkit-scrollbar { display: none; }
+.gate-strip figure { flex: none; width: 210px; margin: 0; scroll-snap-align: center; text-align: left; }
+.gate-strip img { display: block; width: 100%; height: auto; border-radius: 22px; border: 4px solid rgba(255,255,255,.92); box-shadow: 0 8px 22px rgba(0,0,0,.3); background: #fff; aspect-ratio: 360 / 780; object-fit: cover; object-position: top; }
+.gate-strip figcaption { margin-top: 10px; font-size: 13px; line-height: 1.4; color: #CCFBF1; }
+.gate-strip figcaption strong { display: block; color: #fff; font-size: 15px; margin-bottom: 2px; }
