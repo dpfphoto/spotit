@@ -60,7 +60,9 @@
     try {
       await pull();
       await push();
-      setSyncMsg(`${places.length} posti salvati online`);
+      let photosOk = true;
+      try { await syncPhotos(); } catch { photosOk = false; }
+      setSyncMsg(`${places.length} posti salvati online` + (photosOk ? '' : ' (le foto le riprovo dopo)'));
     } catch (e) {
       setSyncMsg('Non riesco a sincronizzare ora: i posti restano sul telefono e riprovo dopo.');
     }
@@ -119,6 +121,90 @@
       if (error) throw error;
       for (const id of gone) delete sync.snap[id];
     }
+    saveSync();
+  }
+
+  // ---------- Foto online ----------
+  // Ogni posto ha un file photos/<utente>/<posto>.json con le sue foto: così passano su un telefono nuovo.
+  // sync.photos ricorda, per ogni posto, l'impronta delle foto e la data del file online all'ultimo allineamento.
+  const BUCKET = sb.storage.from('photos');
+  function photoPrint(list) {
+    return list.length ? `${list.length}:${list.reduce((n, x) => n + x.length, 0)}:${list[0].slice(-32)}` : '';
+  }
+  // Le foto cambiate sul telefono le segno, così non rileggo ogni volta quelle di tutti i posti
+  const setPhotosLocal = setPhotos;
+  setPhotos = async function (id, list) {
+    await setPhotosLocal(id, list);
+    if (!sync.pdirty) sync.pdirty = [];
+    if (!sync.pdirty.includes(id)) { sync.pdirty.push(id); saveSync(); }
+    scheduleSync();
+  };
+
+  async function syncPhotos() {
+    if (!sync.photos) sync.photos = {};
+    if (!sync.pdirty) sync.pdirty = [];
+    const { data, error } = await BUCKET.list(user.id, { limit: 1000 });
+    if (error) throw error;
+    const remote = {};
+    for (const f of data || []) {
+      const m = /^(.+)\.json$/.exec(f.name);
+      if (m) remote[m[1]] = f.updated_at || f.created_at || '?';
+    }
+    const dirty = new Set(sync.pdirty);
+    const uploaded = [];
+    for (const p of places) {
+      const s = sync.photos[p.id];
+      const r = remote[p.id];
+      let local = null, lp = s ? s.fp : '';
+      if (!s || dirty.has(p.id)) { local = await getPhotos(p.id); lp = photoPrint(local); }
+      const localChanged = s ? lp !== s.fp : lp !== '';
+      const remoteChanged = r ? !s || s.at !== r : !!(s && s.at);
+      if (localChanged) {
+        // Cambiate sul telefono (anche se cambiate pure online, vince il telefono)
+        if (local.length) {
+          const blob = new Blob([JSON.stringify(local)], { type: 'application/json' });
+          const { error } = await BUCKET.upload(`${user.id}/${p.id}.json`, blob, { upsert: true, contentType: 'application/json', cacheControl: '0' });
+          if (error) throw error;
+          uploaded.push(p.id);
+        } else if (r) {
+          const { error } = await BUCKET.remove([`${user.id}/${p.id}.json`]);
+          if (error) throw error;
+        }
+        sync.photos[p.id] = { fp: lp, at: null };
+      } else if (remoteChanged) {
+        // Cambiate da un altro telefono
+        let list = [];
+        if (r) {
+          const { data: blob, error } = await BUCKET.download(`${user.id}/${p.id}.json`);
+          if (error) throw error;
+          list = JSON.parse(await blob.text());
+          if (!Array.isArray(list)) list = [];
+        }
+        await setPhotosLocal(p.id, list);
+        sync.photos[p.id] = { fp: photoPrint(list), at: r || null };
+        if (currentId === p.id && $('dlgPlace').open) drawPlacePhotos(p.id);
+      } else if (!s) {
+        sync.photos[p.id] = { fp: lp, at: r || null };
+      }
+      dirty.delete(p.id);
+    }
+    // Posti eliminati: tolgo anche le loro foto online
+    const ids = new Set(places.map(p => p.id));
+    const orphans = Object.keys(remote).filter(id => !ids.has(id));
+    if (orphans.length) {
+      const { error } = await BUCKET.remove(orphans.map(id => `${user.id}/${id}.json`));
+      if (error) throw error;
+    }
+    for (const id of Object.keys(sync.photos)) if (!ids.has(id)) delete sync.photos[id];
+    // La data dei file appena caricati la leggo adesso, così la prossima volta non li riscarico
+    if (uploaded.length) {
+      const { data: again } = await BUCKET.list(user.id, { limit: 1000 });
+      for (const f of again || []) {
+        const id = f.name.replace(/\.json$/, '');
+        if (uploaded.includes(id) && sync.photos[id]) sync.photos[id].at = f.updated_at || f.created_at || '?';
+      }
+    }
+    sync.pdirty = [...dirty].filter(id => ids.has(id));
     saveSync();
   }
 
