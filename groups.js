@@ -22,6 +22,7 @@
     no: { label: 'Non può', cls: 'no' },
     invitato: { label: 'Invitato', cls: 'wait' }
   };
+  const ARRIVAL = { in_arrivo: { label: '🚗 In arrivo', cls: 'go' }, arrivato: { label: '📍 Arrivato', cls: 'here' } };
   // Servizio notifiche: Authorization con la chiave anon (accettata dal gateway), l'utente in x-user-token
   async function callNotify(body) {
     const { data } = await sb.auth.getSession();
@@ -46,6 +47,7 @@
   let travel = null;
   let pollTimer = null;
   let upcoming = [];
+  let allOutings = []; // tutte le mie uscite, per gli arrivi
   let events = [];       // eventi privati di cui faccio parte, anche passati
 
   function me() { return AUTH.user(); }
@@ -191,7 +193,7 @@
   // ---------- Apri ----------
 
   async function fetchGroup(id) {
-    const { data, error } = await sb.from('outings').select('*, outing_members(id, user_id, name, status, created_at)').eq('id', id).maybeSingle();
+    const { data, error } = await sb.from('outings').select('*, outing_members(id, user_id, name, status, created_at, arrival)').eq('id', id).maybeSingle();
     if (error) throw error;
     if (data) {
       data.members = (data.outing_members || []).sort((a, b) => a.created_at.localeCompare(b.created_at));
@@ -228,8 +230,8 @@
     $('gWhen').textContent = (ev && isPast(g) ? 'Passato · ' : '') + whenLabel(g.starts_at) + (ev ? (g.is_public ? ' · 🌍 pubblico' : ' · 🔒 privato') : '');
     $('gCancel').textContent = ev ? (isPast(g) ? 'Elimina l\'evento' : 'Annulla l\'evento per tutti') : 'Annulla l\'uscita';
     $('gLeaveGroup').textContent = ev ? 'Togli dalla mia mappa' : 'Esci dal gruppo';
-    $('gNote').hidden = !g.note;
-    $('gNote').textContent = g.note ? `"${g.note}"` : '';
+    $('gNoteForm').hidden = true;
+    showNote(g);
     $('gRoute').href = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;
     drawGroup();
     if (!$('dlgGroup').open) $('dlgGroup').showModal();
@@ -247,6 +249,7 @@
       if (g && group && g.id === group.id) {
         const newCover = (g.place && g.place.c) !== (group.place && group.place.c);
         group = g; drawGroup();
+        if ($('gNoteForm').hidden) showNote(g);
         if (newCover) showCover($('gCover'), placeOf(g));
       }
     } catch { /* riprovo al prossimo giro */ }
@@ -294,7 +297,7 @@
     const yes = g.members.filter(m => m.status === 'si').length;
     $('gCount').textContent = `${yes} ${yes === 1 ? 'c\'è' : 'ci sono'} su ${g.members.length}`;
     $('gMembers').replaceChildren(...g.members.map(m => {
-      const st = STATUS[m.status] || STATUS.invitato;
+      const st = (m.status === 'si' && ARRIVAL[m.arrival]) || STATUS[m.status] || STATUS.invitato;
       const phone = isOwner && (m.phone || phones[m.id]);
       const isMe = u && (m.user_id === u.id);
       return el('li', {},
@@ -316,6 +319,10 @@
     $('gCancel').hidden = !isOwner;
     $('gPublicBox').hidden = !(isOwner && isEvent(g));
     $('gCoverBox').hidden = !isOwner;
+    $('gNoteEdit').hidden = !isOwner || !$('gNoteForm').hidden;
+    $('gNoteEdit').textContent = g.note ? '✏️ Modifica la nota' : '✏️ Aggiungi una nota';
+    $('gArriveBox').hidden = !(mine && mine.status === 'si') || isPast(g);
+    $('gArrive').checked = prefs.shareArrival !== false;
     $('gCoverDel').hidden = !(g.place && g.place.c);
     $('gCoverLabel').textContent = g.place && g.place.c ? 'Cambia copertina' : 'Metti una copertina';
     $('gPublic').checked = !!g.is_public;
@@ -416,6 +423,71 @@
     $('dlgGroup').close();
     toast(ev ? 'Evento eliminato' : 'Uscita annullata');
   };
+
+  // ---------- Nota (solo chi organizza) ----------
+
+  function showNote(g) {
+    $('gNote').hidden = !g.note;
+    $('gNote').textContent = g.note ? `"${g.note}"` : '';
+  }
+  $('gNoteEdit').onclick = () => {
+    $('gNoteText').value = group.note || '';
+    $('gNoteForm').hidden = false; $('gNoteEdit').hidden = true;
+    $('gNoteText').focus();
+  };
+  $('gNoteCancel').onclick = () => { $('gNoteForm').hidden = true; drawGroup(); };
+  $('gNoteForm').onsubmit = async e => {
+    e.preventDefault();
+    if (!group) return;
+    const note = $('gNoteText').value.trim().slice(0, 120);
+    const { error } = await sb.from('outings').update({ note }).eq('id', group.id);
+    if (error) { toast('Non riesco a salvare la nota ora. Riprova.'); return; }
+    group.note = note;
+    $('gNoteForm').hidden = true;
+    showNote(group); drawGroup();
+    toast(note ? 'Nota aggiornata: la vedono tutti' : 'Nota tolta');
+  };
+
+  // ---------- Arrivi ----------
+  // Da 2 ore prima a 4 ore dopo l'inizio, con l'app aperta: entro 150 m "Arrivato",
+  // se mi sono avvicinato di almeno 300 m "In arrivo". Al gruppo va solo lo stato.
+  const ARRIVE_M = 150, CLOSER_M = 300;
+  const lastDist = {};
+  $('gArrive').addEventListener('change', () => {
+    prefs.shareArrival = $('gArrive').checked; savePrefs();
+    if (prefs.shareArrival) checkArrivals();
+  });
+  function inWindow(g) {
+    const t = new Date(g.starts_at).getTime(), now = Date.now();
+    return now > t - 2 * 3600000 && now < t + 4 * 3600000;
+  }
+  async function checkArrivals() {
+    const u = me();
+    if (!u || document.hidden || prefs.shareArrival === false) return;
+    const todo = allOutings.filter(g => {
+      const mine = (g.outing_members || []).find(m => m.user_id === u.id);
+      return mine && mine.status === 'si' && mine.arrival !== 'arrivato' && inWindow(g) && g.place && Number.isFinite(g.place.la);
+    });
+    if (!todo.length) return;
+    let pos;
+    try { pos = await getPosition(true); } catch { return; }
+    for (const g of todo) {
+      const mine = g.outing_members.find(m => m.user_id === u.id);
+      const d = metersBetween(pos, { lat: g.place.la, lng: g.place.lo });
+      let state = null;
+      if (d <= ARRIVE_M) state = 'arrivato';
+      else if (lastDist[g.id] != null && lastDist[g.id] - d >= CLOSER_M && mine.arrival !== 'in_arrivo') state = 'in_arrivo';
+      if (lastDist[g.id] == null || state || d > lastDist[g.id]) lastDist[g.id] = d;
+      if (!state) continue;
+      const { error } = await sb.rpc('set_arrival', { oid: g.id, state });
+      if (error) continue;
+      mine.arrival = state;
+      if (state === 'arrivato') toast(`Sei arrivato a "${g.place.n}": l'ho detto al gruppo`);
+      if (group && group.id === g.id) refresh();
+    }
+  }
+  setInterval(checkArrivals, 60000);
+  window.spotitCheckArrivals = checkArrivals;
 
   // Copertina scelta da chi organizza (la vedono tutti gli invitati)
   async function setCover(c) {
@@ -531,10 +603,11 @@
   async function loadUpcoming() {
     if (!me()) { upcoming = []; events = []; drawEvents(); drawBell(); return; }
     try {
-      const { data, error } = await sb.from('outings').select('id, owner, place, starts_at, owner_name, outing_members(id, user_id, name, status)')
+      const { data, error } = await sb.from('outings').select('id, owner, place, starts_at, owner_name, outing_members(id, user_id, name, status, arrival)')
         .order('starts_at').limit(200);
       if (error) throw error;
       const all = data || [];
+      allOutings = all;
       checkNews(all);
       upcoming = all.filter(g => g.starts_at >= today() && !(isEvent(g) && isPast(g))).slice(0, 10);
       events = all.filter(isEvent);
@@ -542,6 +615,7 @@
       render();
       drawEvents();
       drawTripBtn();
+      checkArrivals();
     } catch { /* la lista resta quella di prima */ }
   }
   // ---------- Notifiche (campanella in alto) ----------
@@ -562,7 +636,7 @@
   function remember(g, members) {
     if (!seen) seen = {};
     const m = {};
-    for (const x of members || []) m[x.id] = [x.name, x.status];
+    for (const x of members || []) m[x.id] = [x.name, x.status, x.arrival || ''];
     seen[g.id] = { n: (g.place && g.place.n) || 'Uscita', t: g.starts_at, ev: isEvent(g) ? 1 : 0, m };
     save(SEEN_KEY, seen);
   }
@@ -583,6 +657,12 @@
           const st = (STATUS[x.status] || STATUS.invitato).label.toLowerCase();
           if (!was && x.status !== 'invitato') notify(`j-${x.id}-${x.status}`, '👋', `${x.name} è entrato in "${name}": ${st}`, g.id);
           else if (was && was[1] !== x.status && x.status !== 'invitato') notify(`s-${x.id}-${x.status}-${Date.now()}`, x.status === 'si' ? '✅' : x.status === 'no' ? '❌' : '🤔', `${x.name}: ${st} per "${name}"`, g.id);
+        }
+        for (const x of members) {
+          const was = prev.m[x.id];
+          if (x.user_id === u.id || !was || !x.arrival || was[2] === x.arrival) continue;
+          if (x.arrival === 'arrivato') notify(`a-${x.id}`, '📍', `${x.name} è arrivato a "${name}"`, g.id);
+          else if (x.arrival === 'in_arrivo' && was[2] !== 'arrivato') notify(`i-${x.id}`, '🚗', `${x.name} è in arrivo a "${name}"`, g.id);
         }
         if (prev.t !== g.starts_at) notify(`t-${g.id}-${g.starts_at}`, '🕒', `"${name}" ha un nuovo orario: ${whenLabel(g.starts_at)}`, g.id);
       }

@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="WeSpot">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=36">
+<link rel="stylesheet" href="styles.css?v=37">
 </head>
 <body>
 <header class="top">
@@ -362,6 +362,11 @@
     <div id="gAddress" class="muted"></div>
     <div id="gWhen" class="when"></div>
     <p id="gNote" class="quote" hidden></p>
+    <button type="button" id="gNoteEdit" class="link-btn" hidden>✏️ Modifica la nota</button>
+    <form id="gNoteForm" class="note-form" hidden>
+      <textarea id="gNoteText" maxlength="120" rows="2" placeholder="Es. Porto io il dolce, parcheggio dietro"></textarea>
+      <div class="row"><button type="submit" class="btn small">Salva</button><button type="button" id="gNoteCancel" class="btn ghost small">Annulla</button></div>
+    </form>
   </div>
   <div id="gLeave" class="leave" hidden></div>
   <label id="gPublicBox" class="check" hidden><input id="gPublic" type="checkbox"> <span>🌍 Pubblico sulla mappa<small>Lo vedono tutti gli utenti, senza i nomi di chi c'è</small></span></label>
@@ -380,6 +385,7 @@
   </div>
   <div class="members-head"><p class="acc-title">Chi viene</p><span id="gCount" class="muted"></span></div>
   <ul id="gMembers" class="members"></ul>
+  <label id="gArriveBox" class="check" hidden><input id="gArrive" type="checkbox"> <span>📍 Fai sapere al gruppo quando arrivo<small>Mentre l'app è aperta, vicino all'ora dell'uscita. Si vede solo "In arrivo" o "Arrivato", mai dove sei.</small></span></label>
   <button type="button" id="gNotify" class="btn ghost full notify-btn" hidden>🔔 Avvisami quando qualcuno dice "Ci sono"</button>
   <form id="gAddForm" class="add-person" hidden>
     <p class="muted">Aggiungi tu un amico: col numero gli mandi l'invito su WhatsApp.</p>
@@ -466,11 +472,11 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=36"></script>
-<script src="app.js?v=36"></script>
+<script src="config.js?v=37"></script>
+<script src="app.js?v=37"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=36"></script>
-<script src="groups.js?v=36"></script>
-<script src="layers.js?v=36"></script>
+<script src="account.js?v=37"></script>
+<script src="groups.js?v=37"></script>
+<script src="layers.js?v=37"></script>
 </body>
 </html>
