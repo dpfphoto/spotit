@@ -177,7 +177,7 @@
   sb.auth.onAuthStateChange((_event, session) => { onUser(session ? session.user : null); });
   sb.auth.getSession().then(({ data }) => onUser(data.session ? data.session.user : null));
 
-  // Accesso con Google dentro l'app (Google mostra "SpotIt"): il pulsante lo disegna Google
+  // Accesso con Google dentro l'app (Google mostra "WeSpot"): il pulsante lo disegna Google
   const gsiBox = $('gsiBtn');
   function showClassicGoogle() {
     gsiBox.hidden = true;
@@ -344,7 +344,7 @@
     toast(`Benvenuto ${name.split(' ')[0]}!`);
   };
   $('accLogout').onclick = async () => {
-    if (!confirm('Uscire dall\'account? Per usare SpotIt dovrai rientrare.')) return;
+    if (!confirm('Uscire dall\'account? Per usare WeSpot dovrai rientrare.')) return;
     await sb.auth.signOut();
     if (window.google && google.accounts) google.accounts.id.disableAutoSelect();
   };

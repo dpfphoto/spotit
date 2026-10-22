@@ -445,7 +445,7 @@
   }
   $('gNotify').onclick = async () => {
     if (isIos && !isStandalone) {
-      toast('Su iPhone le notifiche arrivano solo se SpotIt è sulla schermata Home: Condividi → Aggiungi alla schermata Home');
+      toast('Su iPhone le notifiche arrivano solo se WeSpot è sulla schermata Home: Condividi → Aggiungi alla schermata Home');
       return;
     }
     if (!pushOk) { toast('Questo telefono non supporta le notifiche dal browser'); return; }

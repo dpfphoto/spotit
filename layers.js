@@ -115,7 +115,7 @@
     $('puAddress').textContent = p.address || '';
     showCover($('puCover'), { gphoto: p.gphoto || '', gphotoBy: p.gphoto_by || '' });
     const n = total(p);
-    $('puCount').textContent = `${p.kind ? p.kind + ' · ' : ''}${n} ${n === 1 ? 'persona l\'ha salvato' : 'persone l\'hanno salvato'} su SpotIt`;
+    $('puCount').textContent = `${p.kind ? p.kind + ' · ' : ''}${n} ${n === 1 ? 'persona l\'ha salvato' : 'persone l\'hanno salvato'} su WeSpot`;
     $('puVotes').replaceChildren(...VKEYS.filter(k => p[k]).map(k =>
       el('span', { class: 'badge', style: `background:${V[k].bg};color:${V[k].color}` }, `${V[k].label} ${p[k]}`)));
     const notes = p.notes || [];

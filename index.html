@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0F766E">
-<title>SpotIt</title>
+<title>WeSpot</title>
 <meta name="description" content="Salva i posti dove vuoi andare o tornare e consigliali agli amici.">
-<meta property="og:title" content="SpotIt">
+<meta property="og:title" content="WeSpot">
 <meta property="og:description" content="Un amico ti ha consigliato un posto. Aprilo e salvalo anche tu.">
 <meta property="og:image" content="icons/icon-512.png">
 <link rel="manifest" href="manifest.webmanifest">
@@ -15,16 +15,16 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="SpotIt">
+<meta name="apple-mobile-web-app-title" content="WeSpot">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=33">
+<link rel="stylesheet" href="styles.css?v=34">
 </head>
 <body>
 <header class="top">
   <button type="button" id="btnMenu" class="icon-btn menu-btn" aria-label="Menu" aria-haspopup="dialog">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
   </button>
-  <h1>SpotIt</h1>
+  <h1>WeSpot</h1>
   <button type="button" id="btnBell" class="icon-btn bell-btn" aria-label="Notifiche" hidden>
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
     <span id="bellCount" class="bell-count" hidden></span>
@@ -39,7 +39,7 @@
 </header>
 
 <div id="updateBanner" class="banner update" role="status" hidden>
-  <span>È pronta una nuova versione di SpotIt</span>
+  <span>È pronta una nuova versione di WeSpot</span>
   <button type="button" id="updateBtn" class="btn small primary">Aggiorna</button>
 </div>
 <div id="installBanner" class="banner" hidden>
@@ -241,7 +241,7 @@
 <dialog id="dlgMenu" class="drawer" aria-label="Menu">
   <div class="drawer-head">
     <img src="icons/icon-192.png" alt="" width="44" height="44">
-    <div><div class="drawer-title">SpotIt</div><div id="menuWho" class="muted"></div></div>
+    <div><div class="drawer-title">WeSpot</div><div id="menuWho" class="muted"></div></div>
     <button type="button" class="icon-btn" data-close aria-label="Chiudi menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
   </div>
   <nav>
@@ -397,10 +397,10 @@
 </dialog>
 
 <!-- Accesso obbligatorio -->
-<dialog id="dlgGate" class="gate" aria-label="Entra in SpotIt">
+<dialog id="dlgGate" class="gate" aria-label="Entra in WeSpot">
   <div id="accOut" class="gate-box">
     <img src="icons/icon-192.png" alt="" class="gate-logo" width="88" height="88">
-    <h2>Benvenuto su SpotIt</h2>
+    <h2>Benvenuto su WeSpot</h2>
     <p class="muted">Salva i posti dove vuoi andare o tornare e consigliali agli amici. Entra per iniziare: i tuoi posti restano al sicuro e li ritrovi su ogni telefono.</p>
     <div id="gsiBtn" class="gsi-btn"></div>
     <button type="button" id="accGoogle" class="btn google full" hidden><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6C6.6 42.6 14.6 48 24 48z"/></svg> Entra con Google</button>
@@ -447,7 +447,7 @@
 <!-- Guida installazione iPhone -->
 <dialog id="dlgIos" class="sheet">
   <div class="sheet-head">
-    <h2>Aggiungi SpotIt alla Home</h2>
+    <h2>Aggiungi WeSpot alla Home</h2>
     <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
   </div>
   <ol class="steps">
@@ -455,18 +455,18 @@
     <li>In Safari tocca il pulsante <strong>Condividi</strong> (il quadrato con la freccia in su).</li>
     <li>Scorri e tocca <strong>Aggiungi alla schermata Home</strong>, poi <strong>Aggiungi</strong>.</li>
   </ol>
-  <p class="muted">Da quel momento SpotIt si apre dalla Home come un'app.</p>
+  <p class="muted">Da quel momento WeSpot si apre dalla Home come un'app.</p>
   <button type="button" class="btn primary full" data-close>Ho capito</button>
 </dialog>
 
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=33"></script>
-<script src="app.js?v=33"></script>
+<script src="config.js?v=34"></script>
+<script src="app.js?v=34"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=33"></script>
-<script src="groups.js?v=33"></script>
-<script src="layers.js?v=33"></script>
+<script src="account.js?v=34"></script>
+<script src="groups.js?v=34"></script>
+<script src="layers.js?v=34"></script>
 </body>
 </html>

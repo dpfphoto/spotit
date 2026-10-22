@@ -758,7 +758,7 @@ function shareText(p) {
   const by = prefs.name || 'Un amico';
   const data = { n: p.name, a: p.address, la: +p.lat.toFixed(6), lo: +p.lng.toFixed(6), v: p.verdict, t: p.note, b: prefs.name, g: p.gid || undefined, f: p.gphoto || undefined, fb: p.gphotoBy || undefined };
   const url = `${appUrl()}#s=${encode(data)}`;
-  return { text: `${by} ti consiglia "${p.name}" (${V[p.verdict].label}) su SpotIt`, url };
+  return { text: `${by} ti consiglia "${p.name}" (${V[p.verdict].label}) su WeSpot`, url };
 }
 function current() { return places.find(x => x.id === currentId); }
 
@@ -858,7 +858,7 @@ $('btnSettings').onclick = () => {
 $('myName').onchange = () => { prefs.name = $('myName').value.trim().slice(0, 40); savePrefs(); };
 $('myPhone').onchange = () => { prefs.phone = $('myPhone').value.trim().slice(0, 20); savePrefs(); };
 $('btnInvite').onclick = () => {
-  const by = prefs.name ? `${prefs.name} ti invita su SpotIt` : 'Prova SpotIt';
+  const by = prefs.name ? `${prefs.name} ti invita su WeSpot` : 'Prova WeSpot';
   window.open('https://wa.me/?text=' + encodeURIComponent(`${by}: salva i posti dove vuoi andare o tornare e scopri quelli che consigliano gli amici. ${appUrl()}`), '_blank', 'noopener');
 };
 $('btnExport').onclick = async () => {
@@ -982,12 +982,12 @@ function downloadIcs(o, travel) {
   const end = new Date(start.getTime() + 2 * 3600000);
   const before = (travel ? travel.min : 30) + MARGIN_MIN;
   const lines = [
-    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//SpotIt//IT', 'BEGIN:VEVENT',
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//WeSpot//IT', 'BEGIN:VEVENT',
     `UID:${uid()}@spotit`, `DTSTAMP:${icsDate(new Date())}`,
     `DTSTART:${icsDate(start)}`, `DTEND:${icsDate(end)}`,
     `SUMMARY:${icsEscape(o.n)}${o.m ? ' - ' + icsEscape(o.m) : ''}`,
     `LOCATION:${icsEscape(o.a || o.n)}`,
-    `DESCRIPTION:${icsEscape('Uscita organizzata con SpotIt' + (o.b ? ' da ' + o.b : ''))}`,
+    `DESCRIPTION:${icsEscape('Uscita organizzata con WeSpot' + (o.b ? ' da ' + o.b : ''))}`,
     `GEO:${o.la};${o.lo}`,
     'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${icsEscape('È ora di partire per ' + o.n)}`, `TRIGGER:-PT${before}M`, 'END:VALARM',
     'END:VEVENT', 'END:VCALENDAR'
@@ -1043,7 +1043,7 @@ $('iSave').onclick = () => {
 
 // ---------- Aggiornamenti ----------
 // Ogni pubblicazione alza APP_VERSION qui e in version.json: se online c'è un numero più alto propongo "Aggiorna"
-const APP_VERSION = 33;
+const APP_VERSION = 34;
 $('versionText').textContent = `Versione ${APP_VERSION}`;
 async function latestVersion() {
   const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
@@ -1053,7 +1053,7 @@ async function latestVersion() {
 async function checkUpdate(manual) {
   try {
     const v = await latestVersion();
-    if (v > APP_VERSION) { $('updateBanner').hidden = false; if (window.spotitNotify) window.spotitNotify(`update-${v}`, '⬆️', 'C\'è una nuova versione di SpotIt: tocca per aggiornare', 'update'); }
+    if (v > APP_VERSION) { $('updateBanner').hidden = false; if (window.spotitNotify) window.spotitNotify(`update-${v}`, '⬆️', 'C\'è una nuova versione di WeSpot: tocca per aggiornare', 'update'); }
     else if (manual) toast('Hai già l\'ultima versione');
   } catch {
     if (manual) toast('Non riesco a controllare ora: sei connesso?');
@@ -1121,7 +1121,7 @@ $('installClose').onclick = () => { $('installBanner').hidden = true; prefs.inst
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   installEvent = e;
-  showBanner('Installa SpotIt sul telefono', 'Installa', async () => {
+  showBanner('Installa WeSpot sul telefono', 'Installa', async () => {
     installEvent.prompt();
     await installEvent.userChoice;
     installEvent = null;
@@ -1129,7 +1129,7 @@ window.addEventListener('beforeinstallprompt', e => {
   });
 });
 if (isIos && !isStandalone) {
-  showBanner('Aggiungi SpotIt alla Home per usarla come app', 'Come fare', () => $('dlgIos').showModal());
+  showBanner('Aggiungi WeSpot alla Home per usarla come app', 'Come fare', () => $('dlgIos').showModal());
 }
 
 if ('serviceWorker' in navigator) {
