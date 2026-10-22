@@ -323,10 +323,18 @@ function gPhotoUrl(name, w = 800) {
   return `https://places.googleapis.com/v1/${name}/media?maxWidthPx=${w}&key=${encodeURIComponent(GOOGLE_KEY)}`;
 }
 function showCover(box, p) {
+  const img = box.querySelector('img');
+  // copertina scelta da chi organizza: vince sulla foto di Google
+  if (p && p.cover) {
+    box.hidden = false;
+    img.onerror = () => { box.hidden = true; };
+    img.src = p.cover;
+    box.querySelector('figcaption').textContent = '';
+    return;
+  }
   const ok = GOOGLE_KEY && p && p.gphoto;
   box.hidden = !ok;
   if (!ok) return;
-  const img = box.querySelector('img');
   img.referrerPolicy = 'no-referrer-when-downgrade';
   img.onerror = () => { box.hidden = true; };
   img.src = gPhotoUrl(p.gphoto);
@@ -628,11 +636,11 @@ async function setPhotos(id, list) {
     tx.oncomplete = res; tx.onerror = () => rej(tx.error);
   });
 }
-async function shrinkPhoto(file) {
+async function shrinkPhoto(file, max = 1280) {
   const img = await new Promise((res, rej) => {
     const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file);
   });
-  const scale = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight));
+  const scale = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
   const c = document.createElement('canvas');
   c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
   c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
@@ -1043,7 +1051,7 @@ $('iSave').onclick = () => {
 
 // ---------- Aggiornamenti ----------
 // Ogni pubblicazione alza APP_VERSION qui e in version.json: se online c'è un numero più alto propongo "Aggiorna"
-const APP_VERSION = 35;
+const APP_VERSION = 36;
 $('versionText').textContent = `Versione ${APP_VERSION}`;
 async function latestVersion() {
   const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });

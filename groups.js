@@ -64,7 +64,12 @@
   }
   function placeOf(g) {
     const p = g.place || {};
-    return { name: p.n, address: p.a || '', lat: p.la, lng: p.lo, gphoto: p.f || '', gphotoBy: p.fb || '' };
+    return { name: p.n, address: p.a || '', lat: p.la, lng: p.lo, gphoto: p.f || '', gphotoBy: p.fb || '', cover: coverUrl(g) };
+  }
+  // Copertina personalizzata: cartella pubblica "covers", file <id uscita>.jpg; place.c è l'ora dell'ultimo cambio
+  function coverUrl(g) {
+    const c = g.place && g.place.c;
+    return c ? `${sb.storage.from('covers').getPublicUrl(`${g.id}.jpg`).data.publicUrl}?v=${c}` : '';
   }
   // Numero in formato internazionale per WhatsApp (in Italia si può scrivere senza +39)
   function normPhone(raw) {
@@ -239,7 +244,11 @@
     if (!group || document.hidden) return;
     try {
       const g = await fetchGroup(group.id);
-      if (g && group && g.id === group.id) { group = g; drawGroup(); }
+      if (g && group && g.id === group.id) {
+        const newCover = (g.place && g.place.c) !== (group.place && group.place.c);
+        group = g; drawGroup();
+        if (newCover) showCover($('gCover'), placeOf(g));
+      }
     } catch { /* riprovo al prossimo giro */ }
   }
 
@@ -306,6 +315,9 @@
     if (isOwner) drawNotify();
     $('gCancel').hidden = !isOwner;
     $('gPublicBox').hidden = !(isOwner && isEvent(g));
+    $('gCoverBox').hidden = !isOwner;
+    $('gCoverDel').hidden = !(g.place && g.place.c);
+    $('gCoverLabel').textContent = g.place && g.place.c ? 'Cambia copertina' : 'Metti una copertina';
     $('gPublic').checked = !!g.is_public;
     $('gLeaveGroup').hidden = isOwner || !mine;
   }
@@ -403,6 +415,38 @@
     forget(group.id);
     $('dlgGroup').close();
     toast(ev ? 'Evento eliminato' : 'Uscita annullata');
+  };
+
+  // Copertina scelta da chi organizza (la vedono tutti gli invitati)
+  async function setCover(c) {
+    const place = { ...group.place };
+    if (c) place.c = c; else delete place.c;
+    const { error } = await sb.from('outings').update({ place }).eq('id', group.id);
+    if (error) throw error;
+    group.place = place;
+    showCover($('gCover'), placeOf(group));
+    drawGroup();
+  }
+  $('gCoverFile').addEventListener('change', async () => {
+    const file = $('gCoverFile').files[0];
+    $('gCoverFile').value = '';
+    if (!file || !group) return;
+    toast('Carico la copertina…');
+    try {
+      const blob = await (await fetch(await shrinkPhoto(file, 1200))).blob();
+      const { error } = await sb.storage.from('covers').upload(`${group.id}.jpg`, blob, { upsert: true, contentType: 'image/jpeg', cacheControl: '60' });
+      if (error) throw error;
+      await setCover(Date.now());
+      toast('Copertina aggiornata');
+    } catch { toast('Non riesco a caricare la copertina ora. Riprova.'); }
+  });
+  $('gCoverDel').onclick = async () => {
+    if (!group) return;
+    try {
+      await setCover(0);
+      sb.storage.from('covers').remove([`${group.id}.jpg`]).catch(() => {});
+      toast(isEvent(group) ? 'Copertina tolta' : 'Torna la foto di Google');
+    } catch { toast('Non riesco a toglierla ora. Riprova.'); }
   };
 
   $('gPublic').addEventListener('change', async () => {
