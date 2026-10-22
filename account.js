@@ -234,13 +234,28 @@
     if (!user && !gate.open) { $('dlgSettings').close(); gate.showModal(); }
   }
 
+  // Svuota posti, foto e dati personali salvati su questo dispositivo (restano online nell'account di prima)
+  async function wipeLocal() {
+    try {
+      const db = await photoDb();
+      await new Promise(res => { const tx = db.transaction('photos', 'readwrite'); tx.objectStore('photos').clear(); tx.oncomplete = tx.onerror = res; });
+    } catch {}
+    places.length = 0;
+    prefs.name = ''; prefs.phone = ''; delete prefs.logo; delete prefs.showName;
+    savePrefs();
+    $('myName').value = ''; $('myPhone').value = '';
+    persistLocal();
+  }
   async function onUser(u) {
     const changedUser = (u && u.id) !== (user && user.id);
     user = u;
     showAccount();
     if (!user || !changedUser) return;
-    // Su questo telefono entra un altro account: ricomincio l'allineamento da capo
-    if (sync.uid !== user.id) { sync = { uid: user.id, snap: {} }; saveSync(); }
+    // Su questo telefono entra un altro account: ricomincio da capo, senza i posti e i dati personali del precedente
+    if (sync.uid !== user.id) {
+      if (sync.uid) await wipeLocal();
+      sync = { uid: user.id, snap: {} }; saveSync();
+    }
     // Il nome per gli amici: se manca, quello dell'account Google
     const full = user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name);
     if (!prefs.name && full) { prefs.name = String(full).slice(0, 40); savePrefs(); $('myName').value = prefs.name; }
