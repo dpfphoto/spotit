@@ -20,6 +20,19 @@
   function total(p) { return VKEYS.reduce((n, k) => n + (p[k] || 0), 0); }
   // Il giudizio più dato; a parità vince il più positivo
   function top(p) { return VKEYS.reduce((best, k) => (p[k] || 0) > (p[best] || 0) ? k : best, VKEYS[0]); }
+  // Giudizio della community: consigliato se i Tornarci superano gli Sconsigliato
+  function verdictOf(p) {
+    const t = p.tornarci || 0, s = p.sconsigliato || 0;
+    return t > s ? 'good' : s > 0 ? 'bad' : 'try';
+  }
+  const COMMUNITY = {
+    good: { color: '#2563EB', label: 'Consigliato dalla community', filter: 'tornarci' },
+    bad: { color: '#6B7280', label: 'Sconsigliato dalla community', filter: 'sconsigliato' },
+    try: { color: '#93C5FD', label: 'Da provare: qualcuno vuole andarci', filter: 'andarci' }
+  };
+  function triangle(color, n) {
+    return `<svg class="tri" width="32" height="30" viewBox="0 0 32 30" aria-hidden="true"><path d="M16 2.5 L29.5 27 H2.5 Z" fill="${color}" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/>${n > 1 ? `<text x="16" y="23" text-anchor="middle" font-size="11" font-weight="800" fill="#fff">${n}</text>` : ''}</svg>`;
+  }
   // Posto che ho già tra i miei: non lo ripeto
   function isMine(p) {
     return places.some(x => (p.gid && x.gid === p.gid) ||
@@ -39,7 +52,7 @@
     mode = b.dataset.layer; save(LAYER_KEY, mode);
     drawMode();
     $('dlgLayers').close();
-    if (mode === 'all') { toast('Ora vedi anche i posti degli altri, con il bordo tratteggiato'); fetchPublic(); }
+    if (mode === 'all') { toast('Ora vedi anche i posti degli altri: sono i triangoli'); fetchPublic(); }
     else { pub = []; pubEv = []; publicKinds = []; drawPublic(); }
   });
 
@@ -65,16 +78,12 @@
     if (mode !== 'all') return;
     for (const p of pub) {
       if (!Number.isFinite(p.lat) || isMine(p)) continue;
-      const v = top(p);
-      if (filter && v !== filter) continue;
+      const c = COMMUNITY[verdictOf(p)];
+      if (filter && c.filter !== filter) continue;
       if (!matchKind(p)) continue;
       const n = total(p);
-      const icon = L.divIcon({
-        className: '',
-        html: `<span class="pin pub" style="background:${V[v].color}">${n > 1 ? n : ''}</span>`,
-        iconSize: [26, 26], iconAnchor: [13, 13]
-      });
-      L.marker([p.lat, p.lng], { icon, title: p.name, alt: `${p.name}, ${V[v].label}, ${n} ${n === 1 ? 'persona' : 'persone'}` })
+      const icon = L.divIcon({ className: '', html: triangle(c.color, n), iconSize: [32, 30], iconAnchor: [16, 20] });
+      L.marker([p.lat, p.lng], { icon, title: p.name, alt: `${p.name}, ${c.label}, ${n} ${n === 1 ? 'persona' : 'persone'}` })
         .on('click', () => openPublic(p))
         .addTo(pubLayer);
     }
@@ -101,6 +110,7 @@
     $('puVotes').replaceChildren();
     $('puNotes').hidden = true;
     $('puSave').hidden = true;
+    $('puVerdict').hidden = true; $('puContacts').hidden = true;
     $('puRoute').href = `https://www.google.com/maps/dir/?api=1&destination=${g.lat},${g.lng}`;
     $('dlgPublic').showModal();
   }
@@ -119,12 +129,42 @@
     $('puCount').textContent = `${p.kind ? p.kind + ' · ' : ''}${n} ${n === 1 ? 'persona l\'ha salvato' : 'persone l\'hanno salvato'} su WeSpot`;
     $('puVotes').replaceChildren(...VKEYS.filter(k => p[k]).map(k =>
       el('span', { class: 'badge', style: `background:${V[k].bg};color:${V[k].color}` }, `${V[k].label} ${p[k]}`)));
+    const c = COMMUNITY[verdictOf(p)];
+    $('puVerdict').hidden = false;
+    $('puVerdict').replaceChildren(el('span', { class: 'tri-dot', style: `border-bottom-color:${c.color}` }), c.label);
+    showContacts(p);
     const notes = p.notes || [];
     $('puNotes').hidden = !notes.length;
     $('puNotes').replaceChildren(...notes.map(t => el('li', {}, `"${t}"`)));
     $('puWhen').hidden = true; $('puNote').hidden = true; $('puSave').hidden = false;
     $('puRoute').href = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;
     $('dlgPublic').showModal();
+  }
+  // Telefono, sito e orari da Google, solo quando apro la scheda (e tenuti in memoria)
+  const contactCache = {};
+  async function showContacts(p) {
+    const box = $('puContacts');
+    box.hidden = true; box.replaceChildren();
+    if (!p.gid || typeof GOOGLE_KEY === 'undefined' || !GOOGLE_KEY) return;
+    let d = contactCache[p.gid];
+    if (!d) {
+      try {
+        const res = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(p.gid)}?languageCode=it`, {
+          headers: { 'X-Goog-Api-Key': GOOGLE_KEY, 'X-Goog-FieldMask': 'nationalPhoneNumber,internationalPhoneNumber,websiteUri,currentOpeningHours.openNow' }
+        });
+        if (!res.ok) return;
+        d = contactCache[p.gid] = await res.json();
+      } catch { return; }
+    }
+    if (shown !== p) return;
+    const items = [];
+    const open = d.currentOpeningHours && d.currentOpeningHours.openNow;
+    if (open === true || open === false) items.push(el('span', { class: 'badge ' + (open ? 'open' : 'closed') }, open ? 'Aperto ora' : 'Chiuso ora'));
+    const tel = d.internationalPhoneNumber || d.nationalPhoneNumber;
+    if (tel) items.push(el('a', { class: 'btn ghost small', href: 'tel:' + tel.replace(/[^+\d]/g, '') }, '📞 ' + (d.nationalPhoneNumber || tel)));
+    if (d.websiteUri && /^https?:\/\//.test(d.websiteUri)) items.push(el('a', { class: 'btn ghost small', href: d.websiteUri, target: '_blank', rel: 'noopener' }, '🌐 Sito'));
+    box.replaceChildren(...items);
+    box.hidden = !items.length;
   }
   window.spotitRefreshPublic = fetchPublic;
   $('puSave').onclick = () => {

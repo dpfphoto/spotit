@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="WeSpot">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=45">
+<link rel="stylesheet" href="styles.css?v=46">
 </head>
 <body>
 <header class="top">
@@ -64,6 +64,20 @@
   <button type="button" id="btnLayers" class="layers-btn" aria-haspopup="dialog" aria-label="Livelli della mappa">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="m2 13 10 5 10-5"/><path d="m2 17.5 10 5 10-5" opacity=".5"/></svg>
   </button>
+  <button type="button" id="btnLegend" class="legend-btn" aria-expanded="false" aria-controls="legend">Legenda</button>
+  <div id="legend" class="legend" hidden>
+    <p class="lg-title">I tuoi posti</p>
+    <p><span class="lg-dot" style="background:#15803D"></span>Tornarci</p>
+    <p><span class="lg-dot" style="background:#1D4ED8"></span>Andarci</p>
+    <p><span class="lg-dot" style="background:#C2410C"></span>Sconsigliato</p>
+    <p><span class="lg-dot" style="background:#7C3AED"></span>Appuntamento</p>
+    <p class="lg-title">Degli altri utenti</p>
+    <p><span class="lg-tri" style="border-bottom-color:#2563EB"></span>Consigliati</p>
+    <p><span class="lg-tri" style="border-bottom-color:#6B7280"></span>Sconsigliati</p>
+    <p><span class="lg-tri" style="border-bottom-color:#93C5FD"></span>Da provare</p>
+    <p class="lg-title">Eventi</p>
+    <p><span class="lg-ev">🎉</span>Evento (o il logo di chi organizza)</p>
+  </div>
   <section id="list" hidden></section>
 </main>
 
@@ -288,7 +302,7 @@
     <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
   </div>
   <div class="layer-opts" role="radiogroup" aria-label="Livello">
-    <button type="button" role="radio" data-layer="all"><span class="lo-ico" aria-hidden="true">🌍</span><span><strong>I posti di tutti</strong><small>I tuoi più quelli salvati dagli altri, anonimi, e gli eventi pubblici</small></span></button>
+    <button type="button" role="radio" data-layer="all"><span class="lo-ico" aria-hidden="true">🌍</span><span><strong>I posti di tutti</strong><small>I tuoi (cerchi) più quelli degli altri, anonimi (triangoli: blu consigliati, grigi sconsigliati), e gli eventi pubblici</small></span></button>
     <button type="button" role="radio" data-layer="mine"><span class="lo-ico" aria-hidden="true">📍</span><span><strong>Solo i miei</strong><small>I posti che hai salvato tu e i tuoi eventi</small></span></button>
   </div>
 </dialog>
@@ -303,6 +317,8 @@
   <p id="puAddress" class="muted"></p>
   <p id="puWhen" class="when" hidden></p>
   <p id="puNote" class="quote" hidden></p>
+  <p id="puVerdict" class="pu-verdict" hidden></p>
+  <div id="puContacts" class="pu-contacts" hidden></div>
   <p id="puCount" class="pu-count"></p>
   <div id="puVotes" class="pu-votes"></div>
   <ul id="puNotes" class="pu-notes" hidden></ul>
@@ -501,11 +517,11 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=45"></script>
-<script src="app.js?v=45"></script>
+<script src="config.js?v=46"></script>
+<script src="app.js?v=46"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=45"></script>
-<script src="groups.js?v=45"></script>
-<script src="layers.js?v=45"></script>
+<script src="account.js?v=46"></script>
+<script src="groups.js?v=46"></script>
+<script src="layers.js?v=46"></script>
 </body>
 </html>

@@ -263,10 +263,17 @@ function setView(v) {
   $('tabList').setAttribute('aria-selected', String(v === 'list'));
   $('list').hidden = v !== 'list';
   locateBtn.hidden = v !== 'map';
+  $('btnLegend').hidden = v !== 'map';
+  if (v !== 'map') { $('legend').hidden = true; $('btnLegend').setAttribute('aria-expanded', 'false'); }
   if (v === 'map') setTimeout(() => map.invalidateSize(), 0);
   // aggiorna le distanze con la posizione attuale
   if (v === 'list') getPosition().then(render).catch(() => {});
 }
+$('btnLegend').onclick = () => {
+  const open = $('legend').hidden;
+  $('legend').hidden = !open;
+  $('btnLegend').setAttribute('aria-expanded', String(open));
+};
 $('tabMap').onclick = () => setView('map');
 $('tabList').onclick = () => setView('list');
 
@@ -1109,7 +1116,7 @@ $('iSave').onclick = () => {
 
 // ---------- Aggiornamenti ----------
 // Ogni pubblicazione alza APP_VERSION qui e in version.json: se online c'è un numero più alto propongo "Aggiorna"
-const APP_VERSION = 45;
+const APP_VERSION = 46;
 $('versionText').textContent = `Versione ${APP_VERSION}`;
 async function latestVersion() {
   const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
