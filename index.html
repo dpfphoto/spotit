@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="WeSpot">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=37">
+<link rel="stylesheet" href="styles.css?v=38">
 </head>
 <body>
 <header class="top">
@@ -95,6 +95,7 @@
     </label>
     <p id="draftAddress" class="muted"></p>
     <fieldset class="verdicts" id="draftVerdicts"><legend>Che ne pensi?</legend></fieldset>
+    <label class="check" id="draftExpireRow" hidden><input type="checkbox" id="draftExpire" checked> <span>Elimina automaticamente dopo 24 ore</span></label>
     <div class="photos" id="draftPhotos"></div>
     <label class="field">Nota (facoltativa)
       <textarea id="draftNote" rows="2" maxlength="280" placeholder="Es. chiedi il tavolo in terrazza"></textarea>
@@ -119,6 +120,7 @@
     <input id="pKind" type="text" maxlength="40" list="kindList" placeholder="Es. Pizzeria, Bar, Trattoria" autocomplete="off">
   </label>
   <fieldset class="verdicts" id="pVerdicts"><legend>Il tuo giudizio</legend></fieldset>
+  <label class="check" id="pExpireRow" hidden><input type="checkbox" id="pExpire"> <span>Elimina automaticamente dopo 24 ore<small id="pExpireWhen"></small></span></label>
   <div class="photos" id="pPhotos"></div>
   <label class="field">Nota
     <textarea id="pNote" rows="2" maxlength="280"></textarea>
@@ -472,11 +474,11 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=37"></script>
-<script src="app.js?v=37"></script>
+<script src="config.js?v=38"></script>
+<script src="app.js?v=38"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=37"></script>
-<script src="groups.js?v=37"></script>
-<script src="layers.js?v=37"></script>
+<script src="account.js?v=38"></script>
+<script src="groups.js?v=38"></script>
+<script src="layers.js?v=38"></script>
 </body>
 </html>

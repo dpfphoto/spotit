@@ -29,13 +29,13 @@
     return {
       user_id: user.id, id: p.id, name: p.name, address: p.address, lat: p.lat, lng: p.lng,
       verdict: p.verdict, note: p.note, kind: p.kind || '', from_name: p.from, gid: p.gid, gphoto: p.gphoto || '',
-      gphoto_by: p.gphotoBy || '', created_at: p.createdAt, updated_at: p.updatedAt, deleted: false
+      gphoto_by: p.gphotoBy || '', expires_at: p.expiresAt || 0, created_at: p.createdAt, updated_at: p.updatedAt, deleted: false
     };
   }
   function fromRow(r) {
     return cleanPlace({
       id: r.id, name: r.name, address: r.address, lat: r.lat, lng: r.lng, verdict: r.verdict,
-      note: r.note, kind: r.kind, from: r.from_name, gid: r.gid, gphoto: r.gphoto, gphotoBy: r.gphoto_by,
+      note: r.note, kind: r.kind, from: r.from_name, gid: r.gid, gphoto: r.gphoto, gphotoBy: r.gphoto_by, expiresAt: r.expires_at,
       createdAt: r.created_at, updatedAt: r.updated_at
     });
   }

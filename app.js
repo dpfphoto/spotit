@@ -3,8 +3,11 @@
 const VERDICTS = [
   { id: 'tornarci', label: 'Tornarci', color: '#15803D', bg: '#DCFCE7' },
   { id: 'andarci', label: 'Andarci', color: '#1D4ED8', bg: '#DBEAFE' },
-  { id: 'sconsigliato', label: 'Sconsigliato', color: '#C2410C', bg: '#FFEDD5' }
+  { id: 'sconsigliato', label: 'Sconsigliato', color: '#C2410C', bg: '#FFEDD5' },
+  // Appuntamento: personale (non va nella mappa di tutti), può sparire da solo dopo 24 ore
+  { id: 'appuntamento', label: 'Appuntamento', color: '#7C3AED', bg: '#EDE9FE' }
 ];
+const DAY_MS = 24 * 3600000;
 // Giudizi di prima (5) uniti nei 3 di adesso
 const OLD_VERDICT = { consigliato: 'tornarci', nonandarci: 'sconsigliato' };
 const V = Object.fromEntries(VERDICTS.map(v => [v.id, v]));
@@ -68,6 +71,7 @@ function cleanPlace(p) {
     gid: /^[A-Za-z0-9_-]{10,300}$/.test(p.gid || '') ? p.gid : '',
     gphoto: /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/.test(p.gphoto || '') && String(p.gphoto).length < 1000 ? p.gphoto : '',
     gphotoBy: String(p.gphotoBy || '').slice(0, 80),
+    expiresAt: p.verdict === 'appuntamento' && Number(p.expiresAt) > 0 ? Number(p.expiresAt) : 0,
     createdAt: Number(p.createdAt) || Date.now(),
     updatedAt: Number(p.updatedAt) || Number(p.createdAt) || Date.now()
   };
@@ -582,19 +586,22 @@ function startDraft(d) {
   $('draftSuggest').replaceChildren();
   showCover($('draftCover'), d);
   $('draftNote').value = '';
+  $('draftExpire').checked = true;
   drawDraftVerdicts();
   drawDraftPhotos();
   if (!d.name) $('draftName').focus();
 }
 function drawDraftVerdicts() {
   verdictPicker($('draftVerdicts'), draft.verdict, v => { draft.verdict = v; drawDraftVerdicts(); });
+  $('draftExpireRow').hidden = draft.verdict !== 'appuntamento';
   $('btnSave').disabled = !draft.verdict;
 }
 $('btnBack').onclick = () => { $('addStep1').hidden = false; $('addStep2').hidden = true; };
 $('addStep2').onsubmit = e => {
   e.preventDefault();
   if (!draft || !draft.verdict) return;
-  const p = cleanPlace({ ...draft, name: $('draftName').value, kind: $('draftKind').value, note: $('draftNote').value, createdAt: Date.now(), id: uid() });
+  const expiresAt = draft.verdict === 'appuntamento' && $('draftExpire').checked ? Date.now() + DAY_MS : 0;
+  const p = cleanPlace({ ...draft, name: $('draftName').value, kind: $('draftKind').value, note: $('draftNote').value, expiresAt, createdAt: Date.now(), id: uid() });
   if (!p) { toast('Scrivi il nome del posto'); return; }
   places.push(p);
   persist();
@@ -728,7 +735,31 @@ function mapsUrl(p) {
 }
 
 function drawPlaceVerdicts(p) {
-  verdictPicker($('pVerdicts'), p.verdict, v => { p.verdict = v; persist(); drawPlaceVerdicts(p); });
+  verdictPicker($('pVerdicts'), p.verdict, v => {
+    p.verdict = v;
+    if (v !== 'appuntamento') p.expiresAt = 0;
+    persist(); render(); drawPlaceVerdicts(p);
+  });
+  $('pExpireRow').hidden = p.verdict !== 'appuntamento';
+  $('pExpire').checked = !!p.expiresAt;
+  $('pExpireWhen').textContent = p.expiresAt
+    ? `Sparisce ${new Date(p.expiresAt).toLocaleString('it-IT', { weekday: 'long', hour: '2-digit', minute: '2-digit' })}` : '';
+}
+$('pExpire').onchange = () => {
+  const p = places.find(x => x.id === currentId);
+  if (!p) return;
+  p.expiresAt = $('pExpire').checked ? Date.now() + DAY_MS : 0;
+  persist(); drawPlaceVerdicts(p);
+};
+// Appuntamenti scaduti: li tolgo da soli (anche online, come un'eliminazione)
+function sweepExpired() {
+  const now = Date.now();
+  const gone = places.filter(p => p.expiresAt && p.expiresAt < now);
+  if (!gone.length) return;
+  places = places.filter(p => !gone.includes(p));
+  for (const p of gone) setPhotos(p.id, []).catch(() => {});
+  if (gone.some(p => p.id === currentId) && $('dlgPlace').open) $('dlgPlace').close();
+  persist(); render();
 }
 $('pKind').onchange = () => {
   const p = places.find(x => x.id === currentId);
@@ -1051,7 +1082,7 @@ $('iSave').onclick = () => {
 
 // ---------- Aggiornamenti ----------
 // Ogni pubblicazione alza APP_VERSION qui e in version.json: se online c'è un numero più alto propongo "Aggiorna"
-const APP_VERSION = 37;
+const APP_VERSION = 38;
 $('versionText').textContent = `Versione ${APP_VERSION}`;
 async function latestVersion() {
   const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
@@ -1150,6 +1181,9 @@ const hadOld = places.some(p => p && OLD_VERDICT[p.verdict]);
 places = places.map(cleanPlace).filter(Boolean);
 if (hadOld) persist(); // salva subito i giudizi uniti (e li allinea online)
 render();
+sweepExpired();
+setInterval(sweepExpired, 60000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) sweepExpired(); });
 setView('map');
 if (!/^#[sug]=/.test(location.hash) && !location.search) locate();
 checkIncoming();
