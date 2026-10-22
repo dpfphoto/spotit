@@ -488,6 +488,17 @@
   }
   setInterval(checkArrivals, 60000);
   window.spotitCheckArrivals = checkArrivals;
+  // Ora dell'uscita più lontana in quel posto (stesso nome o entro 150 m), per far durare l'appuntamento fino a dopo
+  window.spotitOutingAt = p => {
+    let best = 0;
+    for (const g of allOutings) {
+      const q = g.place || {}, t = new Date(g.starts_at).getTime();
+      const same = (q.n && p.name && q.n.trim().toLowerCase() === p.name.trim().toLowerCase())
+        || (q.la != null && p.lat != null && Math.abs(q.la - p.lat) < 0.0014 && Math.abs(q.lo - p.lng) < 0.0018);
+      if (same && t > best) best = t;
+    }
+    return best;
+  };
 
   // Copertina scelta da chi organizza (la vedono tutti gli invitati)
   async function setCover(c) {

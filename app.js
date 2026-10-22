@@ -8,6 +8,8 @@ const VERDICTS = [
   { id: 'appuntamento', label: 'Appuntamento', color: '#7C3AED', bg: '#EDE9FE' }
 ];
 const DAY_MS = 24 * 3600000;
+// Un appuntamento sparisce 24 ore dopo: dopo l'uscita del gruppo in quel posto, se c'è, altrimenti da adesso
+const expiryFor = p => Math.max(Date.now(), (window.spotitOutingAt && window.spotitOutingAt(p)) || 0) + DAY_MS;
 // Giudizi di prima (5) uniti nei 3 di adesso
 const OLD_VERDICT = { consigliato: 'tornarci', nonandarci: 'sconsigliato' };
 const V = Object.fromEntries(VERDICTS.map(v => [v.id, v]));
@@ -600,7 +602,7 @@ $('btnBack').onclick = () => { $('addStep1').hidden = false; $('addStep2').hidde
 $('addStep2').onsubmit = e => {
   e.preventDefault();
   if (!draft || !draft.verdict) return;
-  const expiresAt = draft.verdict === 'appuntamento' && $('draftExpire').checked ? Date.now() + DAY_MS : 0;
+  const expiresAt = draft.verdict === 'appuntamento' && $('draftExpire').checked ? expiryFor({ name: $('draftName').value, lat: draft.lat, lng: draft.lng }) : 0;
   const p = cleanPlace({ ...draft, name: $('draftName').value, kind: $('draftKind').value, note: $('draftNote').value, expiresAt, createdAt: Date.now(), id: uid() });
   if (!p) { toast('Scrivi il nome del posto'); return; }
   places.push(p);
@@ -736,6 +738,7 @@ function mapsUrl(p) {
 
 function drawPlaceVerdicts(p) {
   verdictPicker($('pVerdicts'), p.verdict, v => {
+    if (v === 'appuntamento' && p.verdict !== v) p.expiresAt = expiryFor(p);
     p.verdict = v;
     if (v !== 'appuntamento') p.expiresAt = 0;
     persist(); render(); drawPlaceVerdicts(p);
@@ -748,7 +751,7 @@ function drawPlaceVerdicts(p) {
 $('pExpire').onchange = () => {
   const p = places.find(x => x.id === currentId);
   if (!p) return;
-  p.expiresAt = $('pExpire').checked ? Date.now() + DAY_MS : 0;
+  p.expiresAt = $('pExpire').checked ? expiryFor(p) : 0;
   persist(); drawPlaceVerdicts(p);
 };
 // Appuntamenti scaduti: li tolgo da soli (anche online, come un'eliminazione)
@@ -1082,7 +1085,7 @@ $('iSave').onclick = () => {
 
 // ---------- Aggiornamenti ----------
 // Ogni pubblicazione alza APP_VERSION qui e in version.json: se online c'è un numero più alto propongo "Aggiorna"
-const APP_VERSION = 38;
+const APP_VERSION = 39;
 $('versionText').textContent = `Versione ${APP_VERSION}`;
 async function latestVersion() {
   const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
