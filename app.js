@@ -284,9 +284,10 @@ function showCover(box, p) {
   box.querySelector('figcaption').textContent = p.gphotoBy ? `Foto: ${p.gphotoBy} su Google` : 'Foto da Google';
 }
 
-async function googleSearch(q) {
+async function googleSearch(q, near, radius = 30000) {
   const body = { textQuery: q, languageCode: 'it', regionCode: 'IT', pageSize: 6 };
-  if (lastPos) body.locationBias = { circle: { center: { latitude: lastPos.lat, longitude: lastPos.lng }, radius: 30000 } };
+  const c = near || lastPos;
+  if (c) body.locationBias = { circle: { center: { latitude: c.lat, longitude: c.lng }, radius } };
   const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
     method: 'POST',
     // la chiave è limitata a dpfphoto.github.io/spotit/: Google deve vedere l'indirizzo completo
@@ -363,8 +364,9 @@ $('btnHere').onclick = async () => {
   const btn = $('btnHere');
   btn.disabled = true;
   btn.textContent = 'Cerco la tua posizione…';
+  // Posizione presa adesso: quella di prima può essere di dove avevi aperto l'app
   let pos;
-  try { pos = await getPosition(false); } catch { pos = null; }
+  try { pos = await getPosition(true); } catch { pos = null; }
   btn.disabled = false;
   btn.textContent = 'Sono qui: aggiungi questo posto';
   if (!pos) { toast('Posizione non disponibile: controlla i permessi di posizione'); return; }
@@ -389,26 +391,54 @@ async function reverseAddress(pos) {
 }
 
 // Propone i nomi dei locali più vicini: un tocco e nome/indirizzo si compilano
-async function suggestHere(pos, d) {
-  const box = $('draftSuggest');
-  box.replaceChildren(el('span', { class: 'muted' }, 'Cerco i locali qui intorno…'));
-  let near = [];
-  try { near = GOOGLE_KEY ? await googleNearby(pos, 500) : await osmNearby(pos, 500, 10); } catch { near = []; }
-  // se Google non risponde, provo i dati gratuiti
-  if (!near.length && GOOGLE_KEY) { try { near = await osmNearby(pos, 500, 10); } catch { near = []; } }
-  if (draft !== d) return;
-  if (!near.length) { box.replaceChildren(el('span', { class: 'muted' }, 'Nessun locale trovato qui intorno: scrivi tu il nome.')); return; }
+function nearChips(box, pos, d, near, title) {
   const meters = r => Math.round(Math.hypot((r.lat - pos.lat) * 111320, (r.lng - pos.lng) * 111320 * Math.cos(pos.lat * Math.PI / 180)) / 10) * 10;
-  box.replaceChildren(el('span', { class: 'muted' }, 'Locali qui intorno, tocca quello giusto:'), ...near.map(r => el('button', {
+  box.replaceChildren(el('span', { class: 'muted' }, title), ...near.map(r => el('button', {
     type: 'button', class: 'chip', onclick: () => {
       Object.assign(d, { name: r.name, address: r.address || d.address, lat: r.lat, lng: r.lng, gid: r.gid, gphoto: r.gphoto || '', gphotoBy: r.gphotoBy || '' });
       showCover($('draftCover'), d);
       $('draftName').value = r.name;
       $('draftAddress').textContent = d.address;
       box.replaceChildren();
+      drawDraftVerdicts();
     }
   }, r.name, el('span', { class: 'dist' }, `${meters(r)} m`))));
 }
+async function suggestHere(pos, d) {
+  const box = $('draftSuggest');
+  box.replaceChildren(el('span', { class: 'muted' }, 'Cerco i locali qui intorno…'));
+  let near = [], failed = 0;
+  if (GOOGLE_KEY) {
+    try { near = await googleNearby(pos, 300); } catch { failed++; }
+    // locale con una categoria insolita: cerco qualsiasi attività molto vicina
+    if (!near.length) { try { near = await googleNearby(pos, 80, true); } catch { failed++; } }
+  }
+  // se Google non risponde, provo i dati gratuiti
+  if (!near.length) { try { near = await osmNearby(pos, 300, 10); } catch { failed++; } }
+  if (draft !== d) return;
+  if (near.length) { nearChips(box, pos, d, near, 'Locali qui intorno, tocca quello giusto:'); return; }
+  box.replaceChildren(el('span', { class: 'muted' }, failed
+    ? 'Non riesco a cercare i locali ora (connessione lenta?). Scrivi il nome: te lo cerco qui vicino.'
+    : 'Non trovo locali qui intorno: scrivi il nome, te lo cerco qui vicino.'),
+    el('button', { type: 'button', class: 'chip', onclick: () => suggestHere(pos, d) }, '↻ Riprova'));
+  d.searchNear = pos;
+}
+// Nome scritto a mano: cerco su Google i posti con quel nome vicino a dove sono
+let nameTimer = null;
+$('draftName').addEventListener('input', () => {
+  const d = draft;
+  if (!d || !d.searchNear || !GOOGLE_KEY) return;
+  clearTimeout(nameTimer);
+  const q = $('draftName').value.trim();
+  if (q.length < 3) return;
+  nameTimer = setTimeout(async () => {
+    let found = [];
+    try { found = await googleSearch(q, d.searchNear, 1500); } catch { return; }
+    if (draft !== d || $('draftName').value.trim() !== q) return;
+    found = found.filter(r => metersBetween(d.searchNear, r) < 2000).slice(0, 5);
+    if (found.length) nearChips($('draftSuggest'), d.searchNear, d, found, 'È uno di questi?');
+  }, 600);
+});
 
 // Locali vicini da OpenStreetMap (gratis), usato finché non c'è la chiave Google
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -445,9 +475,12 @@ async function osmNearby(pos, radius, limit = 8) {
     .slice(0, limit);
 }
 
-async function googleNearby(pos, radius = 120) {
+async function googleNearby(pos, radius = 120, anyType = false) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 9000);
   const res = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
     method: 'POST',
+    signal: ctl.signal,
     // la chiave è limitata a dpfphoto.github.io/spotit/: Google deve vedere l'indirizzo completo
     referrerPolicy: 'no-referrer-when-downgrade',
     headers: {
@@ -456,14 +489,15 @@ async function googleNearby(pos, radius = 120) {
       'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.photos'
     },
     body: JSON.stringify({
-      maxResultCount: radius > 200 ? 20 : 6,
-      // solo locali, niente fermate del bus o bancomat
-      includedTypes: ['restaurant', 'cafe', 'bar', 'bakery', 'meal_takeaway', 'ice_cream_shop', 'night_club', 'lodging', 'museum'],
+      maxResultCount: radius > 200 ? 20 : 10,
+      // solo locali, niente fermate del bus o bancomat (a meno che non cerchi qualsiasi cosa lì vicino)
+      ...(anyType ? {} : { includedTypes: ['restaurant', 'cafe', 'bar', 'coffee_shop', 'pub', 'wine_bar', 'bar_and_grill', 'cafeteria', 'bakery', 'pastry_shop', 'dessert_shop', 'pizza_restaurant', 'sandwich_shop', 'meal_takeaway', 'ice_cream_shop', 'night_club', 'lodging', 'museum'] }),
       rankPreference: 'DISTANCE',
       languageCode: 'it',
       locationRestriction: { circle: { center: { latitude: pos.lat, longitude: pos.lng }, radius } }
     })
   });
+  clearTimeout(timer);
   if (!res.ok) throw new Error(res.status);
   const data = await res.json();
   return (data.places || []).map(r => ({
@@ -948,7 +982,7 @@ $('iSave').onclick = () => {
 
 // ---------- Aggiornamenti ----------
 // Ogni pubblicazione alza APP_VERSION qui e in version.json: se online c'è un numero più alto propongo "Aggiorna"
-const APP_VERSION = 30;
+const APP_VERSION = 31;
 $('versionText').textContent = `Versione ${APP_VERSION}`;
 async function latestVersion() {
   const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
