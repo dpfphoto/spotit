@@ -46,7 +46,7 @@
     $('btnLayers').classList.toggle('on', mode === 'all');
     $('btnLayers').setAttribute('aria-label', mode === 'all' ? 'Livelli: posti di tutti' : 'Livelli: solo i miei posti');
   }
-  $('btnLayers').onclick = () => { drawMode(); $('dlgLayers').showModal(); };
+  $('btnLayers').onclick = () => { drawMode(); drawInfo(); $('dlgLayers').showModal(); };
   $('dlgLayers').addEventListener('click', e => {
     const b = e.target.closest('[data-layer]'); if (!b) return;
     mode = b.dataset.layer; save(LAYER_KEY, mode);
@@ -71,7 +71,17 @@
     if (!a.error) pub = (a.data || []).map(merge);
     if (!ev.error) pubEv = ev.data || [];
     publicKinds = pub.map(p => p.kind).filter(Boolean);
+    lastErr = a.error ? String(a.error.message || 'errore') : '';
     drawPublic();
+    drawInfo();
+  }
+  // Riga di controllo nella scelta del livello: dice cosa sta arrivando dagli altri utenti
+  let lastErr = '';
+  function drawInfo() {
+    const n = pub.filter(p => !isMine(p)).length;
+    $('layerInfo').textContent = mode !== 'all' ? 'Stai vedendo solo i tuoi posti.'
+      : lastErr ? `Non riesco a leggere i posti degli altri (${lastErr}).`
+      : `Nella zona che stai guardando: ${n} ${n === 1 ? 'posto' : 'posti'} di altri utenti.`;
   }
   function drawPublic() {
     pubLayer.clearLayers();
@@ -167,6 +177,9 @@
     box.hidden = !items.length;
   }
   window.spotitRefreshPublic = fetchPublic;
+  // I posti degli altri cambiano mentre l'app è aperta: li riprendo ogni minuto e al ritorno nell'app
+  setInterval(() => { if (!document.hidden) fetchPublic(); }, 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) fetchPublic(); });
   $('puSave').onclick = () => {
     const p = shown; if (!p) return;
     $('dlgPublic').close();
