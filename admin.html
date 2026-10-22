@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0F766E">
+<title>WeSpot admin</title>
+<link rel="icon" href="icons/icon-192.png">
+<style>
+  :root { --ink: #17202A; --muted: #4A5560; --line: #DDE2E7; --soft: #F3F5F7; --brand: #0F766E; --brand-dark: #115E59; --bg: #F6F8F9; font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); }
+  header { background: var(--brand); color: #fff; padding: 14px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 20px; flex: 1; min-width: 160px; }
+  header a, header button { color: #fff; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.35); border-radius: 20px; padding: 8px 14px; font: inherit; font-weight: 700; font-size: 14px; text-decoration: none; cursor: pointer; }
+  main { max-width: 1040px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+  h2 { margin: 0 0 10px; font-size: 17px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+  .msg { text-align: center; padding: 40px 16px; color: var(--muted); }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; min-width: 0; }
+  .kpi { min-width: 0; background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
+  .kpi.big { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .kpi b { display: block; font-size: 32px; line-height: 1.1; letter-spacing: -1px; }
+  .kpi span { font-size: 13px; color: var(--muted); }
+  .kpi.big span { color: #CCFBF1; }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .bars { display: grid; gap: 8px; }
+  .bar { display: grid; grid-template-columns: 110px 1fr 40px; align-items: center; gap: 8px; font-size: 14px; }
+  .bar i { display: block; height: 14px; border-radius: 7px; background: var(--brand); min-width: 2px; }
+  .bar em { font-style: normal; text-align: right; font-weight: 700; }
+  .track { background: var(--soft); border-radius: 7px; }
+  svg.chart { width: 100%; height: 120px; display: block; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+  .btn { border: 0; border-radius: 12px; padding: 10px 14px; font: inherit; font-weight: 700; background: var(--brand); color: #fff; cursor: pointer; text-decoration: none; display: inline-block; font-size: 14px; }
+  .btn.ghost { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+  input[type=search] { flex: 1; min-width: 180px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; font: inherit; }
+  .tbl { overflow-x: auto; max-height: 420px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { position: sticky; top: 0; background: var(--soft); font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
+  .links { display: flex; flex-wrap: wrap; gap: 8px; }
+  .usage { margin: 8px 0 12px; }
+  .usage .track { height: 12px; overflow: hidden; }
+  .usage i { display: block; height: 100%; background: var(--brand); }
+  .usage i.warn { background: #D97706; }
+  .usage i.bad { background: #DC2626; }
+  .usage div:first-child { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>WeSpot · pannello admin</h1>
+  <span id="upd" class="muted" style="color:#CCFBF1"></span>
+  <button type="button" id="refresh" hidden>Aggiorna</button>
+  <a href="./">Torna all'app</a>
+</header>
+<main id="main"><div class="msg" id="status">Carico…</div></main>
+
+<script src="vendor/supabase/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const CFG = window.SPOTIT_CONFIG || {};
+  const main = $('main');
+  const nf = new Intl.NumberFormat('it-IT');
+  const n = v => nf.format(Number(v) || 0);
+  const mb = b => { b = Number(b) || 0; return b >= 1e9 ? (b / 1e9).toFixed(2) + ' GB' : (b / 1e6).toFixed(1) + ' MB'; };
+  const date = (t, withTime) => t ? new Date(t).toLocaleString('it-IT', withTime ? { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' } : { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+  function el(tag, attrs, ...kids) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (k === 'class') e.className = v; else if (k.startsWith('on')) e[k] = v; else if (v !== false && v != null) e.setAttribute(k, v);
+    }
+    for (const c of kids.flat()) if (c != null) e.append(c.nodeType ? c : document.createTextNode(String(c)));
+    return e;
+  }
+  function say(text) { main.replaceChildren(el('div', { class: 'msg' }, text)); $('refresh').hidden = true; }
+
+  if (!CFG.supabaseUrl || !window.supabase) { say('Archivio non disponibile.'); return; }
+  // Stessa sessione dell'app (stesso indirizzo), senza rinnovi automatici in parallelo
+  const sb = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey, {
+    auth: { persistSession: true, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'spotit.auth' }
+  });
+
+  function bars(rows, color) {
+    const max = Math.max(1, ...rows.map(r => r[1]));
+    return el('div', { class: 'bars' }, rows.map(([label, v]) =>
+      el('div', { class: 'bar' }, el('span', {}, label), el('div', { class: 'track' }, el('i', { style: `width:${Math.max(1, Math.round(v / max * 100))}%;${color ? 'background:' + color : ''}` })), el('em', {}, n(v)))));
+  }
+  function chart(days, title) {
+    const W = 600, H = 120, gap = 3, bw = (W - gap * (days.length - 1)) / days.length;
+    const max = Math.max(1, ...days.map(d => d.n));
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('class', 'chart'); svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', `${title}: ${days.map(d => d.d + ' ' + d.n).join(', ')}`);
+    svg.setAttribute('preserveAspectRatio', 'none');
+    days.forEach((d, i) => {
+      const h = d.n ? Math.max(3, d.n / max * (H - 16)) : 1;
+      const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      r.setAttribute('x', i * (bw + gap)); r.setAttribute('y', H - h); r.setAttribute('width', bw); r.setAttribute('height', h);
+      r.setAttribute('rx', 2); r.setAttribute('fill', d.n ? '#0F766E' : '#DDE2E7');
+      const t = document.createElementNS('http://www.w3.org/2000/svg', 'title'); t.textContent = `${date(d.d)}: ${d.n}`; r.append(t);
+      svg.append(r);
+    });
+    return svg;
+  }
+  function usage(label, used, limit) {
+    const p = Math.min(100, used / limit * 100);
+    return el('div', { class: 'usage' },
+      el('div', {}, el('span', {}, label), el('span', {}, `${mb(used)} su ${mb(limit)}`)),
+      el('div', { class: 'track' }, el('i', { class: p > 90 ? 'bad' : p > 70 ? 'warn' : '', style: `width:${Math.max(1, p)}%` })));
+  }
+  const kpi = (v, l, big) => el('div', { class: 'kpi' + (big ? ' big' : '') }, el('b', {}, n(v)), el('span', {}, l));
+  const VERDICT = { tornarci: ['Tornarci', '#15803D'], andarci: ['Andarci', '#1D4ED8'], sconsigliato: ['Sconsigliato', '#C2410C'], appuntamento: ['Appuntamento', '#7C3AED'], consigliato: ['Tornarci', '#15803D'], nonandarci: ['Sconsigliato', '#C2410C'] };
+
+  function usersCard(users) {
+    const emails = [...new Set(users.map(u => (u.email || '').trim()).filter(Boolean))];
+    const search = el('input', { type: 'search', placeholder: 'Cerca per email o nome', 'aria-label': 'Cerca iscritti' });
+    const body = el('tbody');
+    const note = el('p', { class: 'muted' });
+    const draw = () => {
+      const q = search.value.trim().toLowerCase();
+      const list = users.filter(u => !q || (u.email || '').toLowerCase().includes(q) || (u.name || '').toLowerCase().includes(q));
+      body.replaceChildren(...list.map(u => el('tr', {}, el('td', {}, u.email || '—'), el('td', {}, u.name || '—'), el('td', {}, date(u.joined)), el('td', {}, date(u.last_seen, true)), el('td', {}, n(u.places)))));
+    };
+    search.oninput = draw; draw();
+    const copy = el('button', { type: 'button', class: 'btn ghost', onclick: async () => {
+      try { await navigator.clipboard.writeText(emails.join(', ')); note.textContent = `Copiate ${n(emails.length)} email: incollale nel campo "Ccn" della tua posta.`; }
+      catch { note.textContent = 'Non riesco a copiare: seleziona le email dalla tabella.'; }
+    } }, 'Copia tutte le email');
+    const mailto = () => {
+      const bcc = emails.map(encodeURIComponent).join(',');
+      if (bcc.length > 1800) { note.textContent = 'Sono troppe per aprire la posta con un tocco: usa "Copia tutte le email" e incollale nel campo Ccn.'; return; }
+      location.href = `mailto:?bcc=${bcc}&subject=${encodeURIComponent('Novità su WeSpot')}`;
+    };
+    return el('section', { class: 'card' },
+      el('h2', {}, `Iscritti (${n(users.length)})`),
+      el('div', { class: 'row' }, search,
+        el('button', { type: 'button', class: 'btn', onclick: mailto }, '✉️ Scrivi a tutti'), copy),
+      note,
+      el('p', { class: 'muted' }, 'La posta si apre con tutti in copia nascosta (Ccn): nessuno vede le email degli altri. Scrivi solo comunicazioni di servizio (novità e aggiornamenti dell\'app).'),
+      el('div', { class: 'tbl' }, el('table', {}, el('thead', {}, el('tr', {}, ['Email', 'Nome', 'Iscritto dal', 'Ultimo accesso', 'Posti'].map(h => el('th', {}, h)))), body)));
+  }
+
+  function render(s, users) {
+    const u = s.users, p = s.places, o = s.outings, st = s.storage;
+    const verdicts = Object.entries(p.by_verdict || {}).map(([k, v]) => [(VERDICT[k] || [k])[0], v, (VERDICT[k] || [])[1]]);
+    const vbars = el('div', { class: 'bars' });
+    const vmax = Math.max(1, ...verdicts.map(v => v[1]));
+    verdicts.forEach(([l, v, c]) => vbars.append(el('div', { class: 'bar' }, el('span', {}, l), el('div', { class: 'track' }, el('i', { style: `width:${Math.max(1, Math.round(v / vmax * 100))}%;background:${c || '#0F766E'}` })), el('em', {}, n(v)))));
+    main.replaceChildren(
+      el('div', { class: 'kpis' },
+        kpi(u.total, 'iscritti in totale', true), kpi(u.new_7d, 'nuovi negli ultimi 7 giorni'), kpi(u.new_30d, 'nuovi negli ultimi 30 giorni'),
+        kpi(u.signed_in_7d, 'accessi negli ultimi 7 giorni'), kpi(u.with_places, 'hanno salvato almeno un posto'), kpi(u.not_sharing, 'non condividono i posti')),
+      users ? usersCard(users) : null,
+      el('div', { class: 'two' },
+        el('section', { class: 'card' }, el('h2', {}, 'Nuovi iscritti, ultimi 30 giorni'), chart(s.daily.signups, 'Nuovi iscritti')),
+        el('section', { class: 'card' }, el('h2', {}, 'Posti salvati, ultimi 30 giorni'), chart(s.daily.places, 'Posti salvati'))),
+      el('div', { class: 'kpis' },
+        kpi(p.total, 'posti salvati'), kpi(p.new_7d, 'posti nuovi in 7 giorni'), kpi(p.shared, 'posti visibili agli altri'),
+        kpi(o.groups, 'uscite di gruppo'), kpi(o.events, 'eventi privati'), kpi(o.public_events, 'eventi pubblici'),
+        kpi(o.upcoming, 'uscite e eventi in programma'), kpi(o.going, 'conferme "Ci sono"'), kpi(s.notifications.phones, 'telefoni con le notifiche')),
+      el('div', { class: 'two' },
+        el('section', { class: 'card' }, el('h2', {}, 'Giudizi'), verdicts.length ? vbars : el('p', { class: 'muted' }, 'Ancora nessun posto.')),
+        el('section', { class: 'card' }, el('h2', {}, 'Tipi di locale più salvati'),
+          (p.top_kinds || []).length ? bars(p.top_kinds.map(k => [k.kind, k.n])) : el('p', { class: 'muted' }, 'Ancora nessun tipo indicato.'))),
+      el('section', { class: 'card' },
+        el('h2', {}, 'Spazio usato'),
+        usage('Archivio dati (database)', st.db_bytes, 500e6),
+        usage(`Foto dei posti (${n(st.photo_files)} file) e copertine (${n(st.cover_files)} file)`, Number(st.photo_bytes) + Number(st.cover_bytes), 1e9),
+        el('p', { class: 'muted' }, 'Limiti indicativi del piano gratuito di Supabase: 500 MB di dati, 1 GB di file. Per i costi di Google (mappe e luoghi) usa i collegamenti qui sotto.')),
+      el('section', { class: 'card' },
+        el('h2', {}, 'Collegamenti utili'),
+        el('div', { class: 'links' },
+          [['Supabase (archivio e utenti)', 'https://supabase.com/dashboard/project/rznllkivahwgzmyzpxcb'],
+           ['Google Cloud (costi e limiti)', 'https://console.cloud.google.com/billing'],
+           ['Google Mappe: utilizzo', 'https://console.cloud.google.com/google/maps-apis/metrics'],
+           ['Codice su GitHub', 'https://github.com/dpfphoto/spotit'],
+           ['IONOS (dominio)', 'https://my.ionos.it']].map(([t, h]) => el('a', { class: 'btn ghost', href: h, target: '_blank', rel: 'noopener' }, t)))));
+    $('upd').textContent = 'Aggiornato ' + date(s.generated_at, true);
+    $('refresh').hidden = false;
+  }
+
+  async function load() {
+    $('refresh').disabled = true;
+    try {
+      const { data: sess } = await sb.auth.getSession();
+      if (!sess || !sess.session) { say('Per aprire il pannello entra prima nell\'app WeSpot con il tuo account, poi riapri questa pagina.'); return; }
+      const adm = await sb.rpc('is_admin');
+      if (adm.error) { say('Il pannello non è ancora attivo: manca un aggiornamento dell\'archivio.'); return; }
+      if (adm.data !== true) { say('Questo account non ha accesso al pannello.'); return; }
+      const [st, us] = await Promise.all([sb.rpc('admin_stats'), sb.rpc('admin_users')]);
+      if (st.error) { say('Non riesco a leggere i numeri ora. Riprova tra poco.'); return; }
+      render(st.data, us.error ? null : us.data);
+    } catch {
+      say('Non riesco a collegarmi ora. Controlla la connessione e riprova.');
+    } finally { $('refresh').disabled = false; }
+  }
+  $('refresh').onclick = load;
+  load();
+  setInterval(() => { if (!document.hidden && !$('refresh').hidden) load(); }, 120000);
+})();
+</script>
+</body>
+</html>

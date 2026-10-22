@@ -259,10 +259,16 @@
     $('myName').value = ''; $('myPhone').value = '';
     persistLocal();
   }
+  async function checkAdmin() {
+    const li = $('menuAdmin'); if (li) li.hidden = true;
+    if (!user) return;
+    try { const r = await sb.rpc('is_admin'); if (!r.error && r.data === true && li) li.hidden = false; } catch (e) {}
+  }
   async function onUser(u) {
     const changedUser = (u && u.id) !== (user && user.id);
     user = u;
     showAccount();
+    if (changedUser) checkAdmin();
     if (!user || !changedUser) return;
     // Su questo telefono entra un altro account: ricomincio da capo, senza i posti e i dati personali del precedente
     if (sync.uid !== user.id) {
