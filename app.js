@@ -754,6 +754,27 @@ $('pExpire').onchange = () => {
   p.expiresAt = $('pExpire').checked ? expiryFor(p) : 0;
   persist(); drawPlaceVerdicts(p);
 };
+// Dalla scheda di un'uscita: il posto diventa un Appuntamento tra i miei (lo creo se non c'è)
+function samePlace(p, q) {
+  return (q.name && p.name.trim().toLowerCase() === q.name.trim().toLowerCase())
+    || (Math.abs(p.lat - q.lat) < 0.0014 && Math.abs(p.lng - q.lng) < 0.0018);
+}
+window.spotitMyVerdict = q => (places.find(p => samePlace(p, q)) || {}).verdict || '';
+window.spotitMarkAppointment = q => {
+  let p = places.find(x => samePlace(x, q));
+  if (!p) {
+    p = cleanPlace({ name: q.name, address: q.address || '', lat: q.lat, lng: q.lng, verdict: 'appuntamento', note: '', kind: '', createdAt: Date.now(), id: uid() });
+    if (!p) return;
+    places.push(p);
+  }
+  p.verdict = 'appuntamento';
+  p.expiresAt = expiryFor(p);
+  persist(); render();
+  toast('Segnato come Appuntamento');
+  return p.id;
+};
+window.spotitOpenPlace = id => openPlace(id);
+
 // Appuntamenti scaduti: li tolgo da soli (anche online, come un'eliminazione)
 function sweepExpired() {
   const now = Date.now();
@@ -1085,7 +1106,7 @@ $('iSave').onclick = () => {
 
 // ---------- Aggiornamenti ----------
 // Ogni pubblicazione alza APP_VERSION qui e in version.json: se online c'è un numero più alto propongo "Aggiorna"
-const APP_VERSION = 39;
+const APP_VERSION = 40;
 $('versionText').textContent = `Versione ${APP_VERSION}`;
 async function latestVersion() {
   const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });

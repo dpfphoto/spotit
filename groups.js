@@ -320,6 +320,9 @@
     $('gPublicBox').hidden = !(isOwner && isEvent(g));
     $('gCoverBox').hidden = !isOwner;
     $('gNoteEdit').hidden = !isOwner || !$('gNoteForm').hidden;
+    const pl = g.place || {};
+    $('gAppt').hidden = isEvent(g) || pl.la == null || !window.spotitMyVerdict
+      || window.spotitMyVerdict({ name: pl.n || '', lat: pl.la, lng: pl.lo }) === 'appuntamento';
     $('gNoteEdit').textContent = g.note ? '✏️ Modifica la nota' : '✏️ Aggiungi una nota';
     $('gArriveBox').hidden = !(mine && mine.status === 'si') || isPast(g);
     $('gArrive').checked = prefs.shareArrival !== false;
@@ -430,6 +433,12 @@
     $('gNote').hidden = !g.note;
     $('gNote').textContent = g.note ? `"${g.note}"` : '';
   }
+  $('gAppt').onclick = () => {
+    const pl = group && group.place; if (!pl) return;
+    const id = window.spotitMarkAppointment({ name: pl.n || 'Appuntamento', address: pl.a || '', lat: pl.la, lng: pl.lo });
+    drawGroup();
+    if (id) { $('dlgGroup').close(); window.spotitOpenPlace(id); }
+  };
   $('gNoteEdit').onclick = () => {
     $('gNoteText').value = group.note || '';
     $('gNoteForm').hidden = false; $('gNoteEdit').hidden = true;
