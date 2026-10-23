@@ -377,3 +377,7 @@ textarea { resize: vertical; }
 .gate-welcome.is-login .gate-feats, .gate-welcome.is-login .gate-shots { display: none; }
 .gate-welcome.is-login .gate-hero { margin-bottom: 18px; }
 .gate-hero:focus { outline: none; }
+
+.notif-box { margin-top: 0; }
+.field-inline { display: flex; flex-direction: column; gap: 6px; font-weight: 600; margin: 8px 0; }
+.field-inline select { font: inherit; padding: 10px; border-radius: 12px; border: 1px solid var(--line, #E5E7EB); background: #fff; }

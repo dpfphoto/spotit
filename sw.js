@@ -1,5 +1,5 @@
 // Cache dell'app per l'uso offline e l'installazione
-const CACHE = 'spotit-v54';
+const CACHE = 'spotit-v55';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'config.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
   'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'vendor/supabase/supabase.js', 'account.js', 'groups.js', 'layers.js'];
@@ -41,6 +41,8 @@ self.addEventListener('push', e => {
     icon: 'icons/icon-192.png',
     badge: 'icons/icon-192.png',
     tag: d.tag,
+    silent: !!d.silent,
+    vibrate: d.silent ? undefined : [120, 60, 120],
     data: { url: d.url || './' }
   }));
 });

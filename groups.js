@@ -427,6 +427,8 @@
   $('gCancel').onclick = async () => {
     const ev = isEvent(group);
     if (!group || !confirm(ev ? 'Eliminare l\'evento per tutti? Sparisce dalla mappa di tutti.' : 'Annullare l\'uscita per tutti?')) return;
+    // Prima avviso chi ha detto "Ci sono" o "Forse" (poi l'uscita non esiste più)
+    if (!isPast(group)) { try { await callNotify({ action: 'cancel', outing_id: group.id }); } catch { /* l'annullamento va avanti lo stesso */ } }
     const { error } = await sb.from('outings').delete().eq('id', group.id);
     if (error) { toast('Non riesco ad annullarla ora'); return; }
     forget(group.id);
@@ -611,7 +613,25 @@
     const s = atob((b64 + '='.repeat((4 - b64.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/'));
     return Uint8Array.from(s, c => c.charCodeAt(0));
   }
-  $('gNotify').onclick = async () => {
+  // Preferenze delle notifiche di questo telefono: quanto prima avvisare e se suonare
+  function leadMin() { return Number.isFinite(prefs.notifLead) ? prefs.notifLead : 60; }
+  function soundOn() { return prefs.notifSound !== false; }
+  async function savePushPrefs() {
+    const sub = await currentSub();
+    if (!sub || !me()) return;
+    try { await sb.from('push_subscriptions').update({ lead_min: leadMin(), sound: soundOn() }).eq('endpoint', sub.endpoint); } catch { /* resta quello di prima */ }
+  }
+  async function drawNotifPrefs() {
+    const box = $('notifBox'); if (!box) return;
+    $('notifLead').value = String(leadMin());
+    $('notifSound').checked = soundOn();
+    const on = pushOk && Notification.permission === 'granted' && await currentSub();
+    $('notifOn').hidden = !!on;
+    $('notifHint').textContent = on
+      ? (isIos ? 'Su iPhone il suono lo decide il telefono: Impostazioni → Notifiche → WeSpot.' : '')
+      : 'Le notifiche non sono ancora attive su questo telefono.';
+  }
+  async function enablePush() {
     if (isIos && !isStandalone) {
       toast('Su iPhone le notifiche arrivano solo se WeSpot è sulla schermata Home: Condividi → Aggiungi alla schermata Home');
       return;
@@ -629,14 +649,22 @@
         sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(data.publicKey) });
       }
       const j = sub.toJSON();
-      const { error } = await sb.from('push_subscriptions').upsert({ endpoint: j.endpoint, user_id: me().id, p256dh: j.keys.p256dh, auth: j.keys.auth });
+      const { error } = await sb.from('push_subscriptions').upsert({ endpoint: j.endpoint, user_id: me().id, p256dh: j.keys.p256dh, auth: j.keys.auth, lead_min: leadMin(), sound: soundOn() });
       if (error) throw error;
-      toast('Fatto: ti avviso quando qualcuno dice "Ci sono"');
+      toast('Fatto: ti avviso quando qualcuno dice "Ci sono" e prima delle uscite');
     } catch {
       toast('Non riesco ad attivare le notifiche ora. Riprova tra poco.');
     }
     drawNotify();
-  };
+    drawNotifPrefs();
+  }
+  $('gNotify').onclick = enablePush;
+  $('notifOn').onclick = enablePush;
+  $('notifLead').onchange = () => { prefs.notifLead = Number($('notifLead').value); savePrefs(); savePushPrefs(); };
+  $('notifSound').onchange = () => { prefs.notifSound = $('notifSound').checked; savePrefs(); savePushPrefs(); };
+  $('btnSettings') && $('btnSettings').addEventListener('click', drawNotifPrefs);
+  drawNotifPrefs();
+  window.spotitDrawNotifPrefs = drawNotifPrefs;
 
   // ---------- Inviti ----------
 

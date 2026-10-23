@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="WeSpot">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=54">
+<link rel="stylesheet" href="styles.css?v=55">
 </head>
 <body>
 <header class="top">
@@ -248,6 +248,15 @@
   </div>
   <label class="check"><input id="showName" type="checkbox"> <span>Mostra il mio nome quando consiglio un posto<small>Chi lo riceve vede "Consigliato da" e il tuo nome. Se non lo spunti, il consiglio arriva senza nome.</small></span></label>
   <label id="shareBox" class="check"><input id="shareToggle" type="checkbox" checked> <span>Mostra i miei posti sulla mappa di tutti<small>Sempre anonimi: si vedono il posto, il giudizio e la nota, mai chi l'ha salvato</small></span></label>
+  <div id="notifBox" class="account notif-box">
+    <p class="acc-title">🔔 Notifiche</p>
+    <label class="field-inline">Avvisami prima di un'uscita
+      <select id="notifLead"><option value="0">Mai</option><option value="30">30 minuti prima</option><option value="60">1 ora prima</option><option value="120">2 ore prima</option><option value="1440">1 giorno prima</option></select>
+    </label>
+    <label class="check"><input id="notifSound" type="checkbox" checked> <span>Suono e vibrazione</span></label>
+    <p id="notifHint" class="muted"></p>
+    <button type="button" id="notifOn" class="btn ghost full" hidden>Attiva le notifiche</button>
+  </div>
   <div id="counts" class="counts"></div>
   <section id="account" class="account" hidden>
     <div id="accIn" hidden>
@@ -543,11 +552,11 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=54"></script>
-<script src="app.js?v=54"></script>
+<script src="config.js?v=55"></script>
+<script src="app.js?v=55"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=54"></script>
-<script src="groups.js?v=54"></script>
-<script src="layers.js?v=54"></script>
+<script src="account.js?v=55"></script>
+<script src="groups.js?v=55"></script>
+<script src="layers.js?v=55"></script>
 </body>
 </html>
