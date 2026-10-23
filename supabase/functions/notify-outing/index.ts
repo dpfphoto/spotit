@@ -1,5 +1,6 @@
 // Notifiche push: l'organizzatore quando un amico risponde "Ci sono", chi partecipa quando l'uscita viene annullata,
 // e il promemoria prima dell'uscita (azione 'tick', chiamata ogni 5 minuti da pg_cron).
+// Nello stesso giro avvisa i titolari dei locali iscritti quando qualcuno li salva (notifica subito, email al massimo una al giorno).
 // Le chiavi per le notifiche (VAPID) le crea questa funzione al primo uso e restano nel database.
 import webpush from 'npm:web-push@3.6.7';
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
@@ -88,6 +89,71 @@ async function tick() {
   return sent;
 }
 
+// ---------- Locali iscritti ----------
+
+const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+function savesLabel(n: number) { return n === 1 ? 'Una persona ha' : `${n} persone hanno`; }
+
+// Email con Resend: la chiave sta in app_secrets ('resend' = { key, from }). Finché manca, partono solo le notifiche.
+async function sendEmail(to: string, subject: string, html: string) {
+  const { data } = await admin.from('app_secrets').select('value').eq('name', 'resend').maybeSingle();
+  const cfg = data && data.value as { key?: string; from?: string };
+  if (!cfg || !cfg.key) return false;
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${cfg.key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: cfg.from || 'WeSpot <avvisi@wespot.me>', to: [to], subject, html })
+  });
+  return res.ok;
+}
+
+function bizEmail(name: string, n: number, unsub: string) {
+  const stop = `${APP_URL}stop.html?t=${unsub}`;
+  return `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#111">
+<h2 style="color:#0F766E">Ciao ${esc(name)}! 👋</h2>
+<p style="font-size:16px">${savesLabel(n)} appena salvato <b>${esc(name)}</b> su WeSpot tra i posti dove vuole andare o tornare.</p>
+<p style="font-size:16px">Vieni a vedere quante persone ti hanno scelto:</p>
+<p><a href="${APP_URL}#locale" style="background:#0F766E;color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:bold">Apri WeSpot</a></p>
+<p style="color:#666;font-size:13px;margin-top:32px">Ricevi questa email perché hai iscritto il tuo locale su WeSpot. Chi salva il locale resta anonimo.
+<a href="${stop}" style="color:#666">Non voglio più ricevere queste email</a>.</p></div>`;
+}
+
+async function businessTick() {
+  const { data: hits } = await admin.from('business_hits').select('business_id, user_id, pushed, emailed, created_at')
+    .or('pushed.eq.false,emailed.eq.false').limit(500);
+  if (!hits || !hits.length) return 0;
+  const ids = [...new Set(hits.map(h => h.business_id))];
+  const { data: biz } = await admin.from('businesses').select('id, owner, name, email, notify_email, last_email_at, unsub').in('id', ids);
+  let sent = 0;
+  for (const b of biz || []) {
+    const mine = hits.filter(h => h.business_id === b.id);
+    const toPush = mine.filter(h => !h.pushed);
+    if (toPush.length) {
+      const { data: subs } = await admin.from('push_subscriptions').select('endpoint, p256dh, auth, sound').eq('user_id', b.owner);
+      sent += await pushTo(subs || [], {
+        title: `${b.name}: ${toPush.length === 1 ? 'una persona ti ha' : toPush.length + ' persone ti hanno'} salvato! ❤️`,
+        body: 'Vieni a vedere quante persone hanno scelto il tuo locale su WeSpot',
+        url: `${APP_URL}#locale`, tag: `locale-${b.id}`
+      }, 86400);
+      await admin.from('business_hits').update({ pushed: true }).eq('business_id', b.id).in('user_id', toPush.map(h => h.user_id));
+    }
+    const toMail = mine.filter(h => !h.emailed);
+    if (!toMail.length) continue;
+    // Email solo se attive, al massimo una ogni 24 ore con tutti i salvataggi nuovi
+    if (!b.notify_email || !b.email) {
+      await admin.from('business_hits').update({ emailed: true }).eq('business_id', b.id).in('user_id', toMail.map(h => h.user_id));
+      continue;
+    }
+    if (b.last_email_at && Date.parse(b.last_email_at) > Date.now() - 864e5) continue;
+    const ok = await sendEmail(b.email, `${b.name}: ${toMail.length === 1 ? 'qualcuno ti ha' : toMail.length + ' persone ti hanno'} salvato su WeSpot`, bizEmail(b.name, toMail.length, b.unsub));
+    if (!ok) continue; // servizio email non ancora attivo: riprovo al prossimo giro
+    sent++;
+    await admin.from('businesses').update({ last_email_at: new Date().toISOString() }).eq('id', b.id);
+    await admin.from('business_hits').update({ emailed: true }).eq('business_id', b.id).in('user_id', toMail.map(h => h.user_id));
+  }
+  return sent;
+}
+
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
@@ -99,7 +165,10 @@ Deno.serve(async req => {
       const { data: sec } = await admin.from('app_secrets').select('value').eq('name', 'cron').maybeSingle();
       const given = req.headers.get('x-cron-secret');
       if (!sec || !given || given !== (sec.value as { s: string }).s) return json({ error: 'non autorizzato' }, 401);
-      return json({ sent: await tick() });
+      const sent = await tick();
+      let biz = 0;
+      try { biz = await businessTick(); } catch { /* i locali non devono fermare i promemoria */ }
+      return json({ sent, biz });
     }
 
     // I token degli utenti sono firmati con la chiave nuova del progetto: l'app li manda in x-user-token

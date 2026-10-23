@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WeSpot · Email</title>
+<link rel="icon" href="icons/icon-192.png">
+<style>
+  body { font: 16px/1.55 system-ui, -apple-system, sans-serif; margin: 0; padding: 24px 16px 48px; background: #fff; color: #1f2937; }
+  main { max-width: 560px; margin: 0 auto; }
+  h1 { color: #0F766E; margin-top: 0; }
+  a { color: #0F766E; }
+  @media (prefers-color-scheme: dark) { body { background: #111827; color: #e5e7eb; } h1, a { color: #5eead4; } }
+</style>
+</head>
+<body>
+<main>
+<h1>WeSpot</h1>
+<p id="msg">Un momento…</p>
+<p><a href="./#locale">Apri WeSpot</a></p>
+</main>
+<script src="config.js"></script>
+<script>
+// Disiscrizione dalle email ai locali iscritti, dal link in fondo all'email
+(async () => {
+  const msg = document.getElementById('msg');
+  const t = new URLSearchParams(location.search).get('t') || '';
+  if (!/^[0-9a-f-]{36}$/.test(t)) { msg.textContent = 'Link non valido.'; return; }
+  const c = window.SPOTIT_CONFIG;
+  try {
+    const res = await fetch(`${c.supabaseUrl}/rest/v1/rpc/business_unsubscribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: c.supabaseKey, Authorization: `Bearer ${c.supabaseKey}` },
+      body: JSON.stringify({ token: t })
+    });
+    if (!res.ok) throw new Error(res.status);
+    const name = await res.json();
+    msg.textContent = name
+      ? `Fatto: non riceverai più email per "${name}". Puoi riattivarle quando vuoi da WeSpot, nel menu "Il tuo locale".`
+      : 'Questo locale non è più iscritto: non riceverai altre email.';
+  } catch {
+    msg.textContent = 'Non riesco a completare la richiesta ora. Riprova tra poco oppure scrivi a flaviodiproperzio@gmail.com.';
+  }
+})();
+</script>
+</body>
+</html>

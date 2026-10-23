@@ -696,6 +696,8 @@
   $('btnSettings') && $('btnSettings').addEventListener('click', drawNotifPrefs);
   drawNotifPrefs();
   window.spotitDrawNotifPrefs = drawNotifPrefs;
+  window.spotitEnablePush = enablePush;
+  window.spotitPushOn = async () => pushOk && Notification.permission === 'granted' && !!(await currentSub());
 
   // ---------- Inviti ----------
 

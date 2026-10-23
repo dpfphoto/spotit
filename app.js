@@ -1124,7 +1124,7 @@ $('iSave').onclick = () => {
 
 // ---------- Aggiornamenti ----------
 // Ogni pubblicazione alza APP_VERSION qui e in version.json: se online c'è un numero più alto propongo "Aggiorna"
-const APP_VERSION = 60;
+const APP_VERSION = 61;
 $('versionText').textContent = `Versione ${APP_VERSION}`;
 async function latestVersion() {
   const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
@@ -1174,6 +1174,7 @@ $('dlgMenu').addEventListener('click', e => {
   else if (go === 'trips') { setView('list'); $('list').scrollTop = 0; }
   else if (go === 'add') $('fab').click();
   else if (go === 'event') $('btnEvent').click();
+  else if (go === 'business') { if (window.spotitOpenBusiness) window.spotitOpenBusiness(); }
   else if (go === 'profile') $('btnSettings').click();
   else if (go === 'invite') $('btnInvite').click();
   else if (go === 'export') $('btnExport').click();
