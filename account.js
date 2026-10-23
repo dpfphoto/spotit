@@ -209,7 +209,7 @@
   }
 
   async function syncProfile() {
-    const { data } = await sb.from('profiles').select('name').eq('id', user.id).maybeSingle();
+    const { data } = await sb.from('profiles').select('name, logo').eq('id', user.id).maybeSingle();
     if (data && data.name && !prefs.name) {
       prefs.name = data.name; savePrefs(); $('myName').value = data.name;
     } else if (prefs.name && (!data || data.name !== prefs.name)) {
@@ -217,7 +217,26 @@
     } else if (!data) {
       await sb.from('profiles').upsert({ id: user.id, name: '' });
     }
+    // Il logo segue l'account: se qui è rimasto quello già sincronizzato vince il server (anche se è stato tolto),
+    // se invece l'ho cambiato su questo telefono lo mando al server
+    const remote = (data && data.logo) || '', local = prefs.logo || '';
+    if (remote !== local) {
+      if (local === (prefs.logoSynced || '')) {
+        if (remote) prefs.logo = remote; else delete prefs.logo;
+        prefs.logoSynced = remote; savePrefs();
+        if (window.spotitDrawLogo) window.spotitDrawLogo();
+      } else {
+        const { error } = await sb.from('profiles').upsert({ id: user.id, logo: local });
+        if (!error) { prefs.logoSynced = local; savePrefs(); }
+      }
+    } else if ((prefs.logoSynced || '') !== local) { prefs.logoSynced = local; savePrefs(); }
   }
+  window.spotitPushLogo = async () => {
+    if (!user) return;
+    const local = prefs.logo || '';
+    const { error } = await sb.from('profiles').upsert({ id: user.id, logo: local });
+    if (!error) { prefs.logoSynced = local; savePrefs(); }
+  };
   $('myName').addEventListener('change', () => { if (user) sb.from('profiles').upsert({ id: user.id, name: prefs.name }); });
 
   function setSyncMsg(t) { $('accSync').textContent = t; }
@@ -254,7 +273,7 @@
       await new Promise(res => { const tx = db.transaction('photos', 'readwrite'); tx.objectStore('photos').clear(); tx.oncomplete = tx.onerror = res; });
     } catch {}
     places.length = 0;
-    prefs.name = ''; prefs.phone = ''; delete prefs.logo; delete prefs.showName;
+    prefs.name = ''; prefs.phone = ''; delete prefs.logo; delete prefs.logoSynced; delete prefs.showName;
     savePrefs();
     $('myName').value = ''; $('myPhone').value = '';
     persistLocal();

@@ -842,10 +842,12 @@
     try { prefs.logo = await shrinkLogo(file); } catch { toast('Non riesco a leggere questa immagine'); return; }
     if (!okLogo(prefs.logo)) { delete prefs.logo; toast('Immagine troppo grande, provane un\'altra'); return; }
     savePrefs(); drawLogo(); toast('Logo salvato');
+    if (window.spotitPushLogo) window.spotitPushLogo().catch(() => {});
     applyLogo().catch(() => {});
   });
-  $('logoDel').onclick = () => { delete prefs.logo; savePrefs(); drawLogo(); applyLogo().catch(() => {}); };
+  $('logoDel').onclick = () => { delete prefs.logo; savePrefs(); drawLogo(); if (window.spotitPushLogo) window.spotitPushLogo().catch(() => {}); applyLogo().catch(() => {}); };
   drawLogo();
+  window.spotitDrawLogo = () => { drawLogo(); applyLogo().catch(() => {}); };
 
   // Sulla mappa: gli eventi privati, in rosso quando sono passati
   const evLayer = L.layerGroup().addTo(map);
