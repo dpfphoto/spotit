@@ -58,6 +58,7 @@
   // Evento privato (festa, cena a casa): non è un locale, sta solo sulla mappa di chi è nel gruppo
   function isEvent(g) { return !!(g && g.place && g.place.pv); }
   // Finita la festa: dopo 12 ore dall'inizio diventa "passato"
+  function lateText(min) { return min > 60 ? 'oltre 1 ora' : min === 60 ? '1 ora' : `${min} minuti`; }
   function isPast(g) { return new Date(g.starts_at).getTime() + 12 * 3600000 < Date.now(); }
   function groupUrl(id) { return `${appUrl()}#g=${id}`; }
   function asOuting(g) {
@@ -194,7 +195,7 @@
   // ---------- Apri ----------
 
   async function fetchGroup(id) {
-    const { data, error } = await sb.from('outings').select('*, outing_members(id, user_id, name, status, created_at, arrival)').eq('id', id).maybeSingle();
+    const { data, error } = await sb.from('outings').select('*, outing_members(id, user_id, name, status, created_at, arrival, delay_min)').eq('id', id).maybeSingle();
     if (error) throw error;
     if (data) {
       data.members = (data.outing_members || []).sort((a, b) => a.created_at.localeCompare(b.created_at));
@@ -306,6 +307,7 @@
       return el('li', {},
         el('span', { class: 'm-name' }, m.name + (isMe ? ' (tu)' : ''),
           phone ? el('small', { class: 'm-phone' }, '+' + phone) : ''),
+        (m.delay_min > 0 && m.arrival !== 'arrivato' && (m.status === 'si' || m.status === 'forse')) ? el('span', { class: 'm-status late' }, (m.delay_min > 60 ? '⏱ oltre 1 ora' : `⏱ +${m.delay_min} min`)) : '',
         el('span', { class: `m-status ${st.cls}` }, st.label),
         phone ? el('a', {
           class: 'm-wa', target: '_blank', rel: 'noopener', 'aria-label': `Manda l'invito a ${m.name} su WhatsApp`,
@@ -330,6 +332,8 @@
     $('gNoteEdit').textContent = g.note ? '✏️ Modifica la nota' : '✏️ Aggiungi una nota';
     $('gArriveBox').hidden = !(mine && mine.status === 'si') || isPast(g);
     $('gArrive').checked = prefs.shareArrival !== false;
+    $('gDelayBox').hidden = !(mine && (mine.status === 'si' || mine.status === 'forse') && mine.arrival !== 'arrivato') || isPast(g);
+    $('gDelay').value = String((mine && mine.delay_min) || 0);
     $('gCoverDel').hidden = !(g.place && g.place.c);
     $('gCoverLabel').textContent = g.place && g.place.c ? 'Cambia copertina' : 'Metti una copertina';
     $('gPublic').checked = !!g.is_public;
@@ -496,6 +500,18 @@
   // se mi sono avvicinato di almeno 300 m "In arrivo". Al gruppo va solo lo stato.
   const ARRIVE_M = 150, CLOSER_M = 300;
   const lastDist = {};
+  $('gDelay').addEventListener('change', async () => {
+    const u = me(); if (!u || !group) return;
+    const minutes = Number($('gDelay').value);
+    try {
+      const { error } = await sb.rpc('set_delay', { oid: group.id, minutes });
+      if (error) throw error;
+      toast(minutes ? `Ok, avviso il gruppo: ritardo ${minutes > 60 ? 'di oltre 1 ora' : 'di ' + lateText(minutes)}` : 'Ritardo tolto');
+      if (minutes) callNotify({ action: 'late', outing_id: group.id }).catch(() => {});
+      const g = await fetchGroup(group.id);
+      if (g) { group = g; drawGroup(); }
+    } catch { toast('Non riesco ora, riprova'); }
+  });
   $('gArrive').addEventListener('change', () => {
     prefs.shareArrival = $('gArrive').checked; savePrefs();
     if (prefs.shareArrival) checkArrivals();
@@ -685,7 +701,7 @@
   async function loadUpcoming() {
     if (!me()) { upcoming = []; events = []; drawEvents(); drawBell(); return; }
     try {
-      const { data, error } = await sb.from('outings').select('id, owner, place, starts_at, owner_name, outing_members(id, user_id, name, status, arrival)')
+      const { data, error } = await sb.from('outings').select('id, owner, place, starts_at, owner_name, outing_members(id, user_id, name, status, arrival, delay_min)')
         .order('starts_at').limit(200);
       if (error) throw error;
       const all = data || [];
@@ -718,7 +734,7 @@
   function remember(g, members) {
     if (!seen) seen = {};
     const m = {};
-    for (const x of members || []) m[x.id] = [x.name, x.status, x.arrival || ''];
+    for (const x of members || []) m[x.id] = [x.name, x.status, x.arrival || '', x.delay_min || 0];
     seen[g.id] = { n: (g.place && g.place.n) || 'Uscita', t: g.starts_at, ev: isEvent(g) ? 1 : 0, m };
     save(SEEN_KEY, seen);
   }
@@ -745,6 +761,11 @@
           if (x.user_id === u.id || !was || !x.arrival || was[2] === x.arrival) continue;
           if (x.arrival === 'arrivato') notify(`a-${x.id}`, '📍', `${x.name} è arrivato a "${name}"`, g.id);
           else if (x.arrival === 'in_arrivo' && was[2] !== 'arrivato') notify(`i-${x.id}`, '🚗', `${x.name} è in arrivo a "${name}"`, g.id);
+        }
+        for (const x of members) {
+          const was = prev.m[x.id];
+          if (x.user_id === u.id || !was || !(x.delay_min > 0) || was[3] === x.delay_min) continue;
+          notify(`d-${x.id}-${x.delay_min}`, '⏱', `${x.name} ritarda ${x.delay_min > 60 ? 'di oltre 1 ora' : 'di ' + lateText(x.delay_min)} per "${name}"`, g.id);
         }
         if (prev.t !== g.starts_at) notify(`t-${g.id}-${g.starts_at}`, '🕒', `"${name}" ha un nuovo orario: ${whenLabel(g.starts_at)}`, g.id);
       }

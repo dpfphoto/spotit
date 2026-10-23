@@ -123,6 +123,23 @@ Deno.serve(async req => {
       return json({ sent });
     }
 
+    if (body.action === 'late' && typeof body.outing_id === 'string') {
+      const { data: o } = await admin.from('outings').select('id, place, starts_at, outing_members(user_id, name, status, delay_min)').eq('id', body.outing_id).maybeSingle();
+      if (!o) return json({ sent: 0 });
+      const mem = (o.outing_members || []) as { user_id: string | null; name: string; status: string; delay_min: number }[];
+      const mine = mem.find(m => m.user_id === user.id);
+      if (!mine || !(mine.delay_min > 0) || !['si', 'forse'].includes(mine.status)) return json({ sent: 0 });
+      const users = [...new Set(mem.filter(m => m.user_id && m.user_id !== user.id && (m.status === 'si' || m.status === 'forse')).map(m => m.user_id as string))];
+      if (!users.length) return json({ sent: 0 });
+      const { data: subs } = await admin.from('push_subscriptions').select('endpoint, p256dh, auth, sound').in('user_id', users);
+      const sent = await pushTo(subs || [], {
+        title: `${mine.name} ritarda ${mine.delay_min > 60 ? 'di oltre 1 ora' : mine.delay_min === 60 ? 'di 1 ora' : 'di ' + mine.delay_min + ' minuti'}`,
+        body: `Per "${(o.place && o.place.n) || 'l\'uscita'}" delle ${hhmm(o.starts_at)}`,
+        url: `${APP_URL}#g=${o.id}`, tag: `ritardo-${o.id}-${user.id}`
+      }, 1800);
+      return json({ sent });
+    }
+
     if (body.action !== 'going' || typeof body.member_id !== 'string') return json({ error: 'richiesta non valida' }, 400);
     const { data: m } = await admin.from('outing_members')
       .select('id, name, status, user_id, notified, outing_id').eq('id', body.member_id).maybeSingle();

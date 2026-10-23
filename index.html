@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="WeSpot">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=57">
+<link rel="stylesheet" href="styles.css?v=58">
 </head>
 <body>
 <header class="top">
@@ -441,6 +441,9 @@
   </div>
   <div class="members-head"><p class="acc-title">Chi viene</p><span id="gCount" class="muted"></span></div>
   <ul id="gMembers" class="members"></ul>
+  <label id="gDelayBox" class="field-inline" hidden>⏱ Ritardo di…
+    <select id="gDelay"><option value="0">Nessun ritardo</option><option value="10">10 minuti</option><option value="15">15 minuti</option><option value="30">30 minuti</option><option value="45">45 minuti</option><option value="60">1 ora</option><option value="120">Oltre 1 ora</option></select>
+  </label>
   <label id="gArriveBox" class="check" hidden><input id="gArrive" type="checkbox"> <span>📍 Fai sapere al gruppo quando arrivo<small>Mentre l'app è aperta, vicino all'ora dell'uscita. Si vede solo "In arrivo" o "Arrivato", mai dove sei.</small></span></label>
   <button type="button" id="gNotify" class="btn ghost full notify-btn" hidden>🔔 Avvisami quando qualcuno dice "Ci sono"</button>
   <form id="gAddForm" class="add-person" hidden>
@@ -552,11 +555,11 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=57"></script>
-<script src="app.js?v=57"></script>
+<script src="config.js?v=58"></script>
+<script src="app.js?v=58"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=57"></script>
-<script src="groups.js?v=57"></script>
-<script src="layers.js?v=57"></script>
+<script src="account.js?v=58"></script>
+<script src="groups.js?v=58"></script>
+<script src="layers.js?v=58"></script>
 </body>
 </html>

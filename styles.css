@@ -381,3 +381,4 @@ textarea { resize: vertical; }
 .notif-box { margin-top: 0; }
 .field-inline { display: flex; flex-direction: column; gap: 6px; font-weight: 600; margin: 8px 0; }
 .field-inline select { font: inherit; padding: 10px; border-radius: 12px; border: 1px solid var(--line, #E5E7EB); background: #fff; }
+.m-status.late { background: #FFEDD5; color: #9A3412; margin-right: 6px; }
