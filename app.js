@@ -319,7 +319,7 @@ function googleKind(r) {
 const OSM_KIND = {
   restaurant: 'Ristorante', bar: 'Bar', cafe: 'Caffetteria', pub: 'Pub', fast_food: 'Fast food', ice_cream: 'Gelateria',
   biergarten: 'Birreria', food_court: 'Food court', hotel: 'Hotel', guest_house: 'B&B', museum: 'Museo', attraction: 'Attrazione',
-  bakery: 'Panetteria', pastry: 'Pasticceria', confectionery: 'Pasticceria', wine: 'Enoteca', deli: 'Gastronomia'
+  bakery: 'Panetteria', supermarket: 'Supermercato', convenience: 'Minimarket', mall: 'Centro commerciale', department_store: 'Grande magazzino', greengrocer: 'Fruttivendolo', butcher: 'Macelleria', pastry: 'Pasticceria', confectionery: 'Pasticceria', wine: 'Enoteca', deli: 'Gastronomia'
 };
 const OSM_CUISINE = { pizza: 'Pizzeria', sushi: 'Ristorante giapponese', japanese: 'Ristorante giapponese', chinese: 'Ristorante cinese', burger: 'Hamburgeria', kebab: 'Kebab', seafood: 'Ristorante di pesce', indian: 'Ristorante indiano', mexican: 'Ristorante messicano' };
 function osmKind(t) {
@@ -523,7 +523,7 @@ async function osmNearby(pos, radius, limit = 8) {
   const around = `around:${radius},${pos.lat},${pos.lng}`;
   const q = `[out:json][timeout:15];(nwr(${around})[${tags}][name];` +
     `nwr(${around})[tourism~"^(hotel|museum|attraction|guest_house)$"][name];` +
-    `nwr(${around})[shop~"^(bakery|pastry|confectionery|wine|deli|ice_cream)$"][name];);out center 60;`;
+    `nwr(${around})[shop~"^(bakery|pastry|confectionery|wine|deli|ice_cream|supermarket|convenience|mall|department_store|greengrocer|butcher)$"][name];);out center 60;`;
   const body = 'data=' + encodeURIComponent(q);
   // I server gratuiti a volte sono lenti o occupati: provo il successivo dopo 8 secondi
   let data = null;
@@ -563,8 +563,8 @@ async function googleNearby(pos, radius = 120, anyType = false) {
     },
     body: JSON.stringify({
       maxResultCount: radius > 200 ? 20 : 10,
-      // solo locali, niente fermate del bus o bancomat (a meno che non cerchi qualsiasi cosa lì vicino)
-      ...(anyType ? {} : { includedTypes: ['restaurant', 'cafe', 'bar', 'coffee_shop', 'pub', 'wine_bar', 'bar_and_grill', 'cafeteria', 'bakery', 'pastry_shop', 'dessert_shop', 'pizza_restaurant', 'sandwich_shop', 'meal_takeaway', 'ice_cream_shop', 'night_club', 'lodging', 'museum'] }),
+      // locali e negozi, niente fermate del bus o bancomat (a meno che non cerchi qualsiasi cosa lì vicino)
+      ...(anyType ? {} : { includedTypes: ['restaurant', 'cafe', 'bar', 'coffee_shop', 'pub', 'wine_bar', 'bar_and_grill', 'cafeteria', 'bakery', 'pastry_shop', 'dessert_shop', 'pizza_restaurant', 'sandwich_shop', 'meal_takeaway', 'ice_cream_shop', 'night_club', 'lodging', 'museum', 'supermarket', 'grocery_store', 'convenience_store', 'shopping_mall', 'department_store', 'clothing_store', 'book_store', 'store', 'tourist_attraction', 'park', 'art_gallery', 'spa', 'gym', 'movie_theater'] }),
       rankPreference: 'DISTANCE',
       languageCode: 'it',
       locationRestriction: { circle: { center: { latitude: pos.lat, longitude: pos.lng }, radius } }
@@ -1124,7 +1124,7 @@ $('iSave').onclick = () => {
 
 // ---------- Aggiornamenti ----------
 // Ogni pubblicazione alza APP_VERSION qui e in version.json: se online c'è un numero più alto propongo "Aggiorna"
-const APP_VERSION = 56;
+const APP_VERSION = 57;
 $('versionText').textContent = `Versione ${APP_VERSION}`;
 async function latestVersion() {
   const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
