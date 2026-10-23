@@ -144,7 +144,7 @@ function getPosition(fresh = true) {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) return reject(new Error('no-geo'));
     navigator.geolocation.getCurrentPosition(
-      p => { lastPos = { lat: p.coords.latitude, lng: p.coords.longitude }; resolve(lastPos); },
+      p => { lastPos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy }; resolve(lastPos); },
       reject,
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
     );
@@ -1124,7 +1124,7 @@ $('iSave').onclick = () => {
 
 // ---------- Aggiornamenti ----------
 // Ogni pubblicazione alza APP_VERSION qui e in version.json: se online c'è un numero più alto propongo "Aggiorna"
-const APP_VERSION = 58;
+const APP_VERSION = 59;
 $('versionText').textContent = `Versione ${APP_VERSION}`;
 async function latestVersion() {
   const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });

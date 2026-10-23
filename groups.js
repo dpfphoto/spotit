@@ -332,6 +332,7 @@
     $('gNoteEdit').textContent = g.note ? '✏️ Modifica la nota' : '✏️ Aggiungi una nota';
     $('gArriveBox').hidden = !(mine && mine.status === 'si') || isPast(g);
     $('gArrive').checked = prefs.shareArrival !== false;
+    $('gArrived').hidden = !(mine && mine.status === 'si' && mine.arrival !== 'arrivato') || isPast(g);
     $('gDelayBox').hidden = !(mine && (mine.status === 'si' || mine.status === 'forse') && mine.arrival !== 'arrivato') || isPast(g);
     $('gDelay').value = String((mine && mine.delay_min) || 0);
     $('gCoverDel').hidden = !(g.place && g.place.c);
@@ -498,7 +499,7 @@
   // ---------- Arrivi ----------
   // Da 2 ore prima a 4 ore dopo l'inizio, con l'app aperta: entro 150 m "Arrivato",
   // se mi sono avvicinato di almeno 300 m "In arrivo". Al gruppo va solo lo stato.
-  const ARRIVE_M = 150, CLOSER_M = 300;
+  const ARRIVE_M = 200, CLOSER_M = 300;
   const lastDist = {};
   $('gDelay').addEventListener('change', async () => {
     const u = me(); if (!u || !group) return;
@@ -534,7 +535,8 @@
       const mine = g.outing_members.find(m => m.user_id === u.id);
       const d = metersBetween(pos, { lat: g.place.la, lng: g.place.lo });
       let state = null;
-      if (d <= ARRIVE_M) state = 'arrivato';
+      // l'indirizzo è un punto solo: i luoghi grandi hanno bisogno di margine, e tengo conto di quanto è incerto il GPS (fino a 100 m)
+      if (d - Math.min(pos.acc || 0, 100) <= ARRIVE_M) state = 'arrivato';
       else if (lastDist[g.id] != null && lastDist[g.id] - d >= CLOSER_M && mine.arrival !== 'in_arrivo') state = 'in_arrivo';
       if (lastDist[g.id] == null || state || d > lastDist[g.id]) lastDist[g.id] = d;
       if (!state) continue;
@@ -546,6 +548,19 @@
     }
   }
   setInterval(checkArrivals, 60000);
+  // Appena riapro l'app controllo subito, senza aspettare il minuto
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkArrivals(); });
+  // Se il GPS non ci arriva, lo dico io
+  $('gArrived').addEventListener('click', async () => {
+    const u = me(); if (!u || !group) return;
+    try {
+      const { error } = await sb.rpc('set_arrival', { oid: group.id, state: 'arrivato' });
+      if (error) throw error;
+      toast('Perfetto, ho detto al gruppo che sei arrivato');
+      const g = await fetchGroup(group.id);
+      if (g) { group = g; drawGroup(); }
+    } catch { toast('Non riesco ora, riprova'); }
+  });
   window.spotitCheckArrivals = checkArrivals;
   // Ora dell'uscita più lontana in quel posto (stesso nome o entro 150 m), per far durare l'appuntamento fino a dopo
   window.spotitOutingAt = p => {
