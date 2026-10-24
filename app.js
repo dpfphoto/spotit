@@ -750,6 +750,7 @@ function drawPlaceVerdicts(p) {
     if (v !== 'appuntamento') p.expiresAt = 0;
     persist(); render(); drawPlaceVerdicts(p);
   });
+  prepareShare(p);
   $('pExpireRow').hidden = p.verdict !== 'appuntamento';
   $('pExpire').checked = !!p.expiresAt;
   $('pExpireWhen').textContent = p.expiresAt
@@ -796,6 +797,11 @@ $('pKind').onchange = () => {
   const p = places.find(x => x.id === currentId);
   if (p) { p.kind = normKind($('pKind').value); $('pKind').value = p.kind; p.updatedAt = Date.now(); persist(); render(); }
 };
+let notePrep = 0;
+$('pNote').addEventListener('input', () => {
+  clearTimeout(notePrep);
+  notePrep = setTimeout(() => { const p = current(); if (p) prepareShare({ ...p, note: $('pNote').value.slice(0, 280) }); }, 700);
+});
 $('pNote').onchange = () => {
   const p = places.find(x => x.id === currentId);
   if (p) { p.note = $('pNote').value.slice(0, 280); persist(); }
@@ -824,11 +830,43 @@ function decode(str) {
 }
 function appUrl() { return location.origin + location.pathname; }
 
-function shareText(p) {
-  // Il mio nome va nel consiglio solo se l'ho permesso nel profilo
+// Il mio nome va nel consiglio solo se l'ho permesso nel profilo
+function shareData(p) {
   const name = prefs.showName ? prefs.name : '';
-  const data = { n: p.name, a: p.address, la: +p.lat.toFixed(6), lo: +p.lng.toFixed(6), v: p.verdict, t: p.note, b: name || undefined, g: p.gid || undefined };
-  const url = `${appUrl()}#s=${encode(data)}`;
+  return { n: p.name, a: p.address, la: +p.lat.toFixed(6), lo: +p.lng.toFixed(6), v: p.verdict, t: p.note || undefined, b: name || undefined, g: p.gid || undefined };
+}
+
+// Link corto: il posto si salva online (tabella shares) e nel link va solo un codice, es. wespot.me/#p=Ab3dE9x.
+// Lo preparo appena si apre la scheda, così al tocco su Condividi è già pronto (Safari non aspetta).
+// Se non è pronto o manca la rete, mando il vecchio link lungo, che funziona sempre.
+const SB_URL = (window.SPOTIT_CONFIG && window.SPOTIT_CONFIG.supabaseUrl) || '';
+const SB_KEY = (window.SPOTIT_CONFIG && window.SPOTIT_CONFIG.supabaseKey) || '';
+const shortLinks = new Map(); // dati del posto -> codice salvato (null = in corso)
+function sbRpc(fn, body) {
+  return fetch(`${SB_URL}/rest/v1/rpc/${fn}`, {
+    method: 'POST',
+    headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }).then(r => r.ok ? r.json() : Promise.reject(new Error(r.status)));
+}
+function prepareShare(p) {
+  if (!SB_URL || !SB_KEY || !p) return;
+  const key = JSON.stringify(shareData(p));
+  if (shortLinks.has(key)) return;
+  const abc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const sid = Array.from(crypto.getRandomValues(new Uint8Array(7)), b => abc[b % 62]).join('');
+  shortLinks.set(key, null);
+  sbRpc('create_share', { sid, d: JSON.parse(key) })
+    .then(ok => { if (ok === true) shortLinks.set(key, sid); else shortLinks.delete(key); })
+    .catch(() => shortLinks.delete(key));
+}
+
+function shareText(p) {
+  const data = shareData(p);
+  const name = data.b || '';
+  const sid = shortLinks.get(JSON.stringify(data));
+  const url = sid ? `${appUrl()}#p=${sid}` : `${appUrl()}#s=${encode(data)}`;
+  if (!sid) prepareShare(p);
   return { text: `${name ? name + ' ti consiglia' : 'Ti consigliano'} "${p.name}" (${V[p.verdict].label}) su WeSpot`, url };
 }
 function current() { return places.find(x => x.id === currentId); }
@@ -873,11 +911,22 @@ $('pShareMore').onclick = async () => {
 // Apertura di un link ricevuto da un amico
 let incoming = null;
 function checkIncoming() {
+  const short = location.hash.match(/^#p=([A-Za-z0-9]{6,12})/);
+  if (short) {
+    history.replaceState(null, '', appUrl());
+    sbRpc('get_share', { sid: short[1] })
+      .then(d => { if (d) showIncoming(d); else toast('Link non valido o scaduto'); })
+      .catch(() => toast('Non riesco ad aprire il link: controlla la rete e riprova'));
+    return;
+  }
   const m = location.hash.match(/^#s=([A-Za-z0-9_-]+)/);
   if (!m) return;
   history.replaceState(null, '', appUrl());
   let d;
   try { d = decode(m[1]); } catch { toast('Link non valido'); return; }
+  showIncoming(d);
+}
+function showIncoming(d) {
   const p = cleanPlace({ name: d.n, address: d.a, lat: d.la, lng: d.lo, verdict: d.v, note: d.t, from: d.b, gid: d.g, gphoto: d.f, gphotoBy: d.fb });
   if (!p) { toast('Link non valido'); return; }
   incoming = { ...p, mine: p.verdict === 'sconsigliato' ? 'sconsigliato' : 'andarci' };
@@ -1124,7 +1173,7 @@ $('iSave').onclick = () => {
 
 // ---------- Aggiornamenti ----------
 // Ogni pubblicazione alza APP_VERSION qui e in version.json: se online c'è un numero più alto propongo "Aggiorna"
-const APP_VERSION = 60;
+const APP_VERSION = 61;
 $('versionText').textContent = `Versione ${APP_VERSION}`;
 async function latestVersion() {
   const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
@@ -1227,7 +1276,7 @@ sweepExpired();
 setInterval(sweepExpired, 60000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) sweepExpired(); });
 setView('map');
-if (!/^#[sug]=/.test(location.hash) && !location.search) locate();
+if (!/^#[supg]=/.test(location.hash) && !location.search) locate();
 checkIncoming();
 checkInvite();
 checkShareTarget();
