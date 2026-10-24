@@ -60,7 +60,8 @@
   // Finita la festa: dopo 12 ore dall'inizio diventa "passato"
   function lateText(min) { return min > 60 ? 'oltre 1 ora' : min === 60 ? '1 ora' : `${min} minuti`; }
   function isPast(g) { return new Date(g.starts_at).getTime() + 12 * 3600000 < Date.now(); }
-  function groupUrl(id) { return `${appUrl()}#g=${id}`; }
+  // Link corto: bastano le prime 12 cifre del codice del gruppo (il resto lo trova il server, short-groups.sql)
+  function groupUrl(id) { return `${appUrl()}#g=${id.replace(/-/g, '').slice(0, 12)}`; }
   function asOuting(g) {
     const p = g.place || {};
     return { n: p.n, a: p.a, la: p.la, lo: p.lo, t: g.starts_at, m: g.note || undefined, b: g.owner_name || undefined };
@@ -953,7 +954,7 @@
   // ---------- Link d'invito ----------
 
   function checkGroupLink() {
-    const m = location.hash.match(/^#g=([0-9a-f-]{36})/);
+    const m = location.hash.match(/^#g=([0-9a-f-]{36}|[0-9a-f]{12})(?![0-9a-f-])/);
     if (!m) return;
     history.replaceState(null, '', appUrl());
     // Se devo ancora entrare, lo apro subito dopo l'accesso
@@ -964,7 +965,9 @@
     const id = load(PENDING_KEY, null);
     if (!id) return;
     localStorage.removeItem(PENDING_KEY);
-    openGroup(id);
+    if (UUID.test(id)) { openGroup(id); return; }
+    sb.rpc('outing_by_short', { s: id }).then(({ data }) => data ? openGroup(data) : toast('Questa uscita non esiste più'),
+      () => toast('Non riesco ad aprire l\'uscita ora. Riprova tra poco.'));
   }
   window.addEventListener('hashchange', checkGroupLink);
   checkGroupLink();
