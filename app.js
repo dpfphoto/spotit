@@ -836,12 +836,12 @@ function shareData(p) {
   return { n: p.name, a: p.address, la: +p.lat.toFixed(6), lo: +p.lng.toFixed(6), v: p.verdict, t: p.note || undefined, b: name || undefined, g: p.gid || undefined };
 }
 
-// Link corto: il posto si salva online (tabella shares) e nel link va solo un codice, es. wespot.me/#p=Ab3dE9x.
-// Lo preparo appena si apre la scheda, così al tocco su Condividi è già pronto (Safari non aspetta).
-// Se non è pronto o manca la rete, mando il vecchio link lungo, che funziona sempre.
+// Link corto: il posto (o l'invito) si salva online (tabella shares) e nel link va solo un codice, es. wespot.me/#p=Ab3dE9x.
+// Il codice lo creo qui sul telefono, così il link è pronto subito (Safari non aspetta) e il salvataggio parte insieme.
+// Per i posti lo preparo già all'apertura della scheda. Senza rete mando il vecchio link lungo, che funziona sempre.
 const SB_URL = (window.SPOTIT_CONFIG && window.SPOTIT_CONFIG.supabaseUrl) || '';
 const SB_KEY = (window.SPOTIT_CONFIG && window.SPOTIT_CONFIG.supabaseKey) || '';
-const shortLinks = new Map(); // dati del posto -> codice salvato (null = in corso)
+const shortLinks = new Map(); // dati -> codice
 function sbRpc(fn, body) {
   return fetch(`${SB_URL}/rest/v1/rpc/${fn}`, {
     method: 'POST',
@@ -849,24 +849,30 @@ function sbRpc(fn, body) {
     body: JSON.stringify(body)
   }).then(r => r.ok ? r.json() : Promise.reject(new Error(r.status)));
 }
-function prepareShare(p) {
-  if (!SB_URL || !SB_KEY || !p) return;
-  const key = JSON.stringify(shareData(p));
-  if (shortLinks.has(key)) return;
+function shortCode(obj) {
+  if (!SB_URL || !SB_KEY || !navigator.onLine) return '';
+  const key = JSON.stringify(obj);
+  if (shortLinks.has(key)) return shortLinks.get(key);
   const abc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   const sid = Array.from(crypto.getRandomValues(new Uint8Array(7)), b => abc[b % 62]).join('');
-  shortLinks.set(key, null);
-  sbRpc('create_share', { sid, d: JSON.parse(key) })
-    .then(ok => { if (ok === true) shortLinks.set(key, sid); else shortLinks.delete(key); })
+  shortLinks.set(key, sid);
+  // keepalive: il salvataggio finisce anche se si passa subito a WhatsApp
+  fetch(`${SB_URL}/rest/v1/rpc/create_share`, {
+    method: 'POST', keepalive: true,
+    headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sid, d: obj })
+  }).then(r => r.ok ? r.json() : false)
+    .then(ok => { if (ok !== true) shortLinks.delete(key); })
     .catch(() => shortLinks.delete(key));
+  return sid;
 }
+function prepareShare(p) { if (p) shortCode(shareData(p)); }
 
 function shareText(p) {
   const data = shareData(p);
   const name = data.b || '';
-  const sid = shortLinks.get(JSON.stringify(data));
+  const sid = shortCode(data);
   const url = sid ? `${appUrl()}#p=${sid}` : `${appUrl()}#s=${encode(data)}`;
-  if (!sid) prepareShare(p);
   return { text: `${name ? name + ' ti consiglia' : 'Ti consigliano'} "${p.name}" (${V[p.verdict].label}) su WeSpot`, url };
 }
 function current() { return places.find(x => x.id === currentId); }
@@ -915,7 +921,7 @@ function checkIncoming() {
   if (short) {
     history.replaceState(null, '', appUrl());
     sbRpc('get_share', { sid: short[1] })
-      .then(d => { if (d) showIncoming(d); else toast('Link non valido o scaduto'); })
+      .then(d => { if (!d) toast('Link non valido o scaduto'); else if (d.k === 'u') showInvite(d.o || {}); else showIncoming(d); })
       .catch(() => toast('Non riesco ad aprire il link: controlla la rete e riprova'));
     return;
   }
@@ -1056,7 +1062,8 @@ function readOuting() {
 }
 function inviteText(o) {
   const who = prefs.name || 'Un amico';
-  const url = `${appUrl()}#u=${encode(o)}`;
+  const sid = shortCode({ k: 'u', o });
+  const url = sid ? `${appUrl()}#p=${sid}` : `${appUrl()}#u=${encode(o)}`;
   return `${who} ti invita da "${o.n}" ${whenLabel(o.t)}${o.m ? ` (${o.m})` : ''}. Apri per sapere quando partire: ${url}`;
 }
 $('oWhatsapp').onclick = () => {
@@ -1135,6 +1142,9 @@ async function checkInvite() {
   history.replaceState(null, '', appUrl());
   let o;
   try { o = decode(m[1]); } catch { toast('Invito non valido'); return; }
+  showInvite(o);
+}
+async function showInvite(o) {
   const p = cleanPlace({ name: o.n, address: o.a, lat: o.la, lng: o.lo, gid: o.g, gphoto: o.f, gphotoBy: o.fb, from: o.b, verdict: 'andarci' });
   if (!p || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(o.t || '')) { toast('Invito non valido'); return; }
   invite = { o: { ...o, n: p.name, a: p.address, b: p.from, m: String(o.m || '').slice(0, 120) }, p, travel: null };
