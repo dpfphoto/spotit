@@ -309,7 +309,9 @@
         el('span', { class: 'm-name' }, m.name + (isMe ? ' (tu)' : ''),
           phone ? el('small', { class: 'm-phone' }, '+' + phone) : ''),
         (m.delay_min > 0 && m.arrival !== 'arrivato' && (m.status === 'si' || m.status === 'forse')) ? el('span', { class: 'm-status late' }, (m.delay_min > 60 ? '⏱ oltre 1 ora' : `⏱ +${m.delay_min} min`)) : '',
-        el('span', { class: `m-status ${st.cls}` }, st.label),
+        isMe && m.status === 'si' && m.arrival === 'arrivato' && !isPast(g)
+          ? el('button', { type: 'button', class: `m-status ${st.cls}`, title: 'Tocca se non sei ancora arrivato', onclick: undoArrival }, st.label)
+          : el('span', { class: `m-status ${st.cls}` }, st.label),
         phone ? el('a', {
           class: 'm-wa', target: '_blank', rel: 'noopener', 'aria-label': `Manda l'invito a ${m.name} su WhatsApp`,
           href: `https://wa.me/${phone}?text=${encodeURIComponent(inviteText(g, m.name))}`
@@ -334,6 +336,7 @@
     $('gArriveBox').hidden = !(mine && mine.status === 'si') || isPast(g);
     $('gArrive').checked = prefs.shareArrival !== false;
     $('gArrived').hidden = !(mine && mine.status === 'si' && mine.arrival !== 'arrivato') || isPast(g);
+    $('gNotArrived').hidden = !(mine && mine.status === 'si' && mine.arrival === 'arrivato') || isPast(g);
     $('gDelayBox').hidden = !(mine && (mine.status === 'si' || mine.status === 'forse') && mine.arrival !== 'arrivato') || isPast(g);
     $('gDelay').value = String((mine && mine.delay_min) || 0);
     $('gCoverDel').hidden = !(g.place && g.place.c);
@@ -502,6 +505,9 @@
   // se mi sono avvicinato di almeno 300 m "In arrivo". Al gruppo va solo lo stato.
   const ARRIVE_M = 200, CLOSER_M = 300;
   const lastDist = {};
+  // Uscite dove ho tolto "Arrivato" a mano: lì il GPS non lo rimette da solo (resta il pulsante)
+  let noAuto = {};
+  try { noAuto = JSON.parse(localStorage.getItem('spotit.noAutoArrive') || '{}'); } catch {}
   $('gDelay').addEventListener('change', async () => {
     const u = me(); if (!u || !group) return;
     const minutes = Number($('gDelay').value);
@@ -537,7 +543,7 @@
       const d = metersBetween(pos, { lat: g.place.la, lng: g.place.lo });
       let state = null;
       // l'indirizzo è un punto solo: i luoghi grandi hanno bisogno di margine, e tengo conto di quanto è incerto il GPS (fino a 100 m)
-      if (d - Math.min(pos.acc || 0, 100) <= ARRIVE_M) state = 'arrivato';
+      if (d - Math.min(pos.acc || 0, 100) <= ARRIVE_M) { if (!noAuto[g.id]) state = 'arrivato'; }
       else if (lastDist[g.id] != null && lastDist[g.id] - d >= CLOSER_M && mine.arrival !== 'in_arrivo') state = 'in_arrivo';
       if (lastDist[g.id] == null || state || d > lastDist[g.id]) lastDist[g.id] = d;
       if (!state) continue;
@@ -562,6 +568,23 @@
       if (g) { group = g; drawGroup(); }
     } catch { toast('Non riesco ora, riprova'); }
   });
+  // Mi sono segnato arrivato per sbaglio: torno a "Ci sono"
+  async function undoArrival() {
+    const u = me(); if (!u || !group) return;
+    const mine = group.members.find(m => m.user_id === u.id);
+    if (!mine) return;
+    try {
+      // la riga è mia: la regola "risposta propria" mi lascia cambiarla anche senza set_arrival
+      const { error } = await sb.from('outing_members').update({ arrival: '', arrival_at: null }).eq('id', mine.id);
+      if (error) throw error;
+      noAuto[group.id] = Date.now();
+      try { localStorage.setItem('spotit.noAutoArrive', JSON.stringify(noAuto)); } catch {}
+      toast('Fatto: per il gruppo non sei ancora arrivato');
+      const g = await fetchGroup(group.id);
+      if (g) { group = g; drawGroup(); }
+    } catch { toast('Non riesco ora, riprova'); }
+  }
+  $('gNotArrived').addEventListener('click', undoArrival);
   window.spotitCheckArrivals = checkArrivals;
   // Ora dell'uscita più lontana in quel posto (stesso nome o entro 150 m), per far durare l'appuntamento fino a dopo
   window.spotitOutingAt = p => {
