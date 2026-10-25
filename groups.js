@@ -309,8 +309,8 @@
         el('span', { class: 'm-name' }, m.name + (isMe ? ' (tu)' : ''),
           phone ? el('small', { class: 'm-phone' }, '+' + phone) : ''),
         (m.delay_min > 0 && m.arrival !== 'arrivato' && (m.status === 'si' || m.status === 'forse')) ? el('span', { class: 'm-status late' }, (m.delay_min > 60 ? '⏱ oltre 1 ora' : `⏱ +${m.delay_min} min`)) : '',
-        isMe && m.status === 'si' && m.arrival === 'arrivato' && !isPast(g)
-          ? el('button', { type: 'button', class: `m-status ${st.cls}`, title: 'Tocca se non sei ancora arrivato', onclick: undoArrival }, st.label)
+        isMe && m.status === 'si' && ARRIVAL[m.arrival] && !isPast(g)
+          ? el('button', { type: 'button', class: `m-status ${st.cls}`, title: 'Tocca per annullare', onclick: undoArrival }, st.label)
           : el('span', { class: `m-status ${st.cls}` }, st.label),
         phone ? el('a', {
           class: 'm-wa', target: '_blank', rel: 'noopener', 'aria-label': `Manda l'invito a ${m.name} su WhatsApp`,
@@ -336,7 +336,9 @@
     $('gArriveBox').hidden = !(mine && mine.status === 'si') || isPast(g);
     $('gArrive').checked = prefs.shareArrival !== false;
     $('gArrived').hidden = !(mine && mine.status === 'si' && mine.arrival !== 'arrivato') || isPast(g);
-    $('gNotArrived').hidden = !(mine && mine.status === 'si' && mine.arrival === 'arrivato') || isPast(g);
+    $('gComing').hidden = !(mine && mine.status === 'si' && !mine.arrival) || isPast(g);
+    $('gNotArrived').hidden = !(mine && mine.status === 'si' && mine.arrival) || isPast(g);
+    $('gNotArrived').textContent = mine && mine.arrival === 'in_arrivo' ? '↩️ Non sto ancora arrivando' : '↩️ Non sono ancora arrivato';
     $('gDelayBox').hidden = !(mine && (mine.status === 'si' || mine.status === 'forse') && mine.arrival !== 'arrivato') || isPast(g);
     $('gDelay').value = String((mine && mine.delay_min) || 0);
     $('gCoverDel').hidden = !(g.place && g.place.c);
@@ -550,6 +552,7 @@
       const { error } = await sb.rpc('set_arrival', { oid: g.id, state });
       if (error) continue;
       mine.arrival = state;
+      callNotify({ action: 'arrival', outing_id: g.id }).catch(() => {});
       if (state === 'arrivato') toast(`Sei arrivato a "${g.place.n}": l'ho detto al gruppo`);
       if (group && group.id === g.id) refresh();
     }
@@ -563,6 +566,7 @@
     try {
       const { error } = await sb.rpc('set_arrival', { oid: group.id, state: 'arrivato' });
       if (error) throw error;
+      callNotify({ action: 'arrival', outing_id: group.id }).catch(() => {});
       toast('Perfetto, ho detto al gruppo che sei arrivato');
       const g = await fetchGroup(group.id);
       if (g) { group = g; drawGroup(); }
@@ -577,14 +581,28 @@
       // la riga è mia: la regola "risposta propria" mi lascia cambiarla anche senza set_arrival
       const { error } = await sb.from('outing_members').update({ arrival: '', arrival_at: null }).eq('id', mine.id);
       if (error) throw error;
-      noAuto[group.id] = Date.now();
-      try { localStorage.setItem('spotit.noAutoArrive', JSON.stringify(noAuto)); } catch {}
-      toast('Fatto: per il gruppo non sei ancora arrivato');
+      if (mine.arrival === 'arrivato') {
+        noAuto[group.id] = Date.now();
+        try { localStorage.setItem('spotit.noAutoArrive', JSON.stringify(noAuto)); } catch {}
+      }
+      toast(mine.arrival === 'arrivato' ? 'Fatto: per il gruppo non sei ancora arrivato' : 'Fatto: per il gruppo non stai ancora arrivando');
       const g = await fetchGroup(group.id);
       if (g) { group = g; drawGroup(); }
     } catch { toast('Non riesco ora, riprova'); }
   }
   $('gNotArrived').addEventListener('click', undoArrival);
+  // "In arrivo" anche a mano, senza aspettare il GPS
+  $('gComing').addEventListener('click', async () => {
+    const u = me(); if (!u || !group) return;
+    try {
+      const { error } = await sb.rpc('set_arrival', { oid: group.id, state: 'in_arrivo' });
+      if (error) throw error;
+      callNotify({ action: 'arrival', outing_id: group.id }).catch(() => {});
+      toast('Ok, il gruppo vede che stai arrivando');
+      const g = await fetchGroup(group.id);
+      if (g) { group = g; drawGroup(); }
+    } catch { toast('Non riesco ora, riprova'); }
+  });
   window.spotitCheckArrivals = checkArrivals;
   // Ora dell'uscita più lontana in quel posto (stesso nome o entro 150 m), per far durare l'appuntamento fino a dopo
   window.spotitOutingAt = p => {

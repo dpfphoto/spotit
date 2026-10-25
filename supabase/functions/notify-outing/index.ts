@@ -1,4 +1,5 @@
-// Notifiche push: l'organizzatore quando un amico risponde "Ci sono", chi partecipa quando l'uscita viene annullata,
+// Notifiche push: l'organizzatore quando un amico risponde "Ci sono", chi partecipa quando l'uscita viene annullata
+// o quando qualcuno ritarda, sta arrivando o è arrivato,
 // e il promemoria prima dell'uscita (azione 'tick', chiamata ogni 5 minuti da pg_cron).
 // Le chiavi per le notifiche (VAPID) le crea questa funzione al primo uso e restano nel database.
 import webpush from 'npm:web-push@3.6.7';
@@ -136,6 +137,27 @@ Deno.serve(async req => {
         title: `${mine.name} ritarda ${mine.delay_min > 60 ? 'di oltre 1 ora' : mine.delay_min === 60 ? 'di 1 ora' : 'di ' + mine.delay_min + ' minuti'}`,
         body: `Per "${(o.place && o.place.n) || 'l\'uscita'}" delle ${hhmm(o.starts_at)}`,
         url: `${APP_URL}#g=${o.id}`, tag: `ritardo-${o.id}-${user.id}`
+      }, 1800);
+      return json({ sent });
+    }
+
+    // "Sta arrivando" / "È arrivato": avviso tutto il gruppo (una volta per ogni stato segnato)
+    if (body.action === 'arrival' && typeof body.outing_id === 'string') {
+      const { data: o } = await admin.from('outings').select('id, place, starts_at, outing_members(user_id, name, status, arrival, arrival_at)').eq('id', body.outing_id).maybeSingle();
+      if (!o) return json({ sent: 0 });
+      const mem = (o.outing_members || []) as { user_id: string | null; name: string; status: string; arrival: string; arrival_at: string | null }[];
+      const mine = mem.find(m => m.user_id === user.id);
+      if (!mine || mine.status !== 'si' || !['in_arrivo', 'arrivato'].includes(mine.arrival)) return json({ sent: 0 });
+      const { error: dup } = await admin.from('push_sent').insert({ key: `arrivo|${o.id}|${user.id}|${mine.arrival}|${mine.arrival_at}` });
+      if (dup) return json({ sent: 0 });
+      const users = [...new Set(mem.filter(m => m.user_id && m.user_id !== user.id && (m.status === 'si' || m.status === 'forse')).map(m => m.user_id as string))];
+      if (!users.length) return json({ sent: 0 });
+      const { data: subs } = await admin.from('push_subscriptions').select('endpoint, p256dh, auth, sound').in('user_id', users);
+      const here = mine.arrival === 'arrivato';
+      const sent = await pushTo(subs || [], {
+        title: here ? `📍 ${mine.name} è arrivato` : `🚗 ${mine.name} sta arrivando`,
+        body: `A "${(o.place && o.place.n) || 'l\'uscita'}" delle ${hhmm(o.starts_at)}`,
+        url: `${APP_URL}#g=${o.id}`, tag: `arrivo-${o.id}-${user.id}`
       }, 1800);
       return json({ sent });
     }
