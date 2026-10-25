@@ -503,7 +503,7 @@
   };
 
   // ---------- Arrivi ----------
-  // Da 2 ore prima a 4 ore dopo l'inizio, con l'app aperta: entro 150 m "Arrivato",
+  // Da 2 ore prima a 4 ore dopo l'inizio, con l'app aperta, ogni 20 secondi: vicino al posto "Arrivato",
   // se mi sono avvicinato di almeno 300 m "In arrivo". Al gruppo va solo lo stato.
   const ARRIVE_M = 200, CLOSER_M = 300;
   const lastDist = {};
@@ -557,7 +557,7 @@
       if (group && group.id === g.id) refresh();
     }
   }
-  setInterval(checkArrivals, 60000);
+  setInterval(checkArrivals, 20000);
   // Appena riapro l'app controllo subito, senza aspettare il minuto
   document.addEventListener('visibilitychange', () => { if (!document.hidden) checkArrivals(); });
   // Se il GPS non ci arriva, lo dico io
