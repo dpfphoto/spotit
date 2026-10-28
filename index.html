@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="WeSpot">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=63">
+<link rel="stylesheet" href="styles.css?v=64">
 </head>
 <body>
 <header class="top">
@@ -411,7 +411,12 @@
     </form>
     <div id="gAddress" class="muted"></div>
     <div id="gWhen" class="when"></div>
+    <form id="gWhenForm" class="note-form" hidden>
+      <div class="row"><label class="mini-label">Giorno<input id="gWhenDate" type="date" required></label><label class="mini-label">Ora<input id="gWhenTime" type="time" required></label></div>
+      <div class="row"><button type="submit" class="btn small">Salva</button><button type="button" id="gWhenCancel" class="btn ghost small">Annulla</button></div>
+    </form>
     <p id="gNote" class="quote" hidden></p>
+    <button type="button" id="gWhenEdit" class="link-btn" hidden>🕒 Modifica data e ora</button>
     <button type="button" id="gNameEdit" class="link-btn" hidden>✏️ Modifica titolo e scritta in alto</button>
     <button type="button" id="gNoteEdit" class="link-btn" hidden>✏️ Modifica la nota</button>
     <form id="gNoteForm" class="note-form" hidden>
@@ -558,11 +563,11 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=63"></script>
-<script src="app.js?v=63"></script>
+<script src="config.js?v=64"></script>
+<script src="app.js?v=64"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=63"></script>
-<script src="groups.js?v=63"></script>
-<script src="layers.js?v=63"></script>
+<script src="account.js?v=64"></script>
+<script src="groups.js?v=64"></script>
+<script src="layers.js?v=64"></script>
 </body>
 </html>

@@ -236,6 +236,7 @@
     $('gLeaveGroup').textContent = ev ? 'Togli dalla mia mappa' : 'Esci dal gruppo';
     $('gNoteForm').hidden = true;
     $('gNameForm').hidden = true; $('gName').hidden = false;
+    $('gWhenForm').hidden = true; $('gWhen').hidden = false;
     showNote(g);
     $('gRoute').href = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;
     drawGroup();
@@ -329,6 +330,7 @@
     $('gCoverBox').hidden = !isOwner;
     $('gNoteEdit').hidden = !isOwner || !$('gNoteForm').hidden;
     $('gNameEdit').hidden = !isOwner || !$('gNameForm').hidden;
+    $('gWhenEdit').hidden = !isOwner || !$('gWhenForm').hidden;
     const pl = g.place || {};
     $('gAppt').hidden = isEvent(g) || pl.la == null || !window.spotitMyVerdict
       || window.spotitMyVerdict({ name: pl.n || '', lat: pl.la, lng: pl.lo }) === 'appuntamento';
@@ -487,6 +489,30 @@
       $('gNameForm').hidden = true; $('gName').hidden = false;
       drawGroup(); loadUpcoming();
       toast('Salvato');
+    } catch { toast('Non riesco a salvare ora. Riprova.'); }
+  };
+  $('gWhenEdit').onclick = () => {
+    if (!group) return;
+    [$('gWhenDate').value, $('gWhenTime').value] = group.starts_at.split('T');
+    $('gWhenForm').hidden = false; $('gWhen').hidden = true; $('gWhenEdit').hidden = true;
+    $('gWhenDate').focus();
+  };
+  $('gWhenCancel').onclick = () => { $('gWhenForm').hidden = true; $('gWhen').hidden = false; drawGroup(); };
+  $('gWhenForm').onsubmit = async e => {
+    e.preventDefault();
+    if (!group) return;
+    const starts_at = `${$('gWhenDate').value}T${$('gWhenTime').value.slice(0, 5)}`;
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(starts_at)) { toast('Scegli giorno e ora'); return; }
+    if (starts_at === group.starts_at) { $('gWhenCancel').onclick(); return; }
+    try {
+      const { error } = await sb.from('outings').update({ starts_at }).eq('id', group.id);
+      if (error) throw error;
+      // Con il nuovo orario ritardi e arrivi di prima non valgono più
+      const stale = (group.members || []).filter(m => m.arrival || m.delay_min).map(m => m.id);
+      if (stale.length) { try { await sb.from('outing_members').update({ arrival: '', arrival_at: null, delay_min: 0 }).in('id', stale); } catch { /* restano quelli di prima */ } }
+      await openGroup(group.id);
+      loadUpcoming();
+      toast('Nuovo orario salvato: gli invitati lo vedono nella campanella');
     } catch { toast('Non riesco a salvare ora. Riprova.'); }
   };
   $('gNoteCancel').onclick = () => { $('gNoteForm').hidden = true; drawGroup(); };
