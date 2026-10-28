@@ -358,6 +358,12 @@ button.m-status { border: 0; font-family: inherit; cursor: pointer; }
 .gate-sub { margin: 0 0 4px; font-size: 14px; }
 .gate-welcome .gsi-btn { margin-top: 16px; }
 .gate-card .small { margin-top: 10px; }
+.inapp-box { background: #fff4e5; border: 1px solid #f0b46a; border-radius: 14px; padding: 12px; margin: 10px 0 14px; text-align: left; font-size: 15px; line-height: 1.35; }
+.inapp-box p { margin: 0 0 8px; }
+.inapp-box .row { gap: 8px; }
+.inapp-box .btn { text-decoration: none; text-align: center; }
+.inapp-box.flash { animation: inappFlash .6s 2; }
+@keyframes inappFlash { 50% { background: #ffd9a8; } }
 
 .gate-shots { margin: 22px -24px 22px; }
 .gate-shots h3 { margin: 0 24px 10px; font-size: 16px; color: #fff; text-align: left; }

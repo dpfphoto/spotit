@@ -316,6 +316,34 @@
   sb.auth.onAuthStateChange((_event, session) => { onUser(session ? session.user : null); });
   sb.auth.getSession().then(({ data }) => onUser(data.session ? data.session.user : null));
 
+  // Link aperto dentro WhatsApp, Instagram, Facebook...: Google blocca l'accesso in quei browser
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  const appName = (ua.match(/WhatsApp|Instagram|FBAN|FBAV|FB_IAB|Messenger|Telegram|Line\/|MicroMessenger|Snapchat|TikTok|musical_ly|LinkedInApp|Pinterest|Twitter|GSA\//) || [''])[0];
+  const inApp = !!appName
+    || (isIOS && !/Safari\//.test(ua) && !navigator.standalone && !matchMedia('(display-mode: standalone)').matches)
+    || (/Android/.test(ua) && /; wv\)/.test(ua));
+  const appLabel = /WhatsApp/.test(appName) ? 'WhatsApp' : /Instagram/.test(appName) ? 'Instagram'
+    : /FB|Messenger/.test(appName) ? 'Facebook' : /Telegram/.test(appName) ? 'Telegram' : '';
+  function showInAppHelp(flash) {
+    const box = $('inAppBox');
+    box.hidden = false;
+    if (flash) { box.classList.remove('flash'); void box.offsetWidth; box.classList.add('flash'); box.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+  }
+  if (inApp) {
+    const here = location.origin + location.pathname;
+    if (appLabel) $('inAppTxt').innerHTML = `Sei nel browser di <b>${appLabel}</b>: da qui Google non permette di entrare. Tocca i tre puntini <b>•••</b> e scegli <b>Apri nel browser</b>${isIOS ? ' (Safari)' : ''}, oppure usa i pulsanti qui sotto.`;
+    // iPhone (iOS 17+) apre Safari con x-safari-https, Android apre Chrome con un intent
+    $('inAppOpen').href = isIOS ? 'x-safari-' + here
+      : `intent://${here.replace(/^https?:\/\//, '')}#Intent;scheme=https;S.browser_fallback_url=${encodeURIComponent(here)};end`;
+    $('inAppOpen').textContent = isIOS ? 'Apri in Safari' : 'Apri in Chrome';
+    $('inAppCopy').onclick = async () => {
+      try { await navigator.clipboard.writeText(here); toast('Link copiato: incollalo in Safari o Chrome'); }
+      catch { prompt('Copia questo link e aprilo in Safari o Chrome:', here); }
+    };
+    showInAppHelp(false);
+  }
+
   // Accesso con Google dentro l'app (Google mostra "WeSpot"): il pulsante lo disegna Google
   const gsiBox = $('gsiBtn');
   function showClassicGoogle() {
@@ -358,7 +386,8 @@
     });
     $('accGoogleAlt').hidden = false;
   }
-  if (CFG.googleClientId) {
+  if (inApp) showClassicGoogle(); // il pulsante di Google non funziona in questi browser
+  else if (CFG.googleClientId) {
     const s = document.createElement('script');
     s.src = 'https://accounts.google.com/gsi/client?hl=it';
     s.async = true;
@@ -371,7 +400,13 @@
 
   // Accesso con Google classico, passando dalla pagina di Google (riserva)
   $('accGoogle').onclick = async () => {
+    if (inApp) { $('accMsg').textContent = ''; showInAppHelp(true); return; }
     $('accMsg').textContent = 'Ti porto da Google…';
+    // Se dopo qualche secondo siamo ancora qui, probabilmente il browser blocca Google
+    setTimeout(() => { if (document.visibilityState === 'visible' && $('accMsg').textContent === 'Ti porto da Google…') {
+      $('accMsg').textContent = 'Non si apre? Apri wespot.me in Safari o Chrome e riprova.';
+      showInAppHelp(true);
+    } }, 6000);
     const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: appUrl() } });
     if (error) $('accMsg').textContent = 'Accesso con Google non disponibile ora. Riprova tra poco.';
   };
