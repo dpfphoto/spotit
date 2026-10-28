@@ -384,3 +384,8 @@ button.m-status { border: 0; font-family: inherit; cursor: pointer; }
 .field-inline { display: flex; flex-direction: column; gap: 6px; font-weight: 600; margin: 8px 0; }
 .field-inline select { font: inherit; padding: 10px; border-radius: 12px; border: 1px solid var(--line, #E5E7EB); background: #fff; }
 .m-status.late { background: #FFEDD5; color: #9A3412; margin-right: 6px; }
+.edit-icons { display: flex; align-self: stretch; justify-content: center; gap: 10px; margin-top: 10px; }
+.edit-icons:not(:has(.icon-edit:not([hidden]))) { display: none; }
+.icon-edit { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 64px; padding: 6px 10px; border: 1px solid #D1D5DB; border-radius: 12px; background: #fff; color: var(--accent, #0F766E); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.icon-edit span { font-size: 20px; line-height: 1; }
+.icon-edit[hidden] { display: none; }
