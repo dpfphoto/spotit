@@ -334,7 +334,7 @@
     const pl = g.place || {};
     $('gAppt').hidden = isEvent(g) || pl.la == null || !window.spotitMyVerdict
       || window.spotitMyVerdict({ name: pl.n || '', lat: pl.la, lng: pl.lo }) === 'appuntamento';
-    $('gNoteEdit').textContent = g.note ? '✏️ Modifica la nota' : '✏️ Aggiungi una nota';
+    $('gNoteEdit').title = g.note ? 'Modifica la nota' : 'Aggiungi una nota';
     $('gArriveBox').hidden = !(mine && mine.status === 'si') || isPast(g);
     $('gArrive').checked = prefs.shareArrival !== false;
     $('gArrived').hidden = !(mine && mine.status === 'si' && mine.arrival !== 'arrivato') || isPast(g);
