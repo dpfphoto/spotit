@@ -220,6 +220,7 @@ button.m-status { border: 0; font-family: inherit; cursor: pointer; }
 .note-form { margin-top: 8px; }
 .note-form textarea, .note-form input { width: 100%; box-sizing: border-box; font: inherit; padding: 10px; border: 1px solid #D1D5DB; border-radius: 12px; resize: vertical; }
 .note-form .row { display: flex; gap: 8px; margin-top: 6px; }
+.note-form .row .mini-label { flex: 1; min-width: 0; margin-top: 0; }
 .m-status.wait { background: var(--soft); color: var(--muted); }
 .m-wa { font-size: 12px; font-weight: 700; color: #fff; background: #128C4B; padding: 6px 10px; border-radius: 10px; text-decoration: none; }
 .m-del { border: 0; background: none; color: var(--muted); font-size: 16px; width: 36px; height: 36px; border-radius: 18px; }
