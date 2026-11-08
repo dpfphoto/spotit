@@ -473,3 +473,11 @@ button.m-status { border: 0; font-family: inherit; cursor: pointer; }
 .tag-kind[aria-checked="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
 .tag-seen-top { border-bottom: 1px solid #E2E8F0; padding-bottom: 6px; margin-bottom: 8px; }
 .tag-seen-top h3 { margin-top: 0; color: #B45309; }
+
+/* Tag NFC: passaggi e esito della scrittura */
+.tag-steps { margin: 8px 0 4px; padding-left: 22px; font-size: 15px; line-height: 1.45; }
+.tag-steps li { margin: 4px 0; }
+.nfc-msg { margin: 10px 0 4px; padding: 14px 16px; border-radius: 14px; font-weight: 700; font-size: 17px; line-height: 1.35; text-align: center; border: 2px solid transparent; }
+.nfc-msg.wait { background: #FEF3C7; color: #92400E; border-color: #F59E0B; }
+.nfc-msg.ok { background: #DCFCE7; color: #166534; border-color: #16A34A; }
+.nfc-msg.err { background: #FEE2E2; color: #991B1B; border-color: #DC2626; }
