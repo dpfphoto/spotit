@@ -113,7 +113,8 @@ Deno.serve(async req => {
       const { data: subs } = await admin.from('push_subscriptions').select('endpoint, p256dh, auth, sound').eq('user_id', t.owner);
       const note = String(s.note || '');
       const sent = await pushTo(subs || [], {
-        title: t.kind === 'casco' ? `⛑️ Qualcuno ha letto il casco${t.name ? ' di ' + t.name : ''}`
+        title: t.kind === 'dpi' || t.kind === 'casco' ? `⛑️ Qualcuno ha letto il DPI${t.name ? ' di ' + t.name : ''}`
+          : t.kind === 'abiti' ? `👕 Qualcuno ha trovato ${t.name || 'il tuo capo'}`
           : t.kind === 'oggetto' ? `🔑 Qualcuno ha trovato ${t.name || 'il tuo oggetto'}`
           : t.kind === 'altro' ? `📲 Qualcuno ha letto il tag ${t.name || ''}`.trim()
           : `🐾 Qualcuno ha trovato ${t.name || 'il tuo animale'}`,

@@ -118,7 +118,7 @@
   </footer>
 </main>
 
-<script src="config.js?v=71"></script>
+<script src="config.js?v=72"></script>
 <script>
 (function () {
   const CFG = window.SPOTIT_CONFIG || {};
@@ -149,11 +149,14 @@
   const KINDS = {
     animale: { ico: '🐾', title: n => n ? `Ciao! Mi chiamo ${n}` : 'Mi hai trovato!', who: 'il padrone', wa: n => `Ciao, ho trovato ${n || 'il tuo animale'}!`,
       sendTitle: 'Avvisa il padrone', sendInfo: 'Gli mandi la posizione di questo telefono, così sa dove è il suo animale. Il messaggio e il numero sono facoltativi.',
-      send: '📍 Invia la mia posizione al padrone', note: 'Es. È con me al bar della piazza, ti aspetto qui' },
-    casco: { ico: '⛑️', title: n => n ? `Casco di ${n}` : 'Casco', who: 'chi ha registrato il casco', wa: n => `Ciao, ho letto il casco${n ? ' di ' + n : ''}.`,
-      msgLabel: 'Informazioni di emergenza', callLabel: 'Contatto di emergenza', sos: true,
-      sendTitle: 'Invia la posizione', sendInfo: 'Mandi la posizione di questo telefono a chi ha registrato il casco. Il messaggio e il numero sono facoltativi.',
-      send: '📍 Invia la posizione', note: 'Es. È caduto in via Roma, è cosciente, ho chiamato il 112' },
+      send: '📍 Invia la mia posizione al padrone', note: 'Es. È con me al bar della piazza, ti aspetto qui', sos: true },
+    dpi: { ico: '⛑️', title: n => n ? `DPI di ${n}` : 'Dispositivo di protezione', who: 'chi ha registrato il DPI', wa: n => `Ciao, ho letto il DPI${n ? ' di ' + n : ''}.`,
+      msgLabel: 'Informazioni di emergenza', callLabel: 'Contatto di emergenza',
+      sendTitle: 'Invia la posizione', sendInfo: 'Mandi la posizione di questo telefono a chi ha registrato il DPI. Il messaggio e il numero sono facoltativi.',
+      send: '📍 Invia la posizione', note: 'Es. L\'ho trovato in via Roma, davanti al bar' },
+    abiti: { ico: '👕', title: n => n ? `Hai trovato: ${n}` : 'Hai trovato un capo smarrito', who: 'il proprietario', wa: n => `Ciao, ho trovato ${n || 'il tuo capo'}!`,
+      sendTitle: 'Avvisa il proprietario', sendInfo: 'Gli mandi la posizione di questo telefono, così sa dove è il suo capo. Il messaggio e il numero sono facoltativi.',
+      send: '📍 Invia la mia posizione al proprietario', note: 'Es. L\'ho lasciata al bar della piazza' },
     oggetto: { ico: '🔑', title: n => n ? `Hai trovato: ${n}` : 'Hai trovato un oggetto smarrito', who: 'il proprietario', wa: n => `Ciao, ho trovato ${n || 'il tuo oggetto'}!`,
       sendTitle: 'Avvisa il proprietario', sendInfo: 'Gli mandi la posizione di questo telefono, così sa dove è il suo oggetto. Il messaggio e il numero sono facoltativi.',
       send: '📍 Invia la mia posizione al proprietario', note: 'Es. Le ho lasciate al bar della piazza' },
@@ -165,7 +168,7 @@
 
   function show(t) {
     tag = t;
-    K = KINDS[t.kind] || KINDS.animale;
+    K = KINDS[t.kind === 'casco' ? 'dpi' : t.kind] || KINDS.animale;
     $('pawBig').textContent = K.ico;
     $('sendTitle').textContent = K.sendTitle; $('sendInfo').textContent = K.sendInfo;
     $('send').textContent = K.send; $('note').placeholder = K.note;
