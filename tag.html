@@ -236,7 +236,7 @@
       // con il messaggio già scritto (posizione su Google Maps, apribile da qualsiasi telefono)
       if (tag.phone) {
         const lines = [K.wa(String(tag.name || '').trim())];
-        if (lat != null) lines.push(`Siamo qui: https://maps.google.com/?q=${lat.toFixed(6)},${lng.toFixed(6)}`);
+        if (lat != null) lines.push(`Siamo qui: https://wespot.me/dove.html#${lat.toFixed(6)},${lng.toFixed(6)},${Math.round(Date.now() / 1000)},${encodeURIComponent(String(tag.name || '').trim().replace(/,/g, ' '))}`);
         const note = $('note').value.trim(); if (note) lines.push(note);
         const mine = $('phone').value.trim(); if (mine) lines.push(`Il mio numero: ${mine}`);
         const waUrl = `https://wa.me/${waNumber(tag.phone)}?text=${encodeURIComponent(lines.join('\n'))}`;
