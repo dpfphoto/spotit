@@ -1,4 +1,4 @@
-// Tag NFC (medaglietta dell'animale, casco, oggetto...): sul tag va il link wespot.me/#t=<codice>.
+// Tag NFC (medaglietta dell'animale, DPI, abiti, oggetti...): sul tag va il link wespot.me/#t=<codice>.
 // Chi la legge vede la pagina tag.html (senza account) e può mandare al padrone la sua posizione.
 // Qui il padrone crea le medagliette, le scrive (Android con Chrome) e vede le segnalazioni sulla mappa.
 
@@ -16,9 +16,12 @@
     animale: { ico: '🐾', label: 'Animale', name: "Nome dell'animale", namePh: 'Es. Fido', msg: 'Messaggio per chi lo trova',
       msgPh: 'Es. Mi sono perso! Sono buono. Microchip 380…. Per favore avvisa il mio padrone, grazie.', phone: 'Il tuo telefono (facoltativo, lo vede chi legge il tag)',
       found: n => `Qualcuno ha trovato ${n || 'il tuo animale'}` },
-    casco: { ico: '⛑️', label: 'Casco', name: 'Nome di chi lo indossa', namePh: 'Es. Flavio Di Properzio', msg: 'Informazioni di emergenza',
-      msgPh: 'Es. Gruppo sanguigno 0+. Allergie: nessuna. Farmaci: nessuno. Avvisare: Maria (moglie).', phone: 'Telefono del contatto di emergenza (lo vede chi legge il tag)',
-      found: n => `Qualcuno ha letto il casco${n ? ' di ' + n : ''}` },
+    dpi: { ico: '⛑️', label: 'DPI', name: 'Di chi è', namePh: 'Es. Flavio Di Properzio', msg: 'Informazioni di emergenza',
+      msgPh: 'Es. Casco G.O.S. Roma. Gruppo sanguigno 0+. Allergie: nessuna. Avvisare: Maria (moglie).', phone: 'Telefono del contatto di emergenza (lo vede chi legge il tag)',
+      found: n => `Qualcuno ha letto il DPI${n ? ' di ' + n : ''}` },
+    abiti: { ico: '👕', label: 'Abiti', name: "Che capo è", namePh: 'Es. Giacca della divisa, giubbotto', msg: 'Messaggio per chi lo trova',
+      msgPh: 'Es. Grazie per averla trovata! Chiamami e vengo a prenderla.', phone: 'Il tuo telefono (facoltativo, lo vede chi legge il tag)',
+      found: n => `Qualcuno ha trovato ${n || 'il tuo capo'}` },
     oggetto: { ico: '🔑', label: 'Oggetto', name: "Che cos'è", namePh: 'Es. Chiavi di casa, zaino, bici', msg: 'Messaggio per chi lo trova',
       msgPh: 'Es. Grazie per averle trovate! Chiamami o lasciale al bar della piazza.', phone: 'Il tuo telefono (facoltativo, lo vede chi legge il tag)',
       found: n => `Qualcuno ha trovato ${n || 'il tuo oggetto'}` },
@@ -26,7 +29,7 @@
       msgPh: 'Es. Questo zaino appartiene al G.O.S. Roma.', phone: 'Il tuo telefono (facoltativo, lo vede chi legge il tag)',
       found: n => `Qualcuno ha letto il tag ${n || ''}`.trim() }
   };
-  const kindOf = t => KINDS[(t && t.kind)] ? t.kind : 'animale';
+  const kindOf = t => t && t.kind === 'casco' ? 'dpi' : KINDS[(t && t.kind)] ? t.kind : 'animale';
   let draftKind = 'animale';
 
   let tags = [];       // le mie medagliette
@@ -80,7 +83,7 @@
 
   function drawList() {
     if (!tags.length) {
-      $('tagList').replaceChildren(el('li', { class: 'muted reg-empty' }, 'Non hai ancora tag. Creane uno per il tuo cane, il casco, le chiavi…'));
+      $('tagList').replaceChildren(el('li', { class: 'muted reg-empty' }, 'Non hai ancora tag. Creane uno per il tuo cane, il casco, la giacca, le chiavi…'));
       return;
     }
     $('tagList').replaceChildren(...tags.map(t => {
