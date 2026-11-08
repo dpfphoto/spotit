@@ -153,6 +153,12 @@
     const list = current ? ofTag(current.id) : [];
     $('tagSeenBox').hidden = !current;
     if (!current) return;
+    // Con segnalazioni: in cima alla scheda, prima dei dati del tag; senza: in fondo, solo la spiegazione
+    const dlg = $('tagSeenBox').parentElement;
+    if (list.length) dlg.insertBefore($('tagSeenBox'), $('tagForm'));
+    else dlg.insertBefore($('tagSeenBox'), $('tagDelete'));
+    $('tagSeenBox').classList.toggle('tag-seen-top', list.length > 0);
+    $('tagSeenTitle').textContent = list.length ? `🔔 Segnalazioni (${list.length})` : 'Segnalazioni';
     $('tagSeenList').replaceChildren(...(list.length ? list.map(s => el('li', { class: 'card tag-seen' },
       el('strong', {}, `${KINDS[kindOf(current)].ico} ${when(s.created_at)}`),
       s.lat != null
