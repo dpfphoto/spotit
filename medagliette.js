@@ -111,12 +111,13 @@
     $('tagLinkBox').hidden = !t;
     $('tagDelete').hidden = !t;
     $('tagSave').textContent = t ? 'Salva le modifiche' : 'Crea il tag';
-    $('tagNfcMsg').textContent = '';
+    nfcMsg('');
     if (t) {
       $('tagLink').textContent = LINK(t.id);
       $('tagTest').href = `tag.html#t=${t.id}`;
       $('tagWrite').hidden = !canWrite;
       $('tagHowIos').hidden = canWrite;
+      $('tagSteps').hidden = !canWrite;
     }
     drawSightings();
     if (!$('dlgTag').open) $('dlgTag').showModal();
@@ -254,18 +255,35 @@
   };
 
   // Android con Chrome: scrivo il link direttamente sul tag
+  // Messaggio grande e colorato: giallo in attesa, verde riuscito, rosso non riuscito
+  function nfcMsg(text, kind) {
+    const m = $('tagNfcMsg');
+    m.textContent = text; m.hidden = !text;
+    m.className = 'nfc-msg' + (kind ? ' ' + kind : '');
+    if (text) m.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+  let writing = null;
   $('tagWrite').onclick = async () => {
-    if (!current || !canWrite) return;
-    const msg = $('tagNfcMsg');
-    msg.textContent = 'Avvicina il tag al retro del telefono e tienilo fermo…';
+    if (!current || !canWrite || writing) return;
+    const ctrl = new AbortController(); writing = ctrl;
+    const timer = setTimeout(() => ctrl.abort(), 30000);
+    $('tagWrite').disabled = true;
+    nfcMsg('⏳ Appoggia ora il tag sul retro del telefono e tienilo fermo…', 'wait');
     try {
       const nd = new window.NDEFReader();
-      await nd.write({ records: [{ recordType: 'url', data: LINK(current.id) }] }, { overwrite: true });
-      msg.textContent = '✅ Tag scritto! Prova ad avvicinarlo al telefono di un amico.';
+      await nd.write({ records: [{ recordType: 'url', data: LINK(current.id) }] }, { overwrite: true, signal: ctrl.signal });
+      nfcMsg('✅ Registrazione avvenuta! Il tag è pronto.', 'ok');
+      if (navigator.vibrate) navigator.vibrate(200);
     } catch (e) {
-      msg.textContent = e && e.name === 'NotAllowedError'
-        ? 'Serve il permesso NFC: toccalo di nuovo e scegli "Consenti". Controlla anche che l\'NFC sia acceso nelle impostazioni.'
-        : 'Scrittura non riuscita. Controlla che l\'NFC sia acceso e riprova tenendo il tag fermo.';
+      const why = e && e.name === 'NotAllowedError'
+        ? 'Serve il permesso NFC: tocca di nuovo "Scrivi sul tag" e scegli "Consenti". Controlla anche che l\'NFC sia acceso.'
+        : e && e.name === 'AbortError'
+          ? 'Nessun tag trovato in 30 secondi. Tocca di nuovo "Scrivi sul tag" e appoggia subito il tag.'
+          : 'Controlla che l\'NFC sia acceso e riprova tenendo il tag fermo a contatto.';
+      nfcMsg(`❌ Registrazione non avvenuta. ${why}`, 'err');
+      if (navigator.vibrate) navigator.vibrate([100, 80, 100]);
+    } finally {
+      clearTimeout(timer); writing = null; $('tagWrite').disabled = false;
     }
   };
 

@@ -18,7 +18,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="WeSpot">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=74">
+<link rel="stylesheet" href="styles.css?v=75">
 </head>
 <body>
 <header class="top">
@@ -539,12 +539,16 @@
   <div id="tagLinkBox" class="card tag-link-box" hidden>
     <strong>Link da scrivere sul tag</strong>
     <code id="tagLink" class="tag-link"></code>
+    <ol id="tagSteps" class="tag-steps">
+      <li>Tocca <strong>📲 Scrivi sul tag</strong>.</li>
+      <li>Subito dopo appoggia il tag NFC sul retro del telefono, a contatto, e tienilo fermo finché compare il messaggio verde.</li>
+    </ol>
     <span class="row wrap">
       <button type="button" id="tagWrite" class="btn primary">📲 Scrivi sul tag</button>
       <button type="button" id="tagCopy" class="btn ghost">Copia link</button>
       <a id="tagTest" class="btn ghost" href="#" target="_blank" rel="noopener">Prova la pagina</a>
     </span>
-    <p id="tagNfcMsg" class="muted small" role="status"></p>
+    <p id="tagNfcMsg" class="nfc-msg" role="status" aria-live="polite" hidden></p>
     <p id="tagHowIos" class="muted small">Da iPhone: copia il link, apri l'app gratuita <strong>NFC Tools</strong>, tocca <strong>Scrivi</strong> › <strong>Aggiungi un record</strong> › <strong>URL</strong>, incolla il link, poi <strong>Scrivi</strong> e avvicina il tag. Da Android con Chrome c'è il pulsante qui sopra.</p>
   </div>
 
@@ -695,13 +699,13 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=74"></script>
-<script src="app.js?v=74"></script>
+<script src="config.js?v=75"></script>
+<script src="app.js?v=75"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=74"></script>
-<script src="groups.js?v=74"></script>
-<script src="layers.js?v=74"></script>
-<script src="registro.js?v=74"></script>
-<script src="medagliette.js?v=74"></script>
+<script src="account.js?v=75"></script>
+<script src="groups.js?v=75"></script>
+<script src="layers.js?v=75"></script>
+<script src="registro.js?v=75"></script>
+<script src="medagliette.js?v=75"></script>
 </body>
 </html>
