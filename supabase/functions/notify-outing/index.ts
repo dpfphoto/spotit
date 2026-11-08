@@ -107,13 +107,16 @@ Deno.serve(async req => {
     if (body.action === 'found' && typeof body.sighting_id === 'string') {
       const { data: s } = await admin.from('tag_sightings').update({ notified: true })
         .eq('id', body.sighting_id).eq('notified', false).gte('created_at', new Date(Date.now() - 6e5).toISOString())
-        .select('id, tag_id, lat, note, pet_tags(owner, name)').maybeSingle();
-      const t = s && (s.pet_tags as unknown as { owner: string; name: string } | null);
+        .select('id, tag_id, lat, note, pet_tags(owner, name, kind)').maybeSingle();
+      const t = s && (s.pet_tags as unknown as { owner: string; name: string; kind?: string } | null);
       if (!s || !t) return json({ sent: 0 });
       const { data: subs } = await admin.from('push_subscriptions').select('endpoint, p256dh, auth, sound').eq('user_id', t.owner);
       const note = String(s.note || '');
       const sent = await pushTo(subs || [], {
-        title: `🐾 Qualcuno ha trovato ${t.name || 'il tuo animale'}`,
+        title: t.kind === 'casco' ? `⛑️ Qualcuno ha letto il casco${t.name ? ' di ' + t.name : ''}`
+          : t.kind === 'oggetto' ? `🔑 Qualcuno ha trovato ${t.name || 'il tuo oggetto'}`
+          : t.kind === 'altro' ? `📲 Qualcuno ha letto il tag ${t.name || ''}`.trim()
+          : `🐾 Qualcuno ha trovato ${t.name || 'il tuo animale'}`,
         body: (s.lat != null ? 'Ha inviato la sua posizione: tocca per vederla sulla mappa' : 'Ti ha lasciato un messaggio')
           + (note ? ` · "${note.length > 100 ? note.slice(0, 97) + '…' : note}"` : ''),
         url: `${APP_URL}#tf=${s.tag_id}`, tag: `trovato-${s.id}`

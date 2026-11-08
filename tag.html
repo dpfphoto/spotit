@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0F766E">
 <meta name="robots" content="noindex">
-<title>Mi hai trovato! · WeSpot</title>
+<title>Tag NFC · WeSpot</title>
 <link rel="icon" href="icons/icon-192.png">
 <style>
   :root { --brand: #0F766E; --brand-dark: #115E59; --ink: #0F172A; --muted: #5B6670; --soft: #F1F5F4; --line: #E2E8F0; --ok: #15803D; --err: #B91C1C; }
@@ -25,6 +25,8 @@
   .btn.primary:disabled { background: var(--line); color: var(--muted); }
   .btn.ghost { background: var(--soft); color: var(--ink); }
   .btn.wa { background: #25D366; color: #fff; }
+  .btn.sos { background: #B91C1C; color: #fff; font-size: 20px; min-height: 60px; }
+  .msg-label { margin: 16px 0 -4px; font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
   .row { display: flex; gap: 10px; }
   .row .btn { flex: 1; }
   section { border-top: 1px solid var(--line); margin-top: 22px; padding-top: 6px; }
@@ -46,19 +48,23 @@
 <main>
   <a class="brand" href="./"><img src="icons/icon-192.png" alt="">WeSpot</a>
 
-  <div id="loading"><p class="muted">Apro la medaglietta…</p></div>
+  <div id="loading"><p class="muted">Apro il tag…</p></div>
 
   <div id="missing" hidden>
     <div class="paw" aria-hidden="true">🐾</div>
-    <h1>Medaglietta non attiva</h1>
-    <p class="muted" id="missingText">Questa medaglietta non è collegata a nessun animale, oppure manca la connessione. Riprova tra poco.</p>
+    <h1>Tag non attivo</h1>
+    <p class="muted" id="missingText">Questo tag non è collegato a niente, oppure manca la connessione. Riprova tra poco.</p>
   </div>
 
   <div id="tag" hidden>
     <img id="photo" class="photo" alt="" hidden>
     <div id="pawBig" class="paw" aria-hidden="true">🐾</div>
     <h1 id="title">Mi hai trovato!</h1>
+    <p id="msgLabel" class="msg-label" hidden></p>
     <p id="msg" class="msg" hidden></p>
+
+    <a id="sos" class="btn sos" href="tel:112" hidden>🚑 Chiama il 112</a>
+    <p id="callLabel" class="msg-label" hidden></p>
 
     <div id="callBox" class="row" hidden>
       <a id="call" class="btn ghost" href="#">📞 Chiama</a>
@@ -66,9 +72,9 @@
     </div>
 
     <section id="sendBox">
-      <h2>Avvisa il padrone</h2>
-      <p class="muted small">Gli mandi la posizione di questo telefono, così sa dove è il suo animale. Il messaggio e il numero sono facoltativi.</p>
-      <label>Messaggio per il padrone
+      <h2 id="sendTitle">Avvisa il padrone</h2>
+      <p id="sendInfo" class="muted small">Gli mandi la posizione di questo telefono, così sa dove è il suo animale. Il messaggio e il numero sono facoltativi.</p>
+      <label><span id="noteLabel">Messaggio per il padrone</span>
         <textarea id="note" maxlength="300" placeholder="Es. È con me al bar della piazza, ti aspetto qui"></textarea>
       </label>
       <label>Il tuo numero, se vuoi essere richiamato
@@ -86,7 +92,7 @@
   </div>
 
   <footer class="small muted">
-    <p>La tua posizione viene inviata solo se tocchi il pulsante e la vede solo il padrone.</p>
+    <p id="footNote">La tua posizione viene inviata solo se tocchi il pulsante e la vede solo il padrone.</p>
     <p><a href="./">Scopri WeSpot</a></p>
   </footer>
 </main>
@@ -118,20 +124,47 @@
   }
   function okPhoto(s) { return typeof s === 'string' && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(s); }
 
+  // Testi diversi per ogni tipo di tag
+  const KINDS = {
+    animale: { ico: '🐾', title: n => n ? `Ciao! Mi chiamo ${n}` : 'Mi hai trovato!', who: 'il padrone', wa: n => `Ciao, ho trovato ${n || 'il tuo animale'}!`,
+      sendTitle: 'Avvisa il padrone', sendInfo: 'Gli mandi la posizione di questo telefono, così sa dove è il suo animale. Il messaggio e il numero sono facoltativi.',
+      send: '📍 Invia la mia posizione al padrone', note: 'Es. È con me al bar della piazza, ti aspetto qui' },
+    casco: { ico: '⛑️', title: n => n ? `Casco di ${n}` : 'Casco', who: 'chi ha registrato il casco', wa: n => `Ciao, ho letto il casco${n ? ' di ' + n : ''}.`,
+      msgLabel: 'Informazioni di emergenza', callLabel: 'Contatto di emergenza', sos: true,
+      sendTitle: 'Invia la posizione', sendInfo: 'Mandi la posizione di questo telefono a chi ha registrato il casco. Il messaggio e il numero sono facoltativi.',
+      send: '📍 Invia la posizione', note: 'Es. È caduto in via Roma, è cosciente, ho chiamato il 112' },
+    oggetto: { ico: '🔑', title: n => n ? `Hai trovato: ${n}` : 'Hai trovato un oggetto smarrito', who: 'il proprietario', wa: n => `Ciao, ho trovato ${n || 'il tuo oggetto'}!`,
+      sendTitle: 'Avvisa il proprietario', sendInfo: 'Gli mandi la posizione di questo telefono, così sa dove è il suo oggetto. Il messaggio e il numero sono facoltativi.',
+      send: '📍 Invia la mia posizione al proprietario', note: 'Es. Le ho lasciate al bar della piazza' },
+    altro: { ico: '📲', title: n => n || 'Tag WeSpot', who: 'il proprietario', wa: n => `Ciao, ho letto il tag${n ? ' ' + n : ''}.`,
+      sendTitle: 'Avvisa il proprietario', sendInfo: 'Gli mandi la posizione di questo telefono. Il messaggio e il numero sono facoltativi.',
+      send: '📍 Invia la mia posizione al proprietario', note: 'Es. Ti aspetto qui' }
+  };
+  let K = KINDS.animale;
+
   function show(t) {
     tag = t;
+    K = KINDS[t.kind] || KINDS.animale;
+    $('pawBig').textContent = K.ico;
+    $('sendTitle').textContent = K.sendTitle; $('sendInfo').textContent = K.sendInfo;
+    $('send').textContent = K.send; $('note').placeholder = K.note;
+    $('noteLabel').textContent = `Messaggio per ${K.who}`;
+    $('footNote').textContent = `La tua posizione viene inviata solo se tocchi il pulsante e la vede solo ${K.who}.`;
+    $('sos').hidden = !K.sos;
+    if (K.msgLabel) { $('msgLabel').textContent = K.msgLabel; }
     $('loading').hidden = true;
     $('tag').hidden = false;
     const name = String(t.name || '').trim();
-    document.title = name ? `${name}: mi hai trovato! · WeSpot` : document.title;
-    $('title').textContent = name ? `Ciao! Mi chiamo ${name}` : 'Mi hai trovato!';
+    $('title').textContent = K.title(name);
+    document.title = `${K.title(name)} · WeSpot`;
     if (okPhoto(t.photo)) { $('photo').src = t.photo; $('photo').alt = name; $('photo').hidden = false; $('pawBig').hidden = true; }
     const msg = String(t.message || '').trim();
-    if (msg) { $('msg').textContent = msg; $('msg').hidden = false; }
+    if (msg) { $('msg').textContent = msg; $('msg').hidden = false; $('msgLabel').hidden = !K.msgLabel; }
     if (t.phone) {
       $('call').href = `tel:${String(t.phone).replace(/[^0-9+]/g, '')}`;
-      $('wa').href = `https://wa.me/${waNumber(t.phone)}?text=${encodeURIComponent(`Ciao, ho trovato ${name || 'il tuo animale'}!`)}`;
+      $('wa').href = `https://wa.me/${waNumber(t.phone)}?text=${encodeURIComponent(K.wa(name))}`;
       $('callBox').hidden = false;
+      if (K.callLabel) { $('callLabel').textContent = K.callLabel; $('callLabel').hidden = false; }
     }
   }
 
@@ -171,10 +204,10 @@
       $('sendBox').hidden = true;
       $('done').hidden = false;
       $('doneText').textContent = lat != null
-        ? 'Il padrone riceve subito la notifica con la tua posizione.'
-        : 'Il padrone riceve subito il tuo messaggio.';
+        ? `${K.who[0].toUpperCase() + K.who.slice(1)} riceve subito la notifica con la tua posizione.`
+        : `${K.who[0].toUpperCase() + K.who.slice(1)} riceve subito il tuo messaggio.`;
       if (lat != null && tag.phone) {
-        $('wa').href = `https://wa.me/${waNumber(tag.phone)}?text=${encodeURIComponent(`Ciao, ho trovato ${tag.name || 'il tuo animale'}! Sono qui: https://maps.google.com/?q=${lat.toFixed(6)},${lng.toFixed(6)}`)}`;
+        $('wa').href = `https://wa.me/${waNumber(tag.phone)}?text=${encodeURIComponent(`${K.wa(String(tag.name || '').trim())} Sono qui: https://maps.google.com/?q=${lat.toFixed(6)},${lng.toFixed(6)}`)}`;
       }
     } catch (e) {
       status(/troppi/.test(e.message) ? 'Hai già inviato più volte: riprova tra qualche minuto.' : 'Invio non riuscito. Controlla la connessione e riprova.', 'err');
@@ -186,7 +219,7 @@
 
   if (!code || !CFG.supabaseUrl) {
     $('loading').hidden = true; $('missing').hidden = false;
-    $('missingText').textContent = 'Il link della medaglietta non è completo.';
+    $('missingText').textContent = 'Il link del tag non è completo.';
     return;
   }
   rpc('get_tag', { code })
