@@ -980,6 +980,7 @@
       onclick: () => {
         $('dlgNotif').close();
         if (x.go === 'update') $('updateBtn').click();
+        else if (x.go && x.go.startsWith('tag:')) { if (window.spotitOpenTags) window.spotitOpenTags(x.go.slice(4)); }
         else if (x.go) openGroup(x.go);
       }
     }, el('span', { class: 'n-ico', 'aria-hidden': 'true' }, x.ico),

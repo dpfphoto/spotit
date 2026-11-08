@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F766E">
+<meta name="robots" content="noindex">
+<title>Mi hai trovato! · WeSpot</title>
+<link rel="icon" href="icons/icon-192.png">
+<style>
+  :root { --brand: #0F766E; --brand-dark: #115E59; --ink: #0F172A; --muted: #5B6670; --soft: #F1F5F4; --line: #E2E8F0; --ok: #15803D; --err: #B91C1C; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: #fff; }
+  main { max-width: 520px; margin: 0 auto; padding: 20px 16px 40px; }
+  .brand { display: flex; align-items: center; gap: 8px; color: var(--brand); font-weight: 800; text-decoration: none; font-size: 15px; }
+  .brand img { width: 28px; height: 28px; border-radius: 8px; }
+  .photo { width: 100%; max-height: 360px; object-fit: cover; border-radius: 20px; margin: 16px 0 4px; background: var(--soft); display: block; }
+  .paw { font-size: 64px; text-align: center; margin: 18px 0 0; }
+  h1 { font-size: 26px; line-height: 1.2; margin: 14px 0 6px; }
+  .msg { white-space: pre-wrap; font-size: 18px; background: var(--soft); border-radius: 16px; padding: 14px 16px; margin: 12px 0; }
+  .muted { color: var(--muted); }
+  .small { font-size: 13px; }
+  .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 54px; border: 0; border-radius: 16px; font: inherit; font-weight: 700; font-size: 17px; text-decoration: none; cursor: pointer; margin: 10px 0; padding: 12px 16px; }
+  .btn.primary { background: var(--brand); color: #fff; }
+  .btn.primary:disabled { background: var(--line); color: var(--muted); }
+  .btn.ghost { background: var(--soft); color: var(--ink); }
+  .btn.wa { background: #25D366; color: #fff; }
+  .row { display: flex; gap: 10px; }
+  .row .btn { flex: 1; }
+  section { border-top: 1px solid var(--line); margin-top: 22px; padding-top: 6px; }
+  h2 { font-size: 19px; margin: 14px 0 4px; }
+  label { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; font-size: 13px; font-weight: 600; color: var(--muted); }
+  textarea, input { font: inherit; color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 12px; width: 100%; background: #fff; }
+  textarea { min-height: 84px; resize: vertical; }
+  .status { margin: 10px 0; font-weight: 600; }
+  .status.ok { color: var(--ok); }
+  .status.err { color: var(--err); }
+  .done { text-align: center; background: #ECFDF5; border-radius: 16px; padding: 18px 16px; margin: 14px 0; }
+  .done strong { display: block; font-size: 19px; margin-bottom: 4px; color: var(--ok); }
+  footer { margin-top: 28px; text-align: center; }
+  footer a { color: var(--brand); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <a class="brand" href="./"><img src="icons/icon-192.png" alt="">WeSpot</a>
+
+  <div id="loading"><p class="muted">Apro la medaglietta…</p></div>
+
+  <div id="missing" hidden>
+    <div class="paw" aria-hidden="true">🐾</div>
+    <h1>Medaglietta non attiva</h1>
+    <p class="muted" id="missingText">Questa medaglietta non è collegata a nessun animale, oppure manca la connessione. Riprova tra poco.</p>
+  </div>
+
+  <div id="tag" hidden>
+    <img id="photo" class="photo" alt="" hidden>
+    <div id="pawBig" class="paw" aria-hidden="true">🐾</div>
+    <h1 id="title">Mi hai trovato!</h1>
+    <p id="msg" class="msg" hidden></p>
+
+    <div id="callBox" class="row" hidden>
+      <a id="call" class="btn ghost" href="#">📞 Chiama</a>
+      <a id="wa" class="btn wa" href="#" target="_blank" rel="noopener">💬 WhatsApp</a>
+    </div>
+
+    <section id="sendBox">
+      <h2>Avvisa il padrone</h2>
+      <p class="muted small">Gli mandi la posizione di questo telefono, così sa dove è il suo animale. Il messaggio e il numero sono facoltativi.</p>
+      <label>Messaggio per il padrone
+        <textarea id="note" maxlength="300" placeholder="Es. È con me al bar della piazza, ti aspetto qui"></textarea>
+      </label>
+      <label>Il tuo numero, se vuoi essere richiamato
+        <input id="phone" type="tel" maxlength="20" autocomplete="tel" placeholder="Es. 333 1234567">
+      </label>
+      <button type="button" id="send" class="btn primary">📍 Invia la mia posizione al padrone</button>
+      <button type="button" id="sendNoPos" class="btn ghost" hidden>Invia solo il messaggio</button>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+    </section>
+
+    <div id="done" class="done" hidden>
+      <strong>✅ Fatto, grazie!</strong>
+      <span id="doneText">Il padrone riceve subito la notifica con la tua posizione.</span>
+    </div>
+  </div>
+
+  <footer class="small muted">
+    <p>La tua posizione viene inviata solo se tocchi il pulsante e la vede solo il padrone.</p>
+    <p><a href="./">Scopri WeSpot</a></p>
+  </footer>
+</main>
+
+<script src="config.js?v=69"></script>
+<script>
+(function () {
+  const CFG = window.SPOTIT_CONFIG || {};
+  const $ = id => document.getElementById(id);
+  const code = (location.hash.match(/^#t=([A-Za-z0-9]{7})(?![A-Za-z0-9])/) || [])[1];
+  const headers = { 'Content-Type': 'application/json', apikey: CFG.supabaseKey, Authorization: `Bearer ${CFG.supabaseKey}` };
+  let tag = null, wasSent = false;
+
+  function rpc(name, args) {
+    return fetch(`${CFG.supabaseUrl}/rest/v1/rpc/${name}`, { method: 'POST', headers, body: JSON.stringify(args) })
+      .then(async r => {
+        const data = await r.json().catch(() => null);
+        if (!r.ok) throw new Error((data && data.message) || 'errore');
+        return data;
+      });
+  }
+  function status(text, kind) { const s = $('status'); s.textContent = text; s.className = 'status' + (kind ? ' ' + kind : ''); }
+  // Numero italiano senza prefisso: per WhatsApp serve il 39 davanti
+  function waNumber(p) {
+    let d = String(p || '').replace(/\D/g, '');
+    if (d.startsWith('00')) d = d.slice(2);
+    if (/^3\d{8,9}$/.test(d)) d = '39' + d;
+    return d;
+  }
+  function okPhoto(s) { return typeof s === 'string' && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(s); }
+
+  function show(t) {
+    tag = t;
+    $('loading').hidden = true;
+    $('tag').hidden = false;
+    const name = String(t.name || '').trim();
+    document.title = name ? `${name}: mi hai trovato! · WeSpot` : document.title;
+    $('title').textContent = name ? `Ciao! Mi chiamo ${name}` : 'Mi hai trovato!';
+    if (okPhoto(t.photo)) { $('photo').src = t.photo; $('photo').alt = name; $('photo').hidden = false; $('pawBig').hidden = true; }
+    const msg = String(t.message || '').trim();
+    if (msg) { $('msg').textContent = msg; $('msg').hidden = false; }
+    if (t.phone) {
+      $('call').href = `tel:${String(t.phone).replace(/[^0-9+]/g, '')}`;
+      $('wa').href = `https://wa.me/${waNumber(t.phone)}?text=${encodeURIComponent(`Ciao, ho trovato ${name || 'il tuo animale'}!`)}`;
+      $('callBox').hidden = false;
+    }
+  }
+
+  function position() {
+    return new Promise((res, rej) => {
+      if (!navigator.geolocation) { rej(new Error('nogeo')); return; }
+      navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 });
+    });
+  }
+
+  async function send(withPos) {
+    if (!tag || wasSent) return;
+    $('send').disabled = $('sendNoPos').disabled = true;
+    let lat = null, lng = null, acc = null;
+    if (withPos) {
+      status('Cerco la tua posizione… se il telefono te lo chiede, tocca "Consenti".');
+      try {
+        const p = await position();
+        lat = p.coords.latitude; lng = p.coords.longitude; acc = Math.round(p.coords.accuracy || 0);
+      } catch {
+        status('Non riesco a leggere la posizione. Attiva la localizzazione e riprova, oppure invia solo il messaggio.', 'err');
+        $('send').disabled = $('sendNoPos').disabled = false;
+        $('sendNoPos').hidden = false;
+        return;
+      }
+    } else if (!$('note').value.trim() && !$('phone').value.trim()) {
+      status('Scrivi un messaggio o il tuo numero prima di inviare.', 'err');
+      $('send').disabled = $('sendNoPos').disabled = false;
+      return;
+    }
+    status('Invio…');
+    try {
+      const id = await rpc('report_tag', { code, p_lat: lat, p_lng: lng, p_acc: acc, p_note: $('note').value, p_phone: $('phone').value });
+      wasSent = true;
+      // La notifica al padrone: se non parte, la segnalazione resta comunque nell'app
+      fetch(`${CFG.supabaseUrl}/functions/v1/notify-outing`, { method: 'POST', headers, keepalive: true, body: JSON.stringify({ action: 'found', sighting_id: id }) }).catch(() => {});
+      $('sendBox').hidden = true;
+      $('done').hidden = false;
+      $('doneText').textContent = lat != null
+        ? 'Il padrone riceve subito la notifica con la tua posizione.'
+        : 'Il padrone riceve subito il tuo messaggio.';
+      if (lat != null && tag.phone) {
+        $('wa').href = `https://wa.me/${waNumber(tag.phone)}?text=${encodeURIComponent(`Ciao, ho trovato ${tag.name || 'il tuo animale'}! Sono qui: https://maps.google.com/?q=${lat.toFixed(6)},${lng.toFixed(6)}`)}`;
+      }
+    } catch (e) {
+      status(/troppi/.test(e.message) ? 'Hai già inviato più volte: riprova tra qualche minuto.' : 'Invio non riuscito. Controlla la connessione e riprova.', 'err');
+      $('send').disabled = $('sendNoPos').disabled = false;
+    }
+  }
+  $('send').onclick = () => send(true);
+  $('sendNoPos').onclick = () => send(false);
+
+  if (!code || !CFG.supabaseUrl) {
+    $('loading').hidden = true; $('missing').hidden = false;
+    $('missingText').textContent = 'Il link della medaglietta non è completo.';
+    return;
+  }
+  rpc('get_tag', { code })
+    .then(t => { if (t && typeof t === 'object') show(t); else throw new Error('nf'); })
+    .catch(() => { $('loading').hidden = true; $('missing').hidden = false; });
+})();
+</script>
+</body>
+</html>
