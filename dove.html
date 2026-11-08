@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F766E">
+<meta name="robots" content="noindex">
+<title>Posizione · WeSpot</title>
+<link rel="icon" href="icons/icon-192.png">
+<meta property="og:title" content="📍 Posizione su WeSpot">
+<meta property="og:description" content="Apri la mappa e fatti portare lì.">
+<meta property="og:image" content="https://wespot.me/icons/icon-512.png">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<style>
+  :root { --brand: #0F766E; --ink: #0F172A; --muted: #5B6670; --soft: #F1F5F4; --line: #E2E8F0; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: #fff; display: flex; flex-direction: column; }
+  header { display: flex; align-items: center; gap: 8px; padding: 12px 16px; }
+  .brand { display: flex; align-items: center; gap: 8px; color: var(--brand); font-weight: 800; text-decoration: none; font-size: 15px; }
+  .brand img { width: 28px; height: 28px; border-radius: 8px; }
+  #map { flex: 1; min-height: 300px; }
+  .panel { padding: 14px 16px calc(16px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
+  h1 { font-size: 22px; margin: 0 0 2px; line-height: 1.25; }
+  .muted { color: var(--muted); font-size: 14px; margin: 0 0 10px; }
+  .row { display: flex; gap: 10px; }
+  .btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 52px; border-radius: 16px; font-weight: 700; font-size: 16px; text-decoration: none; padding: 10px 12px; text-align: center; }
+  .btn.primary { background: var(--brand); color: #fff; }
+  .btn.ghost { background: var(--soft); color: var(--ink); }
+  .pin { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; background: #B45309; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,.35); font-size: 22px; }
+  .err { padding: 24px 16px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header><a class="brand" href="./"><img src="icons/icon-192.png" alt="">WeSpot</a></header>
+<div id="bad" class="err" hidden><h1>Posizione non valida</h1><p class="muted">Il link non è completo.</p></div>
+<div id="map"></div>
+<div class="panel" id="panel">
+  <h1 id="title">📍 Posizione</h1>
+  <p id="when" class="muted"></p>
+  <div class="row">
+    <a id="go" class="btn primary" href="#" target="_blank" rel="noopener">🧭 Portami lì</a>
+    <a class="btn ghost" href="./">Apri WeSpot</a>
+  </div>
+</div>
+<script src="vendor/leaflet/leaflet.js"></script>
+<script>
+// Link di posizione inviato su WhatsApp da chi ha letto un tag NFC:
+// wespot.me/dove.html#<lat>,<lng>[,<orario in secondi>][,<nome>]
+(function () {
+  const $ = id => document.getElementById(id);
+  const parts = decodeURIComponent(location.hash.slice(1)).split(',');
+  const lat = Number(parts[0]), lng = Number(parts[1]);
+  if (!isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180 || parts.length < 2) {
+    $('bad').hidden = false; $('map').hidden = true; $('panel').hidden = true; return;
+  }
+  const at = Number(parts[2]) || 0;
+  const name = parts.slice(3).join(',').trim().slice(0, 40);
+  $('title').textContent = name ? `📍 ${name} è qui` : '📍 Posizione';
+  document.title = `${$('title').textContent} · WeSpot`;
+  if (at) {
+    const d = new Date(at * 1000), p = n => String(n).padStart(2, '0');
+    const today = d.toDateString() === new Date().toDateString();
+    $('when').textContent = `Posizione inviata ${today ? 'oggi' : `il ${p(d.getDate())}/${p(d.getMonth() + 1)}`} alle ${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  $('go').href = isIos ? `https://maps.apple.com/?daddr=${lat},${lng}` : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+  const map = L.map('map', { zoomControl: true }).setView([lat, lng], 17);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+  L.marker([lat, lng], { icon: L.divIcon({ className: '', html: '<span class="pin">📍</span>', iconSize: [44, 44], iconAnchor: [22, 22] }) }).addTo(map);
+})();
+</script>
+</body>
+</html>
