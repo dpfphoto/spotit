@@ -468,3 +468,6 @@ button.m-status { border: 0; font-family: inherit; cursor: pointer; }
 .tag-seen .link-btn { margin: 0; padding: 2px 0; font-size: 13px; color: var(--muted); }
 .btn.danger { background: #B42318; color: #fff; }
 .tag-pin { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: #B45309; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,.35); font-size: 20px; }
+.tag-kinds { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-kind { border: 1px solid #C3CAD1; background: #fff; color: var(--ink); border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.tag-kind[aria-checked="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
