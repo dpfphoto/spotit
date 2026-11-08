@@ -162,6 +162,27 @@ Deno.serve(async req => {
       return json({ sent });
     }
 
+    // Nota di un partecipante: avviso tutti gli altri del gruppo (tranne chi ha detto "Non posso"), una volta per nota
+    if (body.action === 'note' && typeof body.note_id === 'string') {
+      const { data: n } = await admin.from('outing_notes').select('id, outing_id, user_id, name, body').eq('id', body.note_id).maybeSingle();
+      if (!n || n.user_id !== user.id) return json({ sent: 0 });
+      const { data: o } = await admin.from('outings').select('id, owner, place, outing_members(user_id, status)').eq('id', n.outing_id).maybeSingle();
+      if (!o) return json({ sent: 0 });
+      const { error: dup } = await admin.from('push_sent').insert({ key: `nota|${n.id}` });
+      if (dup) return json({ sent: 0 });
+      const mem = (o.outing_members || []) as { user_id: string | null; status: string }[];
+      const users = [...new Set([o.owner as string, ...mem.filter(m => m.user_id && m.status !== 'no').map(m => m.user_id as string)])].filter(u => u !== user.id);
+      if (!users.length) return json({ sent: 0 });
+      const { data: subs } = await admin.from('push_subscriptions').select('endpoint, p256dh, auth, sound').in('user_id', users);
+      const text = String(n.body || '');
+      const sent = await pushTo(subs || [], {
+        title: `📝 ${n.name} · ${(o.place && o.place.n) || 'Uscita'}`,
+        body: text.length > 140 ? text.slice(0, 137) + '…' : text,
+        url: `${APP_URL}#g=${o.id}`, tag: `nota-${n.id}`
+      });
+      return json({ sent });
+    }
+
     if (body.action !== 'going' || typeof body.member_id !== 'string') return json({ error: 'richiesta non valida' }, 400);
     const { data: m } = await admin.from('outing_members')
       .select('id, name, status, user_id, notified, outing_id').eq('id', body.member_id).maybeSingle();
