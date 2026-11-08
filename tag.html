@@ -97,6 +97,8 @@
     <div id="done" class="done" hidden>
       <strong>✅ Fatto, grazie!</strong>
       <span id="doneText">Il padrone riceve subito la notifica con la tua posizione.</span>
+      <a id="doneWa" class="btn wa" href="#" hidden>💬 Avvisa anche su WhatsApp</a>
+      <a id="doneCall" class="btn ghost" href="#" hidden>📞 Chiama</a>
     </div>
   </div>
 
@@ -118,7 +120,7 @@
   </footer>
 </main>
 
-<script src="config.js?v=73"></script>
+<script src="config.js?v=74"></script>
 <script>
 (function () {
   const CFG = window.SPOTIT_CONFIG || {};
@@ -230,8 +232,18 @@
       $('doneText').textContent = lat != null
         ? `${K.who[0].toUpperCase() + K.who.slice(1)} riceve subito la notifica con la tua posizione.`
         : `${K.who[0].toUpperCase() + K.who.slice(1)} riceve subito il tuo messaggio.`;
-      if (lat != null && tag.phone) {
-        $('wa').href = `https://wa.me/${waNumber(tag.phone)}?text=${encodeURIComponent(`${K.wa(String(tag.name || '').trim())} Sono qui: https://maps.google.com/?q=${lat.toFixed(6)},${lng.toFixed(6)}`)}`;
+      // Non tutti i telefoni ricevono le notifiche: se il padrone ha lasciato il numero apro anche WhatsApp
+      // con il messaggio già scritto (posizione su Google Maps, apribile da qualsiasi telefono)
+      if (tag.phone) {
+        const lines = [K.wa(String(tag.name || '').trim())];
+        if (lat != null) lines.push(`Siamo qui: https://maps.google.com/?q=${lat.toFixed(6)},${lng.toFixed(6)}`);
+        const note = $('note').value.trim(); if (note) lines.push(note);
+        const mine = $('phone').value.trim(); if (mine) lines.push(`Il mio numero: ${mine}`);
+        const waUrl = `https://wa.me/${waNumber(tag.phone)}?text=${encodeURIComponent(lines.join('\n'))}`;
+        $('wa').href = waUrl; $('doneWa').href = waUrl; $('doneWa').hidden = false;
+        $('doneCall').href = $('call').href; $('doneCall').hidden = false;
+        $('doneText').textContent += ' Ti apro WhatsApp per avvisarlo anche lì: tocca Invia.';
+        setTimeout(() => { location.href = waUrl; }, 1500);
       }
     } catch (e) {
       status(/troppi/.test(e.message) ? 'Hai già inviato più volte: riprova tra qualche minuto.' : 'Invio non riuscito. Controlla la connessione e riprova.', 'err');
