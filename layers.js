@@ -100,7 +100,7 @@
     const mineEv = window.SPOTIT_MY_OUTINGS || new Set();
     for (const g of pubEv) {
       if (!Number.isFinite(g.lat) || mineEv.has(g.id)) continue;
-      const html = window.spotitPinHtml ? window.spotitPinHtml(g.icon, 'ev-pin pub') : '<span class="ev-pin pub">🎉</span>';
+      const html = window.spotitPinHtml ? window.spotitPinHtml(g.icon, 'ev-pin pub') : '<span class="ev-pin pub">📍</span>';
       const icon = L.divIcon({ className: '', html, iconSize: [30, 30], iconAnchor: [15, 15] });
       L.marker([g.lat, g.lng], { icon, title: g.name, alt: `${g.name}, evento pubblico`, zIndexOffset: 400 })
         .on('click', () => openPublicEvent(g))
@@ -109,7 +109,7 @@
   }
   function openPublicEvent(g) {
     shown = null;
-    $('puName').textContent = `🎉 ${g.name}`;
+    $('puName').textContent = `📍 ${g.name}`;
     $('puAddress').textContent = g.address || '';
     $('puCover').hidden = true;
     $('puWhen').hidden = false;
