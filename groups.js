@@ -916,7 +916,7 @@
       // Promemoria del giorno
       const d = new Date(g.starts_at);
       if (d.toDateString() === now.toDateString() && d > now) {
-        notify(`oggi-${g.id}-${g.starts_at}`, isEvent(g) ? '🎉' : '🍽️', `Oggi ${dayLabel(g.starts_at).replace(/^(oggi|stasera) /, '')}: "${name}"`, g.id);
+        notify(`oggi-${g.id}-${g.starts_at}`, isEvent(g) ? '📍' : '🍽️', `Oggi ${dayLabel(g.starts_at).replace(/^(oggi|stasera) /, '')}: "${name}"`, g.id);
       }
       remember(g, members);
     }
@@ -992,9 +992,9 @@
   };
   drawBell();
 
-  // Logo di chi organizza al posto del 🎉 (solo immagini piccole incorporate)
+  // Logo di chi organizza al posto del 📍 (solo immagini piccole incorporate)
   function okLogo(s) { return typeof s === 'string' && s.length < 60000 && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(s); }
-  function pinHtml(ic, cls) { return okLogo(ic) ? `<span class="${cls} logo"><img src="${ic}" alt=""></span>` : `<span class="${cls}">🎉</span>`; }
+  function pinHtml(ic, cls) { return okLogo(ic) ? `<span class="${cls} logo"><img src="${ic}" alt=""></span>` : `<span class="${cls}">📍</span>`; }
   window.spotitPinHtml = pinHtml;
   function shrinkLogo(file) {
     return new Promise((res, rej) => {
@@ -1066,7 +1066,7 @@
     if (d.toDateString() === tm.toDateString()) return `domani alle ${hhmm}`;
     return d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric' }) + ` alle ${hhmm}`;
   }
-  function tripLabel(g) { return `${isEvent(g) ? '🎉' : '🍽️'} ${(g.place && g.place.n) || 'Uscita'} · ${dayLabel(g.starts_at)}`; }
+  function tripLabel(g) { return `${isEvent(g) ? '📍' : '🍽️'} ${(g.place && g.place.n) || 'Uscita'} · ${dayLabel(g.starts_at)}`; }
   function drawTripBtn() {
     const g = upcoming[0];
     $('tripBox').hidden = !g || view !== 'map';
@@ -1100,7 +1100,7 @@
       ...upcoming.map(g => {
         const yes = (g.outing_members || []).filter(m => m.status === 'si').length;
         return el('button', { type: 'button', class: 'item trip', onclick: () => openGroup(g.id) },
-          el('span', { class: 'trip-ico', 'aria-hidden': 'true' }, isEvent(g) ? '🎉' : '🍽️'),
+          el('span', { class: 'trip-ico', 'aria-hidden': 'true' }, isEvent(g) ? '📍' : '🍽️'),
           el('span', { class: 'txt' }, el('div', { class: 'name' }, (g.place && g.place.n) || 'Uscita'),
             el('div', { class: 'addr when' }, whenLabel(g.starts_at))),
           el('span', { class: 'side' }, el('span', { class: 'dist' }, `${yes} ci sono`)));

@@ -88,7 +88,7 @@
       return el('li', {}, el('button', { type: 'button', class: 'reg-item', onclick: () => openItem(e.outing_id) },
         el('span', { class: 'reg-date' }, el('strong', {}, dateIt(e.starts_at)), el('span', {}, timeIt(e.starts_at))),
         el('span', { class: 'reg-txt' },
-          el('span', { class: 'reg-name' }, (e.data.is_event ? '🎉 ' : '🍽️ ') + titleOf(e)),
+          el('span', { class: 'reg-name' }, (e.data.is_event ? '📍 ' : '🍽️ ') + titleOf(e)),
           el('span', { class: 'muted' }, [addrOf(e), e.mine ? 'organizzato da te' : (e.data.owner_name ? `da ${e.data.owner_name}` : '')].filter(Boolean).join(' · ')),
           e.stato === 'annullato' ? el('span', { class: 'reg-badge' }, 'Annullato') : ''),
         el('span', { class: 'reg-side' }, side)));
