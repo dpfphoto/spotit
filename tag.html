@@ -73,12 +73,6 @@
     <p id="msg" class="msg" hidden></p>
 
     <a id="sos" class="btn sos" href="tel:112" hidden>🚑 Chiama il 112</a>
-    <p id="callLabel" class="msg-label" hidden></p>
-
-    <div id="callBox" class="row" hidden>
-      <a id="call" class="btn ghost" href="#">📞 Chiama</a>
-      <a id="wa" class="btn wa" href="#" target="_blank" rel="noopener">💬 WhatsApp</a>
-    </div>
 
     <section id="sendBox">
       <h2 id="sendTitle">Avvisa il padrone</h2>
@@ -91,13 +85,14 @@
       </label>
       <button type="button" id="send" class="btn primary">📍 Invia la mia posizione al padrone</button>
       <button type="button" id="sendNoPos" class="btn ghost" hidden>Invia solo il messaggio</button>
+      <a id="call" class="btn ghost" href="#" hidden>📞 Chiama</a>
       <p id="status" class="status" role="status" aria-live="polite"></p>
     </section>
 
     <div id="done" class="done" hidden>
       <strong>✅ Fatto, grazie!</strong>
       <span id="doneText">Il padrone riceve subito la notifica con la tua posizione.</span>
-      <a id="doneWa" class="btn wa" href="#" hidden>💬 Avvisa anche su WhatsApp</a>
+      <a id="doneWa" class="btn wa" href="#" hidden>💬 Avvisa il padrone</a>
       <a id="doneCall" class="btn ghost" href="#" hidden>📞 Chiama</a>
     </div>
   </div>
@@ -188,9 +183,10 @@
     if (msg) { $('msg').textContent = msg; $('msg').hidden = false; $('msgLabel').hidden = !K.msgLabel; }
     if (t.phone) {
       $('call').href = `tel:${String(t.phone).replace(/[^0-9+]/g, '')}`;
-      $('wa').href = `https://wa.me/${waNumber(t.phone)}?text=${encodeURIComponent(K.wa(name))}`;
-      $('callBox').hidden = false;
-      if (K.callLabel) { $('callLabel').textContent = K.callLabel; $('callLabel').hidden = false; }
+      $('call').hidden = false;
+      // Con il numero del padrone: un solo pulsante che invia la notifica e apre WhatsApp col messaggio pronto
+      $('send').textContent = `💬 ${K.sendTitle}`; $('send').className = 'btn wa';
+      $('sendInfo').textContent += ' Poi si apre WhatsApp con il messaggio pronto: tocca Invia.';
     }
   }
 
@@ -233,17 +229,16 @@
         ? `${K.who[0].toUpperCase() + K.who.slice(1)} riceve subito la notifica con la tua posizione.`
         : `${K.who[0].toUpperCase() + K.who.slice(1)} riceve subito il tuo messaggio.`;
       // Non tutti i telefoni ricevono le notifiche: se il padrone ha lasciato il numero apro anche WhatsApp
-      // con il messaggio già scritto (posizione su Google Maps, apribile da qualsiasi telefono)
+      // con il messaggio già scritto (posizione su una pagina WeSpot, apribile da qualsiasi telefono)
       if (tag.phone) {
         const lines = [K.wa(String(tag.name || '').trim())];
         if (lat != null) lines.push(`Siamo qui: https://wespot.me/dove.html#${lat.toFixed(6)},${lng.toFixed(6)},${Math.round(Date.now() / 1000)},${encodeURIComponent(String(tag.name || '').trim().replace(/,/g, ' '))}`);
         const note = $('note').value.trim(); if (note) lines.push(note);
         const mine = $('phone').value.trim(); if (mine) lines.push(`Il mio numero: ${mine}`);
         const waUrl = `https://wa.me/${waNumber(tag.phone)}?text=${encodeURIComponent(lines.join('\n'))}`;
-        $('wa').href = waUrl; $('doneWa').href = waUrl; $('doneWa').hidden = false;
+        $('doneWa').href = waUrl; $('doneWa').textContent = `💬 ${K.sendTitle}`; $('doneWa').hidden = false;
         $('doneCall').href = $('call').href; $('doneCall').hidden = false;
-        $('doneText').textContent += ' Ti apro WhatsApp per avvisarlo anche lì: tocca Invia.';
-        setTimeout(() => { location.href = waUrl; }, 1500);
+        location.href = waUrl;
       }
     } catch (e) {
       status(/troppi/.test(e.message) ? 'Hai già inviato più volte: riprova tra qualche minuto.' : 'Invio non riuscito. Controlla la connessione e riprova.', 'err');
