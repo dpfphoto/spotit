@@ -471,3 +471,5 @@ button.m-status { border: 0; font-family: inherit; cursor: pointer; }
 .tag-kinds { display: flex; flex-wrap: wrap; gap: 8px; }
 .tag-kind { border: 1px solid #C3CAD1; background: #fff; color: var(--ink); border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
 .tag-kind[aria-checked="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
+.tag-seen-top { border-bottom: 1px solid #E2E8F0; padding-bottom: 6px; margin-bottom: 8px; }
+.tag-seen-top h3 { margin-top: 0; color: #B45309; }
