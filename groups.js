@@ -207,6 +207,7 @@
         const { data: ph } = await sb.rpc('outing_phones', { oid: id });
         for (const r of ph || []) { const m = data.members.find(x => x.id === r.id); if (m) m.phone = r.phone; }
       }
+      data.notes = await fetchNotes(id);
       return data;
     }
     // Non ne faccio ancora parte: anteprima dal link
@@ -216,6 +217,18 @@
     prev.members = prev.members || [];
     prev.joined = false;
     return prev;
+  }
+
+  // Note dei partecipanti (registro.sql); se l'archivio non le ha ancora, la sezione resta nascosta
+  let notesOk = true;
+  async function fetchNotes(id) {
+    try {
+      const { data, error } = await sb.from('outing_notes').select('id, user_id, name, body, created_at').eq('outing_id', id).order('created_at');
+      if (error) throw error;
+      notesOk = true;
+      for (const n of data || []) seenNote(n.id);
+      return data || [];
+    } catch { notesOk = false; return []; }
   }
 
   async function openGroup(id) {
@@ -347,6 +360,53 @@
     $('gCoverLabel').textContent = g.place && g.place.c ? 'Cambia copertina' : 'Metti una copertina';
     $('gPublic').checked = !!g.is_public;
     $('gLeaveGroup').hidden = isOwner || !mine;
+    drawNotes(g, isOwner);
+  }
+
+  // ---------- Note dei partecipanti ----------
+
+  function noteTime(ts) {
+    const d = new Date(ts), now = new Date();
+    const hhmm = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    return d.toDateString() === now.toDateString() ? hhmm : `${d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })} ${hhmm}`;
+  }
+  function drawNotes(g, isOwner) {
+    const u = me();
+    const box = $('gNotes');
+    box.hidden = !g.joined || !notesOk;
+    if (box.hidden) return;
+    const list = g.notes || [];
+    $('gNotesCount').textContent = list.length ? String(list.length) : '';
+    $('gNotesList').replaceChildren(...(list.length ? list.map(n => el('li', {},
+      el('div', { class: 'gn-head' }, el('strong', {}, n.name || 'Partecipante'), el('span', { class: 'muted' }, noteTime(n.created_at)),
+        (u && (n.user_id === u.id || isOwner)) ? el('button', { type: 'button', class: 'm-del', 'aria-label': 'Togli la nota', onclick: () => delNote(n) }, '✕') : ''),
+      el('p', {}, n.body))) : [el('li', { class: 'muted gn-empty' }, 'Nessuna nota. Scrivi qui cosa porti, a che ora arrivi o altro per il gruppo.')]));
+  }
+  $('gNoteAdd').onsubmit = async e => {
+    e.preventDefault();
+    if (!group) return;
+    const body = $('gNoteBody').value.trim().slice(0, 300);
+    if (!body) return;
+    const btn = $('gNoteAdd').querySelector('button[type=submit]');
+    btn.disabled = true;
+    try {
+      const { data, error } = await sb.from('outing_notes').insert({ outing_id: group.id, body }).select('id').single();
+      if (error) throw error;
+      seenNote(data.id);
+      $('gNoteBody').value = '';
+      callNotify({ action: 'note', note_id: data.id }).catch(() => {});
+      group.notes = await fetchNotes(group.id);
+      drawGroup();
+      toast('Nota inviata al gruppo');
+    } catch { toast('Non riesco a mandare la nota ora. Riprova.'); }
+    btn.disabled = false;
+  };
+  async function delNote(n) {
+    if (!confirm('Togliere questa nota?')) return;
+    const { error } = await sb.from('outing_notes').delete().eq('id', n.id);
+    if (error) { toast('Non riesco a toglierla ora'); return; }
+    group.notes = (group.notes || []).filter(x => x.id !== n.id);
+    drawGroup();
   }
 
   // ---------- Risposte ----------
@@ -790,6 +850,7 @@
       const all = data || [];
       allOutings = all;
       checkNews(all);
+      checkNotes(all);
       upcoming = all.filter(g => g.starts_at >= today() && !(isEvent(g) && isPast(g))).slice(0, 10);
       events = all.filter(isEvent);
       window.SPOTIT_MY_OUTINGS = new Set(all.map(g => g.id)); // i miei eventi pubblici non li ripeto nel livello di tutti
@@ -867,6 +928,35 @@
         forget(id);
       }
     }
+  }
+  // Note nuove degli altri: arrivano nella campanella (la prima volta segno come già viste quelle che ci sono)
+  const NOTES_KEY = 'spotit.notesSeen';
+  let notesSeen = load(NOTES_KEY, null);
+  function seenNote(id) {
+    if (!notesSeen) return;
+    if (!notesSeen.includes(id)) { notesSeen.push(id); notesSeen = notesSeen.slice(-300); save(NOTES_KEY, notesSeen); }
+  }
+  async function checkNotes(all) {
+    const u = me(); if (!u || !all.length) return;
+    const since = new Date(Date.now() - 30 * 864e5).toISOString();
+    try {
+      const { data, error } = await sb.from('outing_notes').select('id, outing_id, user_id, name, body, created_at')
+        .in('outing_id', all.map(g => g.id)).gte('created_at', since).order('created_at').limit(200);
+      if (error) throw error;
+      const first = !notesSeen;
+      if (first) notesSeen = [];
+      for (const n of data || []) {
+        if (notesSeen.includes(n.id)) continue;
+        if (!first && n.user_id !== u.id && !(group && group.id === n.outing_id && $('dlgGroup').open)) {
+          const g = all.find(x => x.id === n.outing_id);
+          const txt = n.body.length > 80 ? n.body.slice(0, 77) + '…' : n.body;
+          notify(`n-${n.id}`, '📝', `${n.name} in "${(g && g.place && g.place.n) || 'Uscita'}": ${txt}`, n.outing_id);
+        }
+        notesSeen.push(n.id);
+      }
+      notesSeen = notesSeen.slice(-300);
+      save(NOTES_KEY, notesSeen);
+    } catch { /* note non ancora attive nell'archivio */ }
   }
   function ago(ts) {
     const m = Math.round((Date.now() - ts) / 60000);
@@ -1036,6 +1126,7 @@
     sb.rpc('outing_by_short', { s: id }).then(({ data }) => data ? openGroup(data) : toast('Questa uscita non esiste più'),
       () => toast('Non riesco ad aprire l\'uscita ora. Riprova tra poco.'));
   }
+  window.spotitOpenGroup = openGroup;
   window.addEventListener('hashchange', checkGroupLink);
   checkGroupLink();
   AUTH.onUser(() => { openPending(); loadUpcoming(); });
