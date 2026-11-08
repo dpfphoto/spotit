@@ -1183,7 +1183,7 @@ $('iSave').onclick = () => {
 
 // ---------- Aggiornamenti ----------
 // Ogni pubblicazione alza APP_VERSION qui e in version.json: se online c'è un numero più alto propongo "Aggiorna"
-const APP_VERSION = 68;
+const APP_VERSION = 69;
 $('versionText').textContent = `Versione ${APP_VERSION}`;
 async function latestVersion() {
   const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
@@ -1233,6 +1233,7 @@ $('dlgMenu').addEventListener('click', e => {
   else if (go === 'trips') { setView('list'); $('list').scrollTop = 0; }
   else if (go === 'add') $('fab').click();
   else if (go === 'event') $('btnEvent').click();
+  else if (go === 'tags') { if (window.spotitOpenTags) window.spotitOpenTags(); }
   else if (go === 'registro') { if (window.spotitOpenRegistro) window.spotitOpenRegistro(); }
   else if (go === 'profile') $('btnSettings').click();
   else if (go === 'invite') $('btnInvite').click();
@@ -1287,7 +1288,7 @@ sweepExpired();
 setInterval(sweepExpired, 60000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) sweepExpired(); });
 setView('map');
-if (!/^#[supg]=/.test(location.hash) && !location.search) locate();
+if (!/^#(?:[supg]|tf)=/.test(location.hash) && !location.search) locate();
 checkIncoming();
 checkInvite();
 checkShareTarget();

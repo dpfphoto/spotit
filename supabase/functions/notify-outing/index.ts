@@ -103,6 +103,24 @@ Deno.serve(async req => {
       return json({ sent: await tick() });
     }
 
+    // Medaglietta NFC letta: chi ha trovato l'animale non ha un account, avviso il padrone una volta per segnalazione
+    if (body.action === 'found' && typeof body.sighting_id === 'string') {
+      const { data: s } = await admin.from('tag_sightings').update({ notified: true })
+        .eq('id', body.sighting_id).eq('notified', false).gte('created_at', new Date(Date.now() - 6e5).toISOString())
+        .select('id, tag_id, lat, note, pet_tags(owner, name)').maybeSingle();
+      const t = s && (s.pet_tags as unknown as { owner: string; name: string } | null);
+      if (!s || !t) return json({ sent: 0 });
+      const { data: subs } = await admin.from('push_subscriptions').select('endpoint, p256dh, auth, sound').eq('user_id', t.owner);
+      const note = String(s.note || '');
+      const sent = await pushTo(subs || [], {
+        title: `🐾 Qualcuno ha trovato ${t.name || 'il tuo animale'}`,
+        body: (s.lat != null ? 'Ha inviato la sua posizione: tocca per vederla sulla mappa' : 'Ti ha lasciato un messaggio')
+          + (note ? ` · "${note.length > 100 ? note.slice(0, 97) + '…' : note}"` : ''),
+        url: `${APP_URL}#tf=${s.tag_id}`, tag: `trovato-${s.id}`
+      }, 86400);
+      return json({ sent });
+    }
+
     // I token degli utenti sono firmati con la chiave nuova del progetto: l'app li manda in x-user-token
     // (Authorization porta la chiave pubblica anon, che il gateway di Supabase accetta)
     const jwt = req.headers.get('x-user-token') || (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
