@@ -18,7 +18,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="WeSpot">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=75">
+<link rel="stylesheet" href="styles.css?v=76">
 </head>
 <body>
 <header class="top">
@@ -518,6 +518,20 @@
   <p class="muted">Un tag NFC sulla medaglietta del cane, sul casco o sui DPI, sulla giacca, sulle chiavi… Chi lo avvicina al telefono vede il tuo messaggio (o le informazioni di emergenza) e può mandarti la sua posizione, che ti arriva come notifica. La tua posizione non la vede nessuno.</p>
   <ul id="tagList" class="reg-list tag-list"></ul>
   <button type="button" id="tagNew" class="btn primary full">+ Nuovo tag</button>
+  <button type="button" id="tagClaimOpen" class="btn ghost full">🎁 Collega un tag ricevuto</button>
+</dialog>
+
+<dialog id="dlgClaim" class="sheet">
+  <div class="sheet-head">
+    <h2>🎁 Collega un tag</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+  </div>
+  <form id="claimForm">
+    <p class="muted">Hai ricevuto un tag NFC già pronto? Scrivi il codice di attivazione che trovi nella confezione: il tag passa al tuo account e le segnalazioni arriveranno a te.</p>
+    <label class="field">Codice di attivazione <input id="claimCode" type="text" maxlength="12" required autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Es. K7P4-QX9M" class="claim-input"></label>
+    <p id="claimMsg" class="nfc-msg" role="status" aria-live="polite" hidden></p>
+    <button type="submit" id="claimGo" class="btn primary full">Collega al mio account</button>
+  </form>
 </dialog>
 
 <dialog id="dlgTag" class="sheet">
@@ -699,13 +713,13 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=75"></script>
-<script src="app.js?v=75"></script>
+<script src="config.js?v=76"></script>
+<script src="app.js?v=76"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=75"></script>
-<script src="groups.js?v=75"></script>
-<script src="layers.js?v=75"></script>
-<script src="registro.js?v=75"></script>
-<script src="medagliette.js?v=75"></script>
+<script src="account.js?v=76"></script>
+<script src="groups.js?v=76"></script>
+<script src="layers.js?v=76"></script>
+<script src="registro.js?v=76"></script>
+<script src="medagliette.js?v=76"></script>
 </body>
 </html>

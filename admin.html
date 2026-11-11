@@ -48,6 +48,23 @@
   .usage i.warn { background: #D97706; }
   .usage i.bad { background: #DC2626; }
   .usage div:first-child { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 4px; }
+  .tform { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .tform label { display: grid; gap: 4px; font-size: 13px; font-weight: 700; color: var(--muted); }
+  .tform .wide { grid-column: 1 / -1; }
+  .tform input, .tform select, .tform textarea { padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; font: inherit; font-weight: 400; color: var(--ink); background: #fff; width: 100%; }
+  .tform textarea { min-height: 80px; resize: vertical; }
+  .made { margin-top: 14px; padding: 14px; border-radius: 14px; background: #ECFDF5; border: 2px solid #16A34A; display: grid; gap: 8px; }
+  .made code, td code { font-size: 15px; font-weight: 700; letter-spacing: 1px; }
+  .made .claim { font-size: 26px; letter-spacing: 3px; }
+  .nfc { padding: 12px 14px; border-radius: 12px; font-weight: 700; text-align: center; border: 2px solid transparent; }
+  .nfc.wait { background: #FEF3C7; color: #92400E; border-color: #F59E0B; }
+  .nfc.ok { background: #DCFCE7; color: #166534; border-color: #16A34A; }
+  .nfc.err { background: #FEE2E2; color: #991B1B; border-color: #DC2626; }
+  .pill { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 13px; font-weight: 700; }
+  .pill.wait { background: #FEF3C7; color: #92400E; }
+  .pill.ok { background: #DCFCE7; color: #166534; }
+  .btn.small { padding: 6px 10px; font-size: 13px; }
+  .btn.danger { background: #fff; color: #B91C1C; border: 1px solid #FCA5A5; }
 </style>
 </head>
 <body>
@@ -146,7 +163,121 @@
       el('div', { class: 'tbl' }, el('table', {}, el('thead', {}, el('tr', {}, ['Email', 'Nome', 'Iscritto dal', 'Ultimo accesso', 'Posti'].map(h => el('th', {}, h)))), body)));
   }
 
-  function render(s, users) {
+  // ---------- Tag NFC per i clienti ----------
+  const TAG_KINDS = { animale: '🐾 Animale', dpi: '⛑️ DPI', abiti: '👕 Abiti', oggetto: '🔑 Oggetto', altro: '📲 Altro' };
+  const tagLink = id => `https://wespot.me/#t=${id}`;
+  const claimNice = c => String(c || '').replace(/^(.{4})(.{4})$/, '$1-$2');
+  const cardText = c => `Il tuo tag WeSpot\n1. Apri wespot.me e installa WeSpot\n2. Entra con il tuo account\n3. Menu › Tag NFC › Collega un tag\n4. Scrivi il codice: ${claimNice(c)}\nOppure apri: wespot.me/#attiva=${c}`;
+  let tagsCard = null, tagsBody = null, tagsNote = null, madeBox = null;
+
+  async function copy(text, okMsg) {
+    try { await navigator.clipboard.writeText(text); tagsNote.textContent = okMsg; }
+    catch { tagsNote.textContent = text; }
+  }
+  function printCard(t) {
+    const w = window.open('', '_blank', 'width=420,height=560');
+    if (!w) { tagsNote.textContent = 'Il browser ha bloccato la finestra di stampa: usa "Copia testo".'; return; }
+    const esc = v => String(v).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+    w.document.write(`<!doctype html><meta charset="utf-8"><title>Cartoncino ${esc(t.name || '')}</title>
+<style>body{font-family:system-ui,sans-serif;margin:24px;color:#17202A}.c{border:2px solid #0F766E;border-radius:16px;padding:20px;max-width:340px}
+h1{margin:0 0 4px;font-size:22px;color:#0F766E}p{margin:4px 0 12px;color:#4A5560}ol{padding-left:20px;line-height:1.6}
+.code{font-size:30px;font-weight:800;letter-spacing:4px;text-align:center;margin:14px 0;padding:10px;background:#F3F5F7;border-radius:12px}
+small{color:#4A5560}</style>
+<div class="c"><h1>Il tuo tag WeSpot</h1><p>${esc(TAG_KINDS[t.kind] || '')} · ${esc(t.name || '')}</p>
+<ol><li>Apri <b>wespot.me</b> e installa WeSpot</li><li>Entra con il tuo account</li><li>Menu › <b>Tag NFC</b> › <b>Collega un tag</b></li><li>Scrivi questo codice:</li></ol>
+<div class="code">${esc(claimNice(t.claim_code))}</div><small>Oppure apri wespot.me/#attiva=${esc(t.claim_code)}</small></div>
+<script>setTimeout(()=>print(),300)<\/script>`);
+    w.document.close();
+  }
+  async function writeNfc(t, box) {
+    if (!('NDEFReader' in window)) { box.className = 'nfc err'; box.textContent = '❌ Da questo dispositivo non si può scrivere: usa un telefono Android con Chrome, oppure copia il link e usa NFC Tools.'; box.hidden = false; return; }
+    const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 30000);
+    box.hidden = false; box.className = 'nfc wait'; box.textContent = '⏳ Appoggia ora il tag sul retro del telefono e tienilo fermo…';
+    try {
+      await new window.NDEFReader().write({ records: [{ recordType: 'url', data: tagLink(t.id) }] }, { overwrite: true, signal: ctrl.signal });
+      box.className = 'nfc ok'; box.textContent = '✅ Registrazione avvenuta! Il tag è pronto.';
+    } catch (e) {
+      box.className = 'nfc err';
+      box.textContent = '❌ Registrazione non avvenuta. ' + (e && e.name === 'AbortError' ? 'Nessun tag trovato in 30 secondi: riprova e appoggia subito il tag.' : 'Controlla che l\'NFC sia acceso e riprova tenendo il tag fermo.');
+    } finally { clearTimeout(timer); }
+  }
+  function tagActions(t) {
+    const box = el('div', { class: 'nfc', hidden: true });
+    return [el('div', { class: 'row' },
+      el('button', { type: 'button', class: 'btn', onclick: () => writeNfc(t, box) }, '📲 Scrivi sul tag'),
+      el('button', { type: 'button', class: 'btn ghost', onclick: () => copy(tagLink(t.id), 'Link copiato: incollalo in NFC Tools (Scrivi › URL).') }, 'Copia link'),
+      el('button', { type: 'button', class: 'btn ghost', onclick: () => printCard(t) }, '🖨️ Stampa cartoncino'),
+      el('button', { type: 'button', class: 'btn ghost', onclick: () => copy(cardText(t.claim_code), 'Testo del cartoncino copiato.') }, 'Copia testo'),
+      el('a', { class: 'btn ghost', href: `tag.html#t=${t.id}`, target: '_blank', rel: 'noopener' }, 'Prova la pagina')), box];
+  }
+  function drawTags(list) {
+    if (!tagsCard) return;
+    if (!list) { tagsBody.replaceChildren(el('tr', {}, el('td', { colspan: 6 }, 'Manca l\'aggiornamento dell\'archivio per i tag dei clienti.'))); return; }
+    if (!list.length) { tagsBody.replaceChildren(el('tr', {}, el('td', { colspan: 6, class: 'muted' }, 'Nessun tag per i clienti, per ora.'))); return; }
+    tagsBody.replaceChildren(...list.map(t => el('tr', {},
+      el('td', {}, t.client || '—'),
+      el('td', {}, `${(TAG_KINDS[t.kind] || '').split(' ')[0] || ''} ${t.name || ''}`),
+      el('td', {}, el('code', {}, claimNice(t.claim_code))),
+      el('td', {}, t.claimed_at ? el('span', { class: 'pill ok' }, `✅ Attivato ${date(t.claimed_at)}${t.owner_email ? ' · ' + t.owner_email : ''}`) : el('span', { class: 'pill wait' }, '⏳ Da attivare')),
+      el('td', {}, n(t.sightings)),
+      el('td', {}, el('span', { class: 'row', style: 'margin:0;flex-wrap:nowrap' },
+        el('button', { type: 'button', class: 'btn ghost small', onclick: () => showMade(t) }, 'Apri'),
+        t.claimed_at ? null : el('button', { type: 'button', class: 'btn danger small', onclick: async () => {
+          if (!confirm(`Eliminare il tag "${t.name}"? Il link sul tag smette di funzionare.`)) return;
+          const { error } = await sb.rpc('admin_delete_tag', { p_id: t.id });
+          tagsNote.textContent = error ? 'Non riesco a eliminarlo (forse è già stato attivato).' : 'Tag eliminato.';
+          refreshTags();
+        } }, 'Elimina'))))));
+  }
+  function showMade(t) {
+    madeBox.replaceChildren(
+      el('strong', {}, `${(TAG_KINDS[t.kind] || '').split(' ')[0] || ''} ${t.name || 'Tag'}${t.client ? ' · ' + t.client : ''}`),
+      el('div', {}, 'Codice di attivazione da mettere nella confezione:'),
+      el('code', { class: 'claim' }, claimNice(t.claim_code)),
+      el('div', { class: 'muted' }, `Link sul tag: ${tagLink(t.id)}`),
+      ...tagActions(t));
+    madeBox.hidden = false;
+    madeBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  async function refreshTags() {
+    const { data, error } = await sb.rpc('admin_tags');
+    drawTags(error ? null : data || []);
+  }
+  function makeTagsCard() {
+    if (tagsCard) return tagsCard;
+    const kind = el('select', { id: 'tKind' }, Object.entries(TAG_KINDS).map(([k, l]) => el('option', { value: k }, l)));
+    const name = el('input', { id: 'tName', maxlength: 40, required: true, placeholder: 'Es. Fido, oppure Mario Rossi per un DPI' });
+    const msg = el('textarea', { id: 'tMsg', maxlength: 500, placeholder: 'Messaggio per chi lo trova, o informazioni di emergenza' });
+    const phone = el('input', { id: 'tPhone', type: 'tel', maxlength: 20, placeholder: 'Telefono del cliente (lo vede chi legge il tag)' });
+    const client = el('input', { id: 'tClient', maxlength: 80, placeholder: 'Es. Mario Rossi, ordine 12 (lo vedi solo tu)' });
+    const save = el('button', { type: 'submit', class: 'btn' }, '+ Crea tag per il cliente');
+    tagsNote = el('p', { class: 'muted', role: 'status' });
+    madeBox = el('div', { class: 'made', hidden: true });
+    tagsBody = el('tbody');
+    const form = el('form', { class: 'tform' },
+      el('label', {}, 'Tipo', kind), el('label', {}, 'Nome', name), el('label', {}, 'Telefono', phone), el('label', {}, 'Cliente (nota per te)', client),
+      el('label', { class: 'wide' }, 'Messaggio', msg), el('div', { class: 'wide' }, save));
+    form.onsubmit = async e => {
+      e.preventDefault();
+      save.disabled = true; tagsNote.textContent = 'Creo il tag…';
+      const { data, error } = await sb.rpc('admin_create_tag', { p_kind: kind.value, p_name: name.value, p_message: msg.value, p_phone: phone.value, p_client: client.value });
+      save.disabled = false;
+      if (error || !data) { tagsNote.textContent = 'Non riesco a creare il tag. Riprova tra poco.'; return; }
+      tagsNote.textContent = 'Tag creato. Ora scrivilo sull\'oggetto e metti il codice nella confezione.';
+      showMade({ id: data.id, claim_code: data.claim, kind: kind.value, name: name.value.trim(), client: client.value.trim() });
+      name.value = ''; msg.value = ''; phone.value = ''; client.value = '';
+      refreshTags();
+    };
+    tagsCard = el('section', { class: 'card' },
+      el('h2', {}, '🎁 Tag NFC per i clienti'),
+      el('p', { class: 'muted' }, 'Crea il tag con i dati del cliente, scrivilo sull\'oggetto e spediscilo con il codice di attivazione. Finché il cliente non lo attiva, le segnalazioni arrivano a te; dopo passano a lui. Puoi modificare i dati dei tag non ancora attivati dall\'app, in Tag NFC.'),
+      form, tagsNote, madeBox,
+      el('div', { class: 'tbl', style: 'margin-top:14px' }, el('table', {},
+        el('thead', {}, el('tr', {}, ['Cliente', 'Tag', 'Codice', 'Stato', 'Segnalazioni', ''].map(h => el('th', {}, h)))), tagsBody)));
+    return tagsCard;
+  }
+
+  function render(s, users, tags) {
     const u = s.users, p = s.places, o = s.outings, st = s.storage;
     const verdicts = Object.entries(p.by_verdict || {}).map(([k, v]) => [(VERDICT[k] || [k])[0], v, (VERDICT[k] || [])[1]]);
     const vbars = el('div', { class: 'bars' });
@@ -157,6 +288,7 @@
         kpi(u.total, 'iscritti in totale', true), kpi(u.new_7d, 'nuovi negli ultimi 7 giorni'), kpi(u.new_30d, 'nuovi negli ultimi 30 giorni'),
         kpi(u.signed_in_7d, 'accessi negli ultimi 7 giorni'), kpi(u.with_places, 'hanno salvato almeno un posto'), kpi(u.not_sharing, 'non condividono i posti')),
       users ? usersCard(users) : null,
+      makeTagsCard(),
       el('div', { class: 'two' },
         el('section', { class: 'card' }, el('h2', {}, 'Nuovi iscritti, ultimi 30 giorni'), chart(s.daily.signups, 'Nuovi iscritti')),
         el('section', { class: 'card' }, el('h2', {}, 'Posti salvati, ultimi 30 giorni'), chart(s.daily.places, 'Posti salvati'))),
@@ -181,6 +313,7 @@
            ['Google Mappe: utilizzo', 'https://console.cloud.google.com/google/maps-apis/metrics'],
            ['Codice su GitHub', 'https://github.com/dpfphoto/spotit'],
            ['IONOS (dominio)', 'https://my.ionos.it']].map(([t, h]) => el('a', { class: 'btn ghost', href: h, target: '_blank', rel: 'noopener' }, t)))));
+    drawTags(tags);
     $('upd').textContent = 'Aggiornato ' + date(s.generated_at, true);
     $('refresh').hidden = false;
   }
@@ -193,9 +326,9 @@
       const adm = await sb.rpc('is_admin');
       if (adm.error) { say('Il pannello non è ancora attivo: manca un aggiornamento dell\'archivio.'); return; }
       if (adm.data !== true) { say('Questo account non ha accesso al pannello.'); return; }
-      const [st, us] = await Promise.all([sb.rpc('admin_stats'), sb.rpc('admin_users')]);
+      const [st, us, tg] = await Promise.all([sb.rpc('admin_stats'), sb.rpc('admin_users'), sb.rpc('admin_tags')]);
       if (st.error) { say('Non riesco a leggere i numeri ora. Riprova tra poco.'); return; }
-      render(st.data, us.error ? null : us.data);
+      render(st.data, us.error ? null : us.data, tg.error ? null : tg.data || []);
     } catch {
       say('Non riesco a collegarmi ora. Controlla la connessione e riprova.');
     } finally { $('refresh').disabled = false; }
