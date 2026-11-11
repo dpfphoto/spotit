@@ -39,6 +39,7 @@
   .status { margin: 10px 0; font-weight: 600; }
   .status.ok { color: var(--ok); }
   .status.err { color: var(--err); }
+  .claim-hint { display: block; margin: 12px 0; padding: 12px 14px; border-radius: 14px; background: #FEF3C7; color: #92400E; text-decoration: none; font-size: 15px; line-height: 1.4; }
   .done { text-align: center; background: #ECFDF5; border-radius: 16px; padding: 18px 16px; margin: 14px 0; }
   .install { display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--line); border-radius: 20px; padding: 16px; margin-top: 26px; }
   .install-head { display: flex; align-items: center; gap: 12px; }
@@ -72,6 +73,7 @@
     <p id="msgLabel" class="msg-label" hidden></p>
     <p id="msg" class="msg" hidden></p>
 
+    <a id="claimHint" class="claim-hint" href="./#attiva" hidden>🎁 Hai appena ricevuto questo tag? <strong>Attivalo su WeSpot</strong> con il codice che trovi nella confezione.</a>
     <a id="sos" class="btn sos" href="tel:112" hidden>🚑 Chiama il 112</a>
 
     <section id="sendBox">
@@ -115,7 +117,7 @@
   </footer>
 </main>
 
-<script src="config.js?v=75"></script>
+<script src="config.js?v=76"></script>
 <script>
 (function () {
   const CFG = window.SPOTIT_CONFIG || {};
@@ -172,6 +174,7 @@
     $('noteLabel').textContent = `Messaggio per ${K.who}`;
     $('footNote').textContent = `La tua posizione viene inviata solo se tocchi il pulsante e la vede solo ${K.who}.`;
     $('sos').hidden = !K.sos;
+    $('claimHint').hidden = t.pending !== true;
     if (K.msgLabel) { $('msgLabel').textContent = K.msgLabel; }
     $('loading').hidden = true;
     $('tag').hidden = false;

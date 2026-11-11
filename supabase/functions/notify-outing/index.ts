@@ -125,6 +125,25 @@ Deno.serve(async req => {
       return json({ sent });
     }
 
+    // Nuova richiesta di tag dalla scheda pubblica (richiesta.html): avviso gli admin, una volta sola e solo se recente
+    if (body.action === 'request' && typeof body.request_id === 'string') {
+      const { data: r } = await admin.from('tag_requests').update({ notified: true })
+        .eq('id', body.request_id).eq('notified', false).gte('created_at', new Date(Date.now() - 6e5).toISOString())
+        .select('id, kind, name, buyer_name').maybeSingle();
+      if (!r) return json({ sent: 0 });
+      const { data: adm } = await admin.from('admins').select('user_id');
+      const ids = (adm || []).map((a: { user_id: string }) => a.user_id);
+      if (!ids.length) return json({ sent: 0 });
+      const { data: subs } = await admin.from('push_subscriptions').select('endpoint, p256dh, auth, sound').in('user_id', ids);
+      const ico: Record<string, string> = { animale: '🐾', dpi: '⛑️', abiti: '👕', oggetto: '🔑', altro: '📲' };
+      const sent = await pushTo(subs || [], {
+        title: '🎁 Nuova richiesta di tag NFC',
+        body: `${r.buyer_name || 'Un cliente'} · ${ico[r.kind] || ''} ${r.name || ''}`.trim(),
+        url: `${APP_URL}admin.html`, tag: `richiesta-${r.id}`
+      }, 86400);
+      return json({ sent });
+    }
+
     // I token degli utenti sono firmati con la chiave nuova del progetto: l'app li manda in x-user-token
     // (Authorization porta la chiave pubblica anon, che il gateway di Supabase accetta)
     const jwt = req.headers.get('x-user-token') || (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');

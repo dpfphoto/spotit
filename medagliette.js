@@ -54,10 +54,12 @@
   }
   function okPhoto(s) { return typeof s === 'string' && /^data:image\/(png|jpeg|webp);base64,/.test(s); }
   const ofTag = id => sightings.filter(s => s.tag_id === id);
+  // Tag preparato dall'admin per un cliente e non ancora attivato
+  const pending = t => !!(t && t.claim_code && !t.claimed_at);
 
   async function load() {
     const [t, s] = await Promise.all([
-      sb.from('pet_tags').select('id, kind, name, message, phone, photo, created_at').order('created_at'),
+      sb.from('pet_tags').select('id, kind, name, message, phone, photo, created_at, client, claim_code, claimed_at').order('created_at'),
       sb.from('tag_sightings').select('id, tag_id, lat, lng, acc, note, phone, created_at').order('created_at', { ascending: false }).limit(200)
     ]);
     if (t.error) throw t.error;
@@ -92,6 +94,7 @@
         okPhoto(t.photo) ? el('img', { src: t.photo, alt: '', class: 'tag-thumb' }) : el('span', { class: 'tag-thumb', 'aria-hidden': 'true' }, KINDS[kindOf(t)].ico),
         el('span', { class: 'tag-txt' },
           el('strong', {}, `${okPhoto(t.photo) ? KINDS[kindOf(t)].ico + ' ' : ''}${t.name || 'Senza nome'}`),
+          pending(t) ? el('span', { class: 'tag-pending small' }, `🎁 ${t.client ? 'Per ' + t.client + ' · ' : ''}da attivare`) : null,
           el('span', { class: 'muted small' }, last ? `Ultima segnalazione ${when(last.created_at)}` : 'Nessuna segnalazione'))));
     }));
   }
@@ -288,6 +291,41 @@
   };
 
   $('tagNew').onclick = () => openTag(null);
+
+  // ---------- Collega un tag ricevuto (preparato da WeSpot con il codice di attivazione) ----------
+
+  function claimMsg(text, kind) {
+    const m = $('claimMsg');
+    m.textContent = text; m.hidden = !text; m.className = 'nfc-msg' + (kind ? ' ' + kind : '');
+  }
+  function openClaim(code) {
+    if (!AUTH.user()) { toast('Entra con il tuo account per collegare il tag'); return; }
+    $('claimCode').value = code ? String(code).toUpperCase().replace(/^(.{4})(.{4})$/, '$1-$2') : '';
+    claimMsg('');
+    $('dlgClaim').showModal();
+    if (!code) $('claimCode').focus();
+  }
+  $('tagClaimOpen').onclick = () => openClaim('');
+  $('claimForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const code = $('claimCode').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (code.length !== 8) { claimMsg('❌ Il codice ha 8 caratteri, ad esempio K7P4-QX9M.', 'err'); return; }
+    $('claimGo').disabled = true; claimMsg('⏳ Collego il tag…', 'wait');
+    try {
+      const { data, error } = await sb.rpc('claim_tag', { p_code: code });
+      if (error) {
+        claimMsg(/già usato/.test(error.message) ? '❌ Questo codice è già stato usato da un altro account.'
+          : /non valido/.test(error.message) ? '❌ Codice non valido. Controlla di averlo scritto bene.'
+          : '❌ Non riesco a collegare il tag ora. Riprova tra poco.', 'err');
+        return;
+      }
+      claimMsg(`✅ Fatto! Il tag ${data && data.name ? '"' + data.name + '" ' : ''}ora è tuo.`, 'ok');
+      if (navigator.vibrate) navigator.vibrate(200);
+      setTimeout(() => { $('dlgClaim').close(); openTags(data && data.id).catch(() => {}); }, 1500);
+    } catch {
+      claimMsg('❌ Non riesco a collegarmi ora. Controlla la connessione e riprova.', 'err');
+    } finally { $('claimGo').disabled = false; }
+  });
   $('dlgTag').addEventListener('close', () => { $('tagDelSure').hidden = true; });
 
   // ---------- Avvisi nella campanella ----------
@@ -309,11 +347,15 @@
 
   // Aperta dalla notifica: wespot.me/#tf=<codice>
   const fromPush = (location.hash.match(/^#tf=([A-Za-z0-9]{7})/) || [])[1];
-  if (fromPush) history.replaceState(null, '', location.pathname + location.search);
+  // Link del cartoncino: wespot.me/#attiva=<codice di attivazione>
+  const claimHash = location.hash.match(/^#attiva(?:=([A-Za-z0-9-]{8,9}))?$/);
+  const toClaim = claimHash ? (claimHash[1] || '').replace(/-/g, '') : null;
+  if (fromPush || toClaim != null) history.replaceState(null, '', location.pathname + location.search);
   let started = false;
   AUTH.onUser(() => {
     if (started) return; started = true;
-    if (fromPush) openTags(fromPush).catch(() => {});
+    if (toClaim != null) openClaim(toClaim);
+    else if (fromPush) openTags(fromPush).catch(() => {});
     else checkNew().catch(() => {});
   });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) checkNew().catch(() => {}); });

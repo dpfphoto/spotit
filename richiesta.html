@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F766E">
+<title>Richiedi il tuo tag NFC · WeSpot</title>
+<link rel="icon" href="icons/icon-192.png">
+<meta property="og:title" content="Richiedi il tuo tag NFC WeSpot">
+<meta property="og:description" content="Compila la scheda: prepariamo il tuo tag personalizzato per animali, DPI, abiti e oggetti.">
+<meta property="og:image" content="https://wespot.me/icons/icon-512.png">
+<style>
+  :root { --brand: #0F766E; --ink: #0F172A; --muted: #5B6670; --soft: #F1F5F4; --line: #E2E8F0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: #fff; }
+  main { max-width: 560px; margin: 0 auto; padding: 20px 16px 40px; }
+  .brand { display: flex; align-items: center; gap: 8px; color: var(--brand); font-weight: 800; text-decoration: none; font-size: 15px; }
+  .brand img { width: 28px; height: 28px; border-radius: 8px; }
+  h1 { font-size: 26px; line-height: 1.2; margin: 16px 0 6px; }
+  h2 { font-size: 19px; margin: 22px 0 2px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 13px; }
+  section { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 2px; }
+  label { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; font-size: 13px; font-weight: 600; color: var(--muted); }
+  textarea, input { font: inherit; color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 12px; width: 100%; background: #fff; }
+  textarea { min-height: 90px; resize: vertical; }
+  .kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin: 10px 0; }
+  .kind { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px; border: 2px solid var(--line); border-radius: 14px; background: #fff; font: inherit; font-weight: 700; font-size: 14px; color: var(--ink); cursor: pointer; }
+  .kind span { font-size: 26px; }
+  .kind[aria-checked="true"] { border-color: var(--brand); background: #F0FDFA; color: var(--brand); }
+  .photo-row { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
+  .photo-row img { width: 72px; height: 72px; object-fit: cover; border-radius: 14px; background: var(--soft); }
+  .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 54px; border: 0; border-radius: 16px; font: inherit; font-weight: 700; font-size: 17px; text-decoration: none; cursor: pointer; margin: 12px 0; padding: 12px 16px; }
+  .btn.primary { background: var(--brand); color: #fff; }
+  .btn.primary:disabled { background: var(--line); color: var(--muted); }
+  .btn.ghost { background: var(--soft); color: var(--ink); width: auto; min-height: 44px; margin: 0; font-size: 15px; }
+  .check { flex-direction: row; align-items: flex-start; gap: 10px; font-size: 14px; font-weight: 400; color: var(--ink); }
+  .check input { width: 22px; height: 22px; flex: none; margin: 1px 0 0; }
+  .msg { padding: 14px 16px; border-radius: 14px; font-weight: 700; font-size: 16px; text-align: center; border: 2px solid transparent; margin: 10px 0; }
+  .msg.wait { background: #FEF3C7; color: #92400E; border-color: #F59E0B; }
+  .msg.err { background: #FEE2E2; color: #991B1B; border-color: #DC2626; }
+  .done { text-align: center; background: #ECFDF5; border: 2px solid #16A34A; border-radius: 18px; padding: 24px 16px; margin: 20px 0; }
+  .done strong { display: block; font-size: 22px; color: #166534; margin-bottom: 6px; }
+  footer { margin-top: 28px; text-align: center; }
+  footer a { color: var(--brand); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <a class="brand" href="./"><img src="icons/icon-192.png" alt="">WeSpot</a>
+  <h1>Richiedi il tuo tag NFC</h1>
+  <p class="muted">Compila la scheda: prepariamo il tuo tag personalizzato e te lo spediamo già pronto. Chi lo avvicina al telefono vede il tuo messaggio e può mandarti la sua posizione.</p>
+
+  <form id="form" novalidate>
+    <section>
+      <h2>1. Il tag</h2>
+      <div id="kinds" class="kinds" role="radiogroup" aria-label="Per che cosa è il tag"></div>
+      <label><span id="nameLabel">Nome dell'animale</span><input id="name" maxlength="40" required></label>
+      <label><span id="msgLabel">Messaggio per chi lo trova</span><textarea id="message" maxlength="500"></textarea></label>
+      <label><span>Telefono da mostrare sul tag (facoltativo)</span><input id="phone" type="tel" maxlength="20" placeholder="Es. 333 1234567"></label>
+      <div class="photo-row">
+        <img id="photoPrev" alt="" hidden>
+        <label class="btn ghost" style="margin:0;flex-direction:row">📷 <span id="photoBtn">Aggiungi una foto</span><input id="photo" type="file" accept="image/*" hidden></label>
+        <button type="button" id="photoDel" class="btn ghost" hidden>Togli</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. I tuoi dati</h2>
+      <p class="muted small">Servono solo per contattarti e spedirti il tag.</p>
+      <label>Nome e cognome<input id="buyerName" maxlength="80" required autocomplete="name"></label>
+      <label>Email<input id="buyerEmail" type="email" maxlength="120" autocomplete="email" placeholder="Es. nome@gmail.com"></label>
+      <label>Telefono<input id="buyerPhone" type="tel" maxlength="20" autocomplete="tel" placeholder="Es. 333 1234567"></label>
+      <label>Indirizzo di spedizione<textarea id="address" maxlength="300" autocomplete="street-address" placeholder="Via, numero, CAP, città, provincia" style="min-height:70px"></textarea></label>
+      <label>Note per la stampa o la consegna (facoltative)<textarea id="notes" maxlength="500" placeholder="Es. colore, scritta da stampare, quantità" style="min-height:70px"></textarea></label>
+    </section>
+
+    <label class="check"><input id="consent" type="checkbox"> <span>Acconsento al trattamento dei miei dati per preparare e spedire il tag, come descritto nella <a href="privacy.html" target="_blank" rel="noopener">privacy</a>.</span></label>
+    <p id="msg" class="msg" role="status" aria-live="polite" hidden></p>
+    <button type="submit" id="send" class="btn primary">Invia la richiesta</button>
+  </form>
+
+  <div id="done" class="done" hidden>
+    <strong>✅ Richiesta inviata, grazie!</strong>
+    <span>Ti contatteremo presto per la conferma e la spedizione. Quando ricevi il tag, nella confezione trovi il codice per collegarlo al tuo account WeSpot.</span>
+  </div>
+
+  <footer class="small muted"><p><a href="./">Scopri WeSpot</a> · <a href="privacy.html">Privacy</a></p></footer>
+</main>
+
+<script src="config.js?v=76"></script>
+<script>
+(function () {
+  const CFG = window.SPOTIT_CONFIG || {};
+  const $ = id => document.getElementById(id);
+  const headers = { 'Content-Type': 'application/json', apikey: CFG.supabaseKey, Authorization: `Bearer ${CFG.supabaseKey}` };
+  const KINDS = {
+    animale: { ico: '🐾', label: 'Animale', name: "Nome dell'animale", namePh: 'Es. Fido', msg: 'Messaggio per chi lo trova', msgPh: 'Es. Mi sono perso! Sono buono. Per favore avvisa il mio padrone, grazie.' },
+    dpi: { ico: '⛑️', label: 'DPI', name: 'Di chi è', namePh: 'Es. Mario Rossi', msg: 'Informazioni di emergenza', msgPh: 'Es. Gruppo sanguigno 0+. Allergie: nessuna. Avvisare: Maria (moglie).' },
+    abiti: { ico: '👕', label: 'Abiti', name: 'Che capo è', namePh: 'Es. Giacca della divisa', msg: 'Messaggio per chi lo trova', msgPh: 'Es. Grazie per averla trovata! Chiamami e vengo a prenderla.' },
+    oggetto: { ico: '🔑', label: 'Oggetto', name: "Che cos'è", namePh: 'Es. Chiavi di casa, zaino, bici', msg: 'Messaggio per chi lo trova', msgPh: 'Es. Grazie! Chiamami o lasciale al bar della piazza.' },
+    altro: { ico: '📲', label: 'Altro', name: 'Nome del tag', namePh: 'Es. Zaino di emergenza', msg: 'Messaggio per chi lo legge', msgPh: 'Es. Questo zaino appartiene a…' }
+  };
+  let kind = (location.hash.match(/^#(animale|dpi|abiti|oggetto|altro)$/) || [])[1] || 'animale';
+  let photo = '';
+
+  function drawKinds() {
+    $('kinds').replaceChildren(...Object.entries(KINDS).map(([id, k]) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'kind'; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(id === kind));
+      const ico = document.createElement('span'); ico.textContent = k.ico; ico.setAttribute('aria-hidden', 'true');
+      b.append(ico, k.label);
+      b.onclick = () => { kind = id; drawKinds(); };
+      return b;
+    }));
+    const k = KINDS[kind];
+    $('nameLabel').textContent = k.name; $('name').placeholder = k.namePh;
+    $('msgLabel').textContent = k.msg; $('message').placeholder = k.msgPh;
+  }
+  drawKinds();
+
+  $('consent').onchange = () => { if ($('consent').checked) msg(''); };
+  function msg(text, cls) { const m = $('msg'); m.textContent = text; m.hidden = !text; m.className = 'msg' + (cls ? ' ' + cls : ''); }
+
+  // Foto rimpicciolita sul telefono (max 600 px, JPEG) per stare sotto i 400 KB
+  $('photo').onchange = () => {
+    const f = $('photo').files && $('photo').files[0];
+    if (!f) return;
+    const img = new Image(), url = URL.createObjectURL(f);
+    img.onload = () => {
+      const s = Math.min(1, 600 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      let q = 0.82, out = c.toDataURL('image/jpeg', q);
+      while (out.length > 380000 && q > 0.4) { q -= 0.1; out = c.toDataURL('image/jpeg', q); }
+      URL.revokeObjectURL(url);
+      photo = out; $('photoPrev').src = out; $('photoPrev').hidden = false; $('photoDel').hidden = false; $('photoBtn').textContent = 'Cambia foto';
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); msg('❌ Non riesco a leggere questa foto, prova con un\'altra.', 'err'); };
+    img.src = url;
+  };
+  $('photoDel').onclick = () => { photo = ''; $('photo').value = ''; $('photoPrev').hidden = true; $('photoDel').hidden = true; $('photoBtn').textContent = 'Aggiungi una foto'; };
+
+  $('form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const v = id => $(id).value.trim();
+    if (!v('name')) { msg(`❌ Scrivi: ${KINDS[kind].name.toLowerCase()}.`, 'err'); $('name').focus(); return; }
+    if (!v('buyerName')) { msg('❌ Scrivi il tuo nome e cognome.', 'err'); $('buyerName').focus(); return; }
+    const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v('buyerEmail'));
+    if (!emailOk && v('buyerPhone').replace(/\D/g, '').length < 6) { msg('❌ Lascia almeno un\'email o un telefono per essere contattato.', 'err'); return; }
+    if (!$('consent').checked) { msg('❌ Per inviare la richiesta serve il consenso al trattamento dei dati.', 'err'); return; }
+    if (!CFG.supabaseUrl) { msg('❌ Servizio non disponibile, riprova più tardi.', 'err'); return; }
+    $('send').disabled = true; msg('⏳ Invio la richiesta…', 'wait');
+    try {
+      const r = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/submit_tag_request`, { method: 'POST', headers, body: JSON.stringify({
+        p_kind: kind, p_name: v('name'), p_message: v('message'), p_phone: v('phone'), p_photo: photo,
+        p_buyer_name: v('buyerName'), p_buyer_email: emailOk ? v('buyerEmail') : '', p_buyer_phone: v('buyerPhone'),
+        p_address: v('address'), p_notes: v('notes'), p_consent: true }) });
+      const id = await r.json().catch(() => null);
+      if (!r.ok) throw new Error((id && id.message) || 'errore');
+      // Avviso chi prepara i tag (se non parte, la richiesta resta comunque nel pannello)
+      fetch(`${CFG.supabaseUrl}/functions/v1/notify-outing`, { method: 'POST', headers, keepalive: true, body: JSON.stringify({ action: 'request', request_id: id }) }).catch(() => {});
+      $('form').hidden = true; $('done').hidden = false; window.scrollTo(0, 0);
+    } catch (err) {
+      msg(/troppe/.test(err.message) ? '❌ In questo momento arrivano troppe richieste: riprova tra qualche minuto.' : '❌ Invio non riuscito. Controlla la connessione e riprova.', 'err');
+    } finally { $('send').disabled = false; }
+  });
+})();
+</script>
+</body>
+</html>

@@ -481,3 +481,5 @@ button.m-status { border: 0; font-family: inherit; cursor: pointer; }
 .nfc-msg.wait { background: #FEF3C7; color: #92400E; border-color: #F59E0B; }
 .nfc-msg.ok { background: #DCFCE7; color: #166534; border-color: #16A34A; }
 .nfc-msg.err { background: #FEE2E2; color: #991B1B; border-color: #DC2626; }
+.tag-pending { color: #92400E; font-weight: 700; }
+.claim-input { text-transform: uppercase; letter-spacing: 3px; font-size: 22px; font-weight: 700; text-align: center; }
