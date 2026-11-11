@@ -65,6 +65,18 @@
   .pill.ok { background: #DCFCE7; color: #166534; }
   .btn.small { padding: 6px 10px; font-size: 13px; }
   .btn.danger { background: #fff; color: #B91C1C; border: 1px solid #FCA5A5; }
+  .reqs { display: grid; gap: 10px; }
+  .req { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 6px; font-size: 14px; }
+  .req.nuova { border: 2px solid #F59E0B; background: #FFFBEB; }
+  .req-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .req-head strong { font-size: 16px; }
+  .req img { width: 64px; height: 64px; object-fit: cover; border-radius: 12px; float: right; margin-left: 10px; }
+  .req .msgtxt { white-space: pre-wrap; background: var(--soft); border-radius: 10px; padding: 8px 10px; }
+  .req a { color: var(--brand); }
+  .pill.no { background: #F3F4F6; color: #4B5563; }
+  .share { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .share img { width: 150px; height: 150px; image-rendering: pixelated; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  .from-req { padding: 10px 12px; border-radius: 12px; background: #FEF3C7; color: #92400E; font-weight: 700; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 </style>
 </head>
 <body>
@@ -77,6 +89,7 @@
 <main id="main"><div class="msg" id="status">Carico…</div></main>
 
 <script src="vendor/supabase/supabase.js"></script>
+<script src="vendor/qrcode/qrcode.js"></script>
 <script src="config.js"></script>
 <script>
 (function () {
@@ -168,7 +181,100 @@
   const tagLink = id => `https://wespot.me/#t=${id}`;
   const claimNice = c => String(c || '').replace(/^(.{4})(.{4})$/, '$1-$2');
   const cardText = c => `Il tuo tag WeSpot\n1. Apri wespot.me e installa WeSpot\n2. Entra con il tuo account\n3. Menu › Tag NFC › Collega un tag\n4. Scrivi il codice: ${claimNice(c)}\nOppure apri: wespot.me/#attiva=${c}`;
-  let tagsCard = null, tagsBody = null, tagsNote = null, madeBox = null;
+  let tagsCard = null, tagsBody = null, tagsNote = null, madeBox = null, fromBox = null, fromRequest = null;
+  let reqCard = null, reqList = null, reqNote = null, reqShowAll = false, reqData = [];
+  const REQ_URL = 'https://wespot.me/richiesta.html';
+
+  // ---------- Richieste dalla scheda pubblica ----------
+  function setFromRequest(r) {
+    fromRequest = r;
+    if (!fromBox) return;
+    fromBox.hidden = !r;
+    if (!r) { fromBox.replaceChildren(); return; }
+    fromBox.replaceChildren(
+      r.photo ? el('img', { src: r.photo, alt: '', style: 'width:44px;height:44px;border-radius:10px;object-fit:cover' }) : null,
+      el('span', { style: 'flex:1' }, `Dalla richiesta di ${r.buyer_name}${r.photo ? ' (con la sua foto)' : ''}: controlla i dati e tocca "Crea".`),
+      el('button', { type: 'button', class: 'btn ghost small', onclick: () => setFromRequest(null) }, 'Lascia stare'));
+  }
+  function useRequest(r) {
+    $('tKind').value = r.kind; $('tName').value = r.name || ''; $('tMsg').value = r.message || '';
+    $('tPhone').value = r.phone || ''; $('tClient').value = r.buyer_name || '';
+    setFromRequest(r);
+    tagsCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function qrImage(text) {
+    if (!window.qrcode) return null;
+    const q = window.qrcode(0, 'M'); q.addData(text); q.make();
+    return q.createDataURL(8, 16);
+  }
+  async function downloadQr() {
+    const src = qrImage(REQ_URL); if (!src) return;
+    const img = new Image(); img.src = src; await img.decode().catch(() => {});
+    const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+    c.getContext('2d').drawImage(img, 0, 0);
+    const a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = 'qr-richiesta-tag-wespot.png'; a.click();
+  }
+  function drawRequests() {
+    if (!reqCard) return;
+    if (reqData === null) { reqList.replaceChildren(el('p', { class: 'muted' }, 'Manca l\'aggiornamento dell\'archivio per le richieste.')); return; }
+    const open = reqData.filter(r => r.status === 'nuova');
+    const list = reqShowAll ? reqData : open;
+    reqCard.querySelector('h2').textContent = `📝 Richieste dei clienti${open.length ? ` (${open.length} da fare)` : ''}`;
+    if (!list.length) { reqList.replaceChildren(el('p', { class: 'muted' }, reqShowAll ? 'Ancora nessuna richiesta.' : 'Nessuna richiesta da fare.')); return; }
+    reqList.replaceChildren(...list.map(r => {
+      const tel = String(r.buyer_phone || '');
+      return el('div', { class: 'req ' + r.status },
+        el('div', { class: 'req-head' },
+          el('strong', {}, r.buyer_name),
+          r.status === 'nuova' ? el('span', { class: 'pill wait' }, '⏳ Da fare') : r.status === 'evasa' ? el('span', { class: 'pill ok' }, '✅ Tag creato') : el('span', { class: 'pill no' }, 'Annullata'),
+          el('span', { class: 'muted' }, date(r.created_at, true))),
+        el('div', {}, r.photo ? el('img', { src: r.photo, alt: '' }) : null,
+          el('div', {}, el('b', {}, `${(TAG_KINDS[r.kind] || '')} · ${r.name}`)),
+          r.message ? el('div', { class: 'msgtxt' }, r.message) : null,
+          r.phone ? el('div', {}, `Telefono sul tag: ${r.phone}`) : null),
+        el('div', {}, '📬 ', r.buyer_email ? el('a', { href: `mailto:${r.buyer_email}` }, r.buyer_email) : null,
+          r.buyer_email && tel ? ' · ' : null,
+          tel ? el('a', { href: `tel:${tel}` }, tel) : null,
+          tel ? [' · ', el('a', { href: `https://wa.me/${tel.replace(/\D/g, '').replace(/^(3\d{8,9})$/, '39$1')}`, target: '_blank', rel: 'noopener' }, 'WhatsApp')] : null),
+        r.address ? el('div', {}, `🏠 ${r.address}`) : null,
+        r.notes ? el('div', {}, `🖨️ ${r.notes}`) : null,
+        el('div', { class: 'row', style: 'margin:4px 0 0' },
+          r.status === 'nuova' ? el('button', { type: 'button', class: 'btn small', onclick: () => useRequest(r) }, '🎁 Crea tag') : null,
+          r.status === 'nuova' ? el('button', { type: 'button', class: 'btn ghost small', onclick: () => setRequest(r, 'annullata') }, 'Annulla') : null,
+          r.status === 'annullata' ? el('button', { type: 'button', class: 'btn ghost small', onclick: () => setRequest(r, 'nuova') }, 'Rimetti da fare') : null));
+    }));
+  }
+  async function setRequest(r, status) {
+    const { error } = await sb.rpc('admin_set_request', { p_id: r.id, p_status: status });
+    reqNote.textContent = error ? 'Non riesco a cambiarla ora, riprova.' : '';
+    refreshRequests();
+  }
+  async function refreshRequests() {
+    const { data, error } = await sb.rpc('admin_tag_requests');
+    reqData = error ? null : data || [];
+    drawRequests();
+  }
+  function makeReqCard() {
+    if (reqCard) return reqCard;
+    reqList = el('div', { class: 'reqs' });
+    reqNote = el('p', { class: 'muted', role: 'status' });
+    const qr = qrImage(REQ_URL);
+    const toggle = el('button', { type: 'button', class: 'btn ghost small', onclick: () => { reqShowAll = !reqShowAll; toggle.textContent = reqShowAll ? 'Solo da fare' : 'Mostra anche quelle fatte'; drawRequests(); } }, 'Mostra anche quelle fatte');
+    reqCard = el('section', { class: 'card' },
+      el('h2', {}, '📝 Richieste dei clienti'),
+      el('div', { class: 'share' },
+        qr ? el('img', { src: qr, alt: 'QR code della scheda richiesta' }) : null,
+        el('div', { style: 'flex:1;min-width:220px' },
+          el('p', { style: 'margin:0 0 8px' }, 'Scheda da far compilare ai clienti: ', el('a', { href: REQ_URL, target: '_blank', rel: 'noopener' }, REQ_URL)),
+          el('p', { class: 'muted', style: 'margin:0 0 10px' }, 'Quando qualcuno la invia ti arriva una notifica e la richiesta compare qui sotto.'),
+          el('div', { class: 'row' },
+            el('button', { type: 'button', class: 'btn ghost', onclick: async () => { try { await navigator.clipboard.writeText(REQ_URL); reqNote.textContent = 'Link copiato.'; } catch { reqNote.textContent = REQ_URL; } } }, 'Copia link'),
+            qr ? el('button', { type: 'button', class: 'btn ghost', onclick: downloadQr }, '⬇️ Scarica QR code') : null))),
+      reqNote,
+      el('div', { class: 'row', style: 'justify-content:flex-end' }, toggle),
+      reqList);
+    return reqCard;
+  }
 
   async function copy(text, okMsg) {
     try { await navigator.clipboard.writeText(text); tagsNote.textContent = okMsg; }
@@ -254,30 +360,34 @@ small{color:#4A5560}</style>
     tagsNote = el('p', { class: 'muted', role: 'status' });
     madeBox = el('div', { class: 'made', hidden: true });
     tagsBody = el('tbody');
+    fromBox = el('div', { class: 'from-req', hidden: true });
     const form = el('form', { class: 'tform' },
       el('label', {}, 'Tipo', kind), el('label', {}, 'Nome', name), el('label', {}, 'Telefono', phone), el('label', {}, 'Cliente (nota per te)', client),
       el('label', { class: 'wide' }, 'Messaggio', msg), el('div', { class: 'wide' }, save));
     form.onsubmit = async e => {
       e.preventDefault();
       save.disabled = true; tagsNote.textContent = 'Creo il tag…';
-      const { data, error } = await sb.rpc('admin_create_tag', { p_kind: kind.value, p_name: name.value, p_message: msg.value, p_phone: phone.value, p_client: client.value });
+      const req = fromRequest;
+      const { data, error } = await sb.rpc('admin_create_tag', { p_kind: kind.value, p_name: name.value, p_message: msg.value, p_phone: phone.value, p_client: client.value,
+        p_photo: req ? req.photo || '' : '', p_request: req ? req.id : null });
       save.disabled = false;
       if (error || !data) { tagsNote.textContent = 'Non riesco a creare il tag. Riprova tra poco.'; return; }
       tagsNote.textContent = 'Tag creato. Ora scrivilo sull\'oggetto e metti il codice nella confezione.';
       showMade({ id: data.id, claim_code: data.claim, kind: kind.value, name: name.value.trim(), client: client.value.trim() });
       name.value = ''; msg.value = ''; phone.value = ''; client.value = '';
-      refreshTags();
+      setFromRequest(null);
+      refreshTags(); refreshRequests();
     };
     tagsCard = el('section', { class: 'card' },
       el('h2', {}, '🎁 Tag NFC per i clienti'),
       el('p', { class: 'muted' }, 'Crea il tag con i dati del cliente, scrivilo sull\'oggetto e spediscilo con il codice di attivazione. Finché il cliente non lo attiva, le segnalazioni arrivano a te; dopo passano a lui. Puoi modificare i dati dei tag non ancora attivati dall\'app, in Tag NFC.'),
-      form, tagsNote, madeBox,
+      fromBox, form, tagsNote, madeBox,
       el('div', { class: 'tbl', style: 'margin-top:14px' }, el('table', {},
         el('thead', {}, el('tr', {}, ['Cliente', 'Tag', 'Codice', 'Stato', 'Segnalazioni', ''].map(h => el('th', {}, h)))), tagsBody)));
     return tagsCard;
   }
 
-  function render(s, users, tags) {
+  function render(s, users, tags, reqs) {
     const u = s.users, p = s.places, o = s.outings, st = s.storage;
     const verdicts = Object.entries(p.by_verdict || {}).map(([k, v]) => [(VERDICT[k] || [k])[0], v, (VERDICT[k] || [])[1]]);
     const vbars = el('div', { class: 'bars' });
@@ -288,6 +398,7 @@ small{color:#4A5560}</style>
         kpi(u.total, 'iscritti in totale', true), kpi(u.new_7d, 'nuovi negli ultimi 7 giorni'), kpi(u.new_30d, 'nuovi negli ultimi 30 giorni'),
         kpi(u.signed_in_7d, 'accessi negli ultimi 7 giorni'), kpi(u.with_places, 'hanno salvato almeno un posto'), kpi(u.not_sharing, 'non condividono i posti')),
       users ? usersCard(users) : null,
+      makeReqCard(),
       makeTagsCard(),
       el('div', { class: 'two' },
         el('section', { class: 'card' }, el('h2', {}, 'Nuovi iscritti, ultimi 30 giorni'), chart(s.daily.signups, 'Nuovi iscritti')),
@@ -314,6 +425,7 @@ small{color:#4A5560}</style>
            ['Codice su GitHub', 'https://github.com/dpfphoto/spotit'],
            ['IONOS (dominio)', 'https://my.ionos.it']].map(([t, h]) => el('a', { class: 'btn ghost', href: h, target: '_blank', rel: 'noopener' }, t)))));
     drawTags(tags);
+    reqData = reqs; drawRequests();
     $('upd').textContent = 'Aggiornato ' + date(s.generated_at, true);
     $('refresh').hidden = false;
   }
@@ -326,9 +438,9 @@ small{color:#4A5560}</style>
       const adm = await sb.rpc('is_admin');
       if (adm.error) { say('Il pannello non è ancora attivo: manca un aggiornamento dell\'archivio.'); return; }
       if (adm.data !== true) { say('Questo account non ha accesso al pannello.'); return; }
-      const [st, us, tg] = await Promise.all([sb.rpc('admin_stats'), sb.rpc('admin_users'), sb.rpc('admin_tags')]);
+      const [st, us, tg, rq] = await Promise.all([sb.rpc('admin_stats'), sb.rpc('admin_users'), sb.rpc('admin_tags'), sb.rpc('admin_tag_requests')]);
       if (st.error) { say('Non riesco a leggere i numeri ora. Riprova tra poco.'); return; }
-      render(st.data, us.error ? null : us.data, tg.error ? null : tg.data || []);
+      render(st.data, us.error ? null : us.data, tg.error ? null : tg.data || [], rq.error ? null : rq.data || []);
     } catch {
       say('Non riesco a collegarmi ora. Controlla la connessione e riprova.');
     } finally { $('refresh').disabled = false; }
