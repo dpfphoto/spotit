@@ -128,6 +128,7 @@
     $('eChosenText').textContent = p ? `📍 ${p.a}` : '';
   }
   $('btnEvent').onclick = () => {
+    if (window.spotitPro && !window.spotitPro.need('event')) return;
     $('dlgAdd').close();
     const t = new Date();
     if (t.getHours() >= 20) t.setDate(t.getDate() + 1);

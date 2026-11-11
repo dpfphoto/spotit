@@ -147,15 +147,37 @@
   const kpi = (v, l, big) => el('div', { class: 'kpi' + (big ? ' big' : '') }, el('b', {}, n(v)), el('span', {}, l));
   const VERDICT = { tornarci: ['Tornarci', '#15803D'], andarci: ['Andarci', '#1D4ED8'], sconsigliato: ['Sconsigliato', '#C2410C'], appuntamento: ['Appuntamento', '#7C3AED'], consigliato: ['Tornarci', '#15803D'], nonandarci: ['Sconsigliato', '#C2410C'] };
 
+  let proMsg = '';
+  // WeSpot Pro: stato e rinnovi a mano (finché non ci sono i pagamenti online)
+  function proPill(u) {
+    if (u.is_admin) return el('span', { class: 'pill ok' }, 'Admin');
+    if (!u.pro_until) return el('span', { class: 'pill no' }, '—');
+    const active = new Date(u.pro_until) > new Date();
+    return el('span', { class: 'pill ' + (active ? (u.pro_trial ? 'wait' : 'ok') : 'no') },
+      `${active ? (u.pro_trial ? 'Prova fino al' : 'Fino al') : 'Scaduto il'} ${date(u.pro_until)}`);
+  }
+  async function proAdd(u, months, note) {
+    if (months === 0 && !confirm(`Togliere WeSpot Pro a ${u.email}?`)) return;
+    const { data, error } = await sb.rpc('admin_pro_add', { p_user: u.id, p_months: months });
+    if (error) { note.textContent = 'Non riesco a cambiare Pro ora, riprova.'; return; }
+    proMsg = months ? `✅ ${u.email}: Pro fino al ${date(data)}.` : `${u.email}: Pro tolto.`;
+    load();
+  }
+
   function usersCard(users) {
     const emails = [...new Set(users.map(u => (u.email || '').trim()).filter(Boolean))];
     const search = el('input', { type: 'search', placeholder: 'Cerca per email o nome', 'aria-label': 'Cerca iscritti' });
     const body = el('tbody');
-    const note = el('p', { class: 'muted' });
+    const note = el('p', { class: 'muted', role: 'status' }, proMsg);
     const draw = () => {
       const q = search.value.trim().toLowerCase();
       const list = users.filter(u => !q || (u.email || '').toLowerCase().includes(q) || (u.name || '').toLowerCase().includes(q));
-      body.replaceChildren(...list.map(u => el('tr', {}, el('td', {}, u.email || '—'), el('td', {}, u.name || '—'), el('td', {}, date(u.joined)), el('td', {}, date(u.last_seen, true)), el('td', {}, n(u.places)))));
+      body.replaceChildren(...list.map(u => el('tr', {}, el('td', {}, u.email || '—'), el('td', {}, u.name || '—'), el('td', {}, date(u.joined)), el('td', {}, date(u.last_seen, true)), el('td', {}, n(u.places)),
+        el('td', {}, proPill(u)),
+        el('td', {}, u.id && !u.is_admin ? el('span', { class: 'row', style: 'margin:0;flex-wrap:nowrap' },
+          el('button', { type: 'button', class: 'btn ghost small', onclick: () => proAdd(u, 12, note) }, '+1 anno'),
+          el('button', { type: 'button', class: 'btn ghost small', onclick: () => proAdd(u, 1, note) }, '+1 mese'),
+          u.pro_until && new Date(u.pro_until) > new Date() ? el('button', { type: 'button', class: 'btn danger small', onclick: () => proAdd(u, 0, note) }, 'Togli') : null) : null))));
     };
     search.oninput = draw; draw();
     const copy = el('button', { type: 'button', class: 'btn ghost', onclick: async () => {
@@ -173,7 +195,7 @@
         el('button', { type: 'button', class: 'btn', onclick: mailto }, '✉️ Scrivi a tutti'), copy),
       note,
       el('p', { class: 'muted' }, 'La posta si apre con tutti in copia nascosta (Ccn): nessuno vede le email degli altri. Scrivi solo comunicazioni di servizio (novità e aggiornamenti dell\'app).'),
-      el('div', { class: 'tbl' }, el('table', {}, el('thead', {}, el('tr', {}, ['Email', 'Nome', 'Iscritto dal', 'Ultimo accesso', 'Posti'].map(h => el('th', {}, h)))), body)));
+      el('div', { class: 'tbl' }, el('table', {}, el('thead', {}, el('tr', {}, ['Email', 'Nome', 'Iscritto dal', 'Ultimo accesso', 'Posti', 'WeSpot Pro', ''].map(h => el('th', {}, h)))), body)));
   }
 
   // ---------- Tag NFC per i clienti ----------
