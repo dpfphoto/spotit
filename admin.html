@@ -202,7 +202,7 @@
   const TAG_KINDS = { animale: '🐾 Animale', dpi: '⛑️ DPI', abiti: '👕 Abiti', oggetto: '🔑 Oggetto', altro: '📲 Altro' };
   const tagLink = id => `https://wespot.me/#t=${id}`;
   const claimNice = c => String(c || '').replace(/^(.{4})(.{4})$/, '$1-$2');
-  const cardText = c => `Il tuo tag WeSpot\n1. Apri wespot.me e installa WeSpot\n2. Entra con il tuo account\n3. Menu › Tag NFC › Collega un tag\n4. Scrivi il codice: ${claimNice(c)}\nOppure apri: wespot.me/#attiva=${c}`;
+  const cardText = c => `Il tuo tag WeSpot\n1. Apri wespot.me e installa WeSpot\n2. Entra con il tuo account\n3. Menu › Tag NFC › Collega un tag al tuo account\n4. Scrivi il codice: ${claimNice(c)}\nOppure apri: wespot.me/#collega=${c}`;
   let tagsCard = null, tagsBody = null, tagsNote = null, madeBox = null, fromBox = null, fromRequest = null;
   let reqCard = null, reqList = null, reqNote = null, reqShowAll = false, reqData = [];
   const REQ_URL = 'https://wespot.me/richiesta.html';
@@ -383,8 +383,8 @@ h1{margin:0 0 4px;font-size:22px;color:#0F766E}p{margin:4px 0 12px;color:#4A5560
 .code{font-size:30px;font-weight:800;letter-spacing:4px;text-align:center;margin:14px 0;padding:10px;background:#F3F5F7;border-radius:12px}
 small{color:#4A5560}</style>
 <div class="c"><h1>Il tuo tag WeSpot</h1><p>${esc(TAG_KINDS[t.kind] || '')} · ${esc(t.name || '')}</p>
-<ol><li>Apri <b>wespot.me</b> e installa WeSpot</li><li>Entra con il tuo account</li><li>Menu › <b>Tag NFC</b> › <b>Collega un tag</b></li><li>Scrivi questo codice:</li></ol>
-<div class="code">${esc(claimNice(t.claim_code))}</div><small>Oppure apri wespot.me/#attiva=${esc(t.claim_code)}</small></div>
+<ol><li>Apri <b>wespot.me</b> e installa WeSpot</li><li>Entra con il tuo account</li><li>Menu › <b>Tag NFC</b> › <b>Collega un tag al tuo account</b></li><li>Scrivi questo codice:</li></ol>
+<div class="code">${esc(claimNice(t.claim_code))}</div><small>Oppure apri wespot.me/#collega=${esc(t.claim_code)}</small></div>
 <script>setTimeout(()=>print(),300)<\/script>`);
     w.document.close();
   }
@@ -417,21 +417,21 @@ small{color:#4A5560}</style>
       el('td', {}, t.client || '—'),
       el('td', {}, `${(TAG_KINDS[t.kind] || '').split(' ')[0] || ''} ${t.name || ''}`),
       el('td', {}, el('code', {}, claimNice(t.claim_code))),
-      el('td', {}, t.claimed_at ? el('span', { class: 'pill ok' }, `✅ Attivato ${date(t.claimed_at)}${t.owner_email ? ' · ' + t.owner_email : ''}`) : el('span', { class: 'pill wait' }, '⏳ Da attivare')),
+      el('td', {}, t.claimed_at ? el('span', { class: 'pill ok' }, `✅ Collegato ${date(t.claimed_at)}${t.owner_email ? ' · ' + t.owner_email : ''}`) : el('span', { class: 'pill wait' }, '⏳ Da collegare')),
       el('td', {}, n(t.sightings)),
       el('td', {}, el('span', { class: 'row', style: 'margin:0;flex-wrap:nowrap' },
         el('button', { type: 'button', class: 'btn ghost small', onclick: () => showMade(t) }, 'Apri'),
         t.claimed_at ? null : el('button', { type: 'button', class: 'btn danger small', onclick: async () => {
           if (!confirm(`Eliminare il tag "${t.name}"? Il link sul tag smette di funzionare.`)) return;
           const { error } = await sb.rpc('admin_delete_tag', { p_id: t.id });
-          tagsNote.textContent = error ? 'Non riesco a eliminarlo (forse è già stato attivato).' : 'Tag eliminato.';
+          tagsNote.textContent = error ? 'Non riesco a eliminarlo (forse è già stato collegato a un account).' : 'Tag eliminato.';
           refreshTags();
         } }, 'Elimina'))))));
   }
   function showMade(t) {
     madeBox.replaceChildren(
       el('strong', {}, `${(TAG_KINDS[t.kind] || '').split(' ')[0] || ''} ${t.name || 'Tag'}${t.client ? ' · ' + t.client : ''}`),
-      el('div', {}, 'Codice di attivazione da mettere nella confezione:'),
+      el('div', {}, 'Codice per collegare il tag all\'account, da mettere nella confezione:'),
       el('code', { class: 'claim' }, claimNice(t.claim_code)),
       el('div', { class: 'muted' }, `Link sul tag: ${tagLink(t.id)}`),
       ...tagActions(t));
@@ -473,7 +473,7 @@ small{color:#4A5560}</style>
     };
     tagsCard = el('section', { class: 'card' },
       el('h2', {}, '🎁 Tag NFC per i clienti'),
-      el('p', { class: 'muted' }, 'Crea il tag con i dati del cliente, scrivilo sull\'oggetto e spediscilo con il codice di attivazione. Finché il cliente non lo attiva, le segnalazioni arrivano a te; dopo passano a lui. Puoi modificare i dati dei tag non ancora attivati dall\'app, in Tag NFC.'),
+      el('p', { class: 'muted' }, 'Crea il tag con i dati del cliente, scrivilo sull\'oggetto e spediscilo con il codice per collegarlo. Finché il cliente non lo collega al suo account, le segnalazioni arrivano a te; dopo passano a lui. Puoi modificare i dati dei tag non ancora collegati dall\'app, in Tag NFC.'),
       fromBox, form, tagsNote, madeBox,
       el('div', { class: 'tbl', style: 'margin-top:14px' }, el('table', {},
         el('thead', {}, el('tr', {}, ['Cliente', 'Tag', 'Codice', 'Stato', 'Segnalazioni', ''].map(h => el('th', {}, h)))), tagsBody)));

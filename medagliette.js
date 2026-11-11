@@ -54,7 +54,7 @@
   }
   function okPhoto(s) { return typeof s === 'string' && /^data:image\/(png|jpeg|webp);base64,/.test(s); }
   const ofTag = id => sightings.filter(s => s.tag_id === id);
-  // Tag preparato dall'admin per un cliente e non ancora attivato
+  // Tag preparato dall'admin per un cliente e non ancora collegato a un account
   const pending = t => !!(t && t.claim_code && !t.claimed_at);
 
   async function load() {
@@ -94,7 +94,7 @@
         okPhoto(t.photo) ? el('img', { src: t.photo, alt: '', class: 'tag-thumb' }) : el('span', { class: 'tag-thumb', 'aria-hidden': 'true' }, KINDS[kindOf(t)].ico),
         el('span', { class: 'tag-txt' },
           el('strong', {}, `${okPhoto(t.photo) ? KINDS[kindOf(t)].ico + ' ' : ''}${t.name || 'Senza nome'}`),
-          pending(t) ? el('span', { class: 'tag-pending small' }, `🎁 ${t.client ? 'Per ' + t.client + ' · ' : ''}da attivare`) : null,
+          pending(t) ? el('span', { class: 'tag-pending small' }, `🎁 ${t.client ? 'Per ' + t.client + ' · ' : ''}da collegare`) : null,
           el('span', { class: 'muted small' }, last ? `Ultima segnalazione ${when(last.created_at)}` : 'Nessuna segnalazione'))));
     }));
   }
@@ -295,7 +295,7 @@
   const needPro = () => !window.spotitPro || window.spotitPro.need('tag');
   $('tagNew').onclick = () => { if (needPro()) openTag(null); };
 
-  // ---------- Collega un tag ricevuto (preparato da WeSpot con il codice di attivazione) ----------
+  // ---------- Collega un tag ricevuto (preparato da WeSpot con il codice per collegarlo) ----------
 
   function claimMsg(text, kind) {
     const m = $('claimMsg');
@@ -352,8 +352,8 @@
 
   // Aperta dalla notifica: wespot.me/#tf=<codice>
   const fromPush = (location.hash.match(/^#tf=([A-Za-z0-9]{7})/) || [])[1];
-  // Link del cartoncino: wespot.me/#attiva=<codice di attivazione>
-  const claimHash = location.hash.match(/^#attiva(?:=([A-Za-z0-9-]{8,9}))?$/);
+  // Link del cartoncino: wespot.me/#collega=<codice> (vale anche il vecchio #attiva=)
+  const claimHash = location.hash.match(/^#(?:attiva|collega)(?:=([A-Za-z0-9-]{8,9}))?$/);
   const toClaim = claimHash ? (claimHash[1] || '').replace(/-/g, '') : null;
   if (fromPush || toClaim != null) history.replaceState(null, '', location.pathname + location.search);
   let started = false;
