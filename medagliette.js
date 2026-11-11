@@ -202,6 +202,7 @@
 
   $('tagForm').addEventListener('submit', async e => {
     e.preventDefault();
+    if (!needPro()) return;
     const row = {
       kind: draftKind,
       name: $('tagName').value.trim().slice(0, 40),
@@ -268,6 +269,7 @@
   let writing = null;
   $('tagWrite').onclick = async () => {
     if (!current || !canWrite || writing) return;
+    if (!needPro()) return;
     const ctrl = new AbortController(); writing = ctrl;
     const timer = setTimeout(() => ctrl.abort(), 30000);
     $('tagWrite').disabled = true;
@@ -290,7 +292,8 @@
     }
   };
 
-  $('tagNew').onclick = () => openTag(null);
+  const needPro = () => !window.spotitPro || window.spotitPro.need('tag');
+  $('tagNew').onclick = () => { if (needPro()) openTag(null); };
 
   // ---------- Collega un tag ricevuto (preparato da WeSpot con il codice di attivazione) ----------
 
@@ -319,7 +322,9 @@
           : '❌ Non riesco a collegare il tag ora. Riprova tra poco.', 'err');
         return;
       }
-      claimMsg(`✅ Fatto! Il tag ${data && data.name ? '"' + data.name + '" ' : ''}ora è tuo.`, 'ok');
+      const until = data && data.pro_until ? new Date(data.pro_until).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+      claimMsg(`✅ Fatto! Il tag ${data && data.name ? '"' + data.name + '" ' : ''}ora è tuo.${until ? ` WeSpot Pro attivo fino al ${until}.` : ''}`, 'ok');
+      if (window.spotitPro) window.spotitPro.refresh().catch(() => {});
       if (navigator.vibrate) navigator.vibrate(200);
       setTimeout(() => { $('dlgClaim').close(); openTags(data && data.id).catch(() => {}); }, 1500);
     } catch {
@@ -361,4 +366,5 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) checkNew().catch(() => {}); });
 
   window.spotitOpenTags = openTags;
+  window.spotitOpenClaim = () => openClaim('');
 })();

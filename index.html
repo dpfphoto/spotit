@@ -18,7 +18,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="WeSpot">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=76">
+<link rel="stylesheet" href="styles.css?v=77">
 </head>
 <body>
 <header class="top">
@@ -293,6 +293,7 @@
       <li><button type="button" data-go="trips"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg><span>Le tue uscite</span></button></li>
       <li><button type="button" data-go="registro"><span class="menu-emoji" aria-hidden="true">📋</span><span>Registro presenze</span></button></li>
       <li><button type="button" data-go="tags"><span class="menu-emoji" aria-hidden="true">📲</span><span>Tag NFC</span></button></li>
+      <li><button type="button" data-go="pro"><span class="menu-emoji" aria-hidden="true">⭐</span><span>WeSpot Pro</span><span id="menuProState" class="menu-pro"></span></button></li>
       <li><button type="button" data-go="event"><span class="menu-emoji" aria-hidden="true">📍</span><span>Evento privato</span></button></li>
       <li><button type="button" data-go="add"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Salva un posto</span></button></li>
       <li><button type="button" data-go="profile"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg><span>Il tuo profilo</span></button></li>
@@ -521,6 +522,30 @@
   <button type="button" id="tagClaimOpen" class="btn ghost full">🎁 Collega un tag ricevuto</button>
 </dialog>
 
+<dialog id="dlgPro" class="sheet">
+  <div class="sheet-head">
+    <h2>⭐ WeSpot Pro</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+  </div>
+  <p id="proWhy" class="pro-why" hidden></p>
+  <p id="proStatus" class="pro-status"></p>
+  <div class="pro-cols">
+    <div class="pro-col"><strong>Con Pro</strong>
+      <ul><li>Posti salvati senza limiti</li><li>Uscite di gruppo ed eventi</li><li>Creare, modificare e scrivere i tag NFC</li></ul></div>
+    <div class="pro-col"><strong>Sempre gratis</strong>
+      <ul><li>Fino a 3 posti</li><li>Rispondere agli inviti degli altri</li><li>Collegare i tag ricevuti</li><li>Le segnalazioni dei tuoi tag, con la posizione</li></ul></div>
+  </div>
+  <p class="pro-price"><strong>19,90 € l'anno.</strong> Ogni tag WeSpot acquistato include un anno di Pro.</p>
+  <button type="button" id="proContact" class="btn primary full">✉️ Attiva WeSpot Pro</button>
+  <button type="button" id="proClaim" class="btn ghost full">🎁 Ho un tag con il codice di attivazione</button>
+  <form id="promoForm" class="promo-form">
+    <label class="field">Hai un codice omaggio?
+      <span class="promo-row"><input id="promoCode" type="text" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Es. PROCIV2026"><button type="submit" id="promoGo" class="btn ghost">Usa</button></span>
+    </label>
+    <p id="promoMsg" class="nfc-msg" role="status" aria-live="polite" hidden></p>
+  </form>
+</dialog>
+
 <dialog id="dlgClaim" class="sheet">
   <div class="sheet-head">
     <h2>🎁 Collega un tag</h2>
@@ -713,13 +738,14 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=76"></script>
-<script src="app.js?v=76"></script>
+<script src="config.js?v=77"></script>
+<script src="app.js?v=77"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=76"></script>
-<script src="groups.js?v=76"></script>
-<script src="layers.js?v=76"></script>
-<script src="registro.js?v=76"></script>
-<script src="medagliette.js?v=76"></script>
+<script src="account.js?v=77"></script>
+<script src="groups.js?v=77"></script>
+<script src="layers.js?v=77"></script>
+<script src="registro.js?v=77"></script>
+<script src="medagliette.js?v=77"></script>
+<script src="pro.js?v=77"></script>
 </body>
 </html>

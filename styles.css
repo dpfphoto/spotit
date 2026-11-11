@@ -483,3 +483,25 @@ button.m-status { border: 0; font-family: inherit; cursor: pointer; }
 .nfc-msg.err { background: #FEE2E2; color: #991B1B; border-color: #DC2626; }
 .tag-pending { color: #92400E; font-weight: 700; }
 .claim-input { text-transform: uppercase; letter-spacing: 3px; font-size: 22px; font-weight: 700; text-align: center; }
+
+/* WeSpot Pro */
+.menu-pro { margin-left: auto; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+.menu-pro:empty { display: none; }
+.menu-pro.ok { background: #DCFCE7; color: #166534; }
+.menu-pro.wait { background: #FEF3C7; color: #92400E; }
+.menu-pro.off { background: #F3F4F6; color: #4B5563; }
+.pro-why { margin: 4px 0 10px; padding: 12px 14px; border-radius: 14px; background: #FEF3C7; color: #92400E; font-weight: 600; }
+.pro-status { margin: 6px 0 12px; padding: 12px 14px; border-radius: 14px; font-weight: 700; text-align: center; border: 2px solid transparent; }
+.pro-status.ok { background: #DCFCE7; color: #166534; border-color: #16A34A; }
+.pro-status.wait { background: #FEF3C7; color: #92400E; border-color: #F59E0B; }
+.pro-status.off { background: #F3F4F6; color: #374151; border-color: #D1D5DB; }
+.pro-status:empty { display: none; }
+.pro-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pro-col { border: 1px solid #E2E8F0; border-radius: 14px; padding: 10px 12px; font-size: 14px; }
+.pro-col ul { margin: 6px 0 0; padding-left: 18px; }
+.pro-col li { margin: 3px 0; }
+.pro-price { margin: 12px 0 4px; }
+.promo-form { margin-top: 14px; border-top: 1px solid #E2E8F0; padding-top: 6px; }
+.promo-row { display: flex; gap: 8px; }
+.promo-row input { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+.promo-row .btn { width: auto; flex: none; margin: 0; }

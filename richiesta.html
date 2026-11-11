@@ -73,6 +73,8 @@
       <label>Email<input id="buyerEmail" type="email" maxlength="120" autocomplete="email" placeholder="Es. nome@gmail.com"></label>
       <label>Telefono<input id="buyerPhone" type="tel" maxlength="20" autocomplete="tel" placeholder="Es. 333 1234567"></label>
       <label>Indirizzo di spedizione<textarea id="address" maxlength="300" autocomplete="street-address" placeholder="Via, numero, CAP, città, provincia" style="min-height:70px"></textarea></label>
+      <label>Codice sconto (facoltativo)<input id="promo" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" style="text-transform:uppercase;letter-spacing:1px" placeholder="Se ne hai uno"></label>
+      <p id="promoInfo" class="small" hidden></p>
       <label>Note per la stampa o la consegna (facoltative)<textarea id="notes" maxlength="500" placeholder="Es. colore, scritta da stampare, quantità" style="min-height:70px"></textarea></label>
     </section>
 
@@ -89,7 +91,7 @@
   <footer class="small muted"><p><a href="./">Scopri WeSpot</a> · <a href="privacy.html">Privacy</a></p></footer>
 </main>
 
-<script src="config.js?v=76"></script>
+<script src="config.js?v=77"></script>
 <script>
 (function () {
   const CFG = window.SPOTIT_CONFIG || {};
@@ -142,6 +144,21 @@
   };
   $('photoDel').onclick = () => { photo = ''; $('photo').value = ''; $('photoPrev').hidden = true; $('photoDel').hidden = true; $('photoBtn').textContent = 'Aggiungi una foto'; };
 
+  // Codice sconto: lo controllo quando esci dal campo, così il cliente vede subito se vale
+  async function checkPromo() {
+    const code = $('promo').value.trim(), info = $('promoInfo');
+    if (!code || !CFG.supabaseUrl) { info.hidden = true; return; }
+    try {
+      const r = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/check_promo`, { method: 'POST', headers, body: JSON.stringify({ p_code: code }) });
+      const d = await r.json();
+      info.hidden = false;
+      info.style.color = d && d.ok ? '#166534' : '#991B1B';
+      info.style.fontWeight = '700';
+      info.textContent = d && d.ok ? (d.kind === 'sconto' ? `✅ Codice valido: sconto del ${d.percent}%` : `✅ Codice valido: ${d.months >= 120 ? 'WeSpot Pro in omaggio' : d.months + ' mesi di WeSpot Pro in omaggio'}`) : '❌ Codice non valido o scaduto';
+    } catch { info.hidden = true; }
+  }
+  $('promo').addEventListener('change', checkPromo);
+
   $('form').addEventListener('submit', async e => {
     e.preventDefault();
     const v = id => $(id).value.trim();
@@ -156,7 +173,7 @@
       const r = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/submit_tag_request`, { method: 'POST', headers, body: JSON.stringify({
         p_kind: kind, p_name: v('name'), p_message: v('message'), p_phone: v('phone'), p_photo: photo,
         p_buyer_name: v('buyerName'), p_buyer_email: emailOk ? v('buyerEmail') : '', p_buyer_phone: v('buyerPhone'),
-        p_address: v('address'), p_notes: v('notes'), p_consent: true }) });
+        p_address: v('address'), p_notes: v('notes'), p_consent: true, p_promo: v('promo') }) });
       const id = await r.json().catch(() => null);
       if (!r.ok) throw new Error((id && id.message) || 'errore');
       // Avviso chi prepara i tag (se non parte, la richiesta resta comunque nel pannello)

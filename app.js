@@ -281,6 +281,12 @@ $('tabList').onclick = () => setView('list');
 
 let draft = null;
 
+// Senza WeSpot Pro si salvano fino a 3 posti (gli appuntamenti non contano: spariscono da soli)
+function canAddPlace() {
+  const n = places.filter(p => p.verdict !== 'appuntamento').length;
+  return n < 3 || !window.spotitPro || window.spotitPro.need('places');
+}
+
 function openAdd(prefill) {
   draft = null;
   $('addStep1').hidden = false;
@@ -291,7 +297,7 @@ function openAdd(prefill) {
   $('dlgAdd').showModal();
   if (prefill) search(prefill);
 }
-$('fab').onclick = () => openAdd('');
+$('fab').onclick = () => { if (canAddPlace()) openAdd(''); };
 
 // Prova a leggere nome e coordinate da un link di Google Maps
 function parseMapsLink(text) {
@@ -609,6 +615,7 @@ $('btnBack').onclick = () => { $('addStep1').hidden = false; $('addStep2').hidde
 $('addStep2').onsubmit = e => {
   e.preventDefault();
   if (!draft || !draft.verdict) return;
+  if (draft.verdict !== 'appuntamento' && !canAddPlace()) return;
   const expiresAt = draft.verdict === 'appuntamento' && $('draftExpire').checked ? expiryFor({ name: $('draftName').value, lat: draft.lat, lng: draft.lng }) : 0;
   const p = cleanPlace({ ...draft, name: $('draftName').value, kind: $('draftKind').value, note: $('draftNote').value, expiresAt, createdAt: Date.now(), id: uid() });
   if (!p) { toast('Scrivi il nome del posto'); return; }
@@ -960,6 +967,7 @@ function drawIncomingVerdicts() {
 $('sSave').onclick = () => {
   const exists = places.find(x => Math.abs(x.lat - incoming.lat) < 1e-5 && Math.abs(x.lng - incoming.lng) < 1e-5 && x.name === incoming.name);
   if (!exists) {
+    if (incoming.mine !== 'appuntamento' && !canAddPlace()) return;
     places.push(cleanPlace({ ...incoming, verdict: incoming.mine, note: '', id: uid(), createdAt: Date.now() }));
     persist();
   }
@@ -1041,6 +1049,7 @@ function whenLabel(t) {
 let outing = null;
 $('pOuting').onclick = () => {
   const p = current(); if (!p) return;
+  if (window.spotitPro && !window.spotitPro.need('outing')) return;
   // Stasera alle 20:30, o tra un'ora se è già tardi; dopo le 23 domani sera
   const t = new Date();
   const soon = new Date(Date.now() + 3600000);
@@ -1175,6 +1184,7 @@ $('iSave').onclick = () => {
   if (!invite) return;
   const p = invite.p;
   if (!places.some(x => x.name === p.name && Math.abs(x.lat - p.lat) < 1e-5)) {
+    if (!canAddPlace()) return;
     places.push(cleanPlace({ ...p, id: uid(), createdAt: Date.now(), note: invite.o.m || '' }));
     persist();
   }
@@ -1183,7 +1193,7 @@ $('iSave').onclick = () => {
 
 // ---------- Aggiornamenti ----------
 // Ogni pubblicazione alza APP_VERSION qui e in version.json: se online c'è un numero più alto propongo "Aggiorna"
-const APP_VERSION = 76;
+const APP_VERSION = 77;
 $('versionText').textContent = `Versione ${APP_VERSION}`;
 async function latestVersion() {
   const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
@@ -1234,6 +1244,7 @@ $('dlgMenu').addEventListener('click', e => {
   else if (go === 'add') $('fab').click();
   else if (go === 'event') $('btnEvent').click();
   else if (go === 'tags') { if (window.spotitOpenTags) window.spotitOpenTags(); }
+  else if (go === 'pro') { if (window.spotitPro) window.spotitPro.open(); }
   else if (go === 'registro') { if (window.spotitOpenRegistro) window.spotitOpenRegistro(); }
   else if (go === 'profile') $('btnSettings').click();
   else if (go === 'invite') $('btnInvite').click();
