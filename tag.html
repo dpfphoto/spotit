@@ -19,6 +19,9 @@
   .photo { width: 100%; max-height: 360px; object-fit: cover; border-radius: 20px; margin: 16px 0 4px; background: var(--soft); display: block; }
   .paw { font-size: 64px; text-align: center; margin: 18px 0 0; }
   h1 { font-size: 26px; line-height: 1.2; margin: 14px 0 6px; }
+  .pet { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 10px 0; font-size: 16px; }
+  .pet dt { color: var(--muted); }
+  .pet dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
   .msg { white-space: pre-wrap; font-size: 18px; background: var(--soft); border-radius: 16px; padding: 14px 16px; margin: 12px 0; }
   .muted { color: var(--muted); }
   .small { font-size: 13px; }
@@ -69,6 +72,7 @@
     <img id="photo" class="photo" alt="" hidden>
     <div id="pawBig" class="paw" aria-hidden="true">🐾</div>
     <h1 id="title">Mi hai trovato!</h1>
+    <dl id="pet" class="pet" hidden></dl>
     <p id="msgLabel" class="msg-label" hidden></p>
     <p id="msg" class="msg" hidden></p>
 
@@ -179,6 +183,15 @@
     $('title').textContent = K.title(name);
     document.title = `${K.title(name)} · WeSpot`;
     if (okPhoto(t.photo)) { $('photo').src = t.photo; $('photo').alt = name; $('photo').hidden = false; $('pawBig').hidden = true; }
+    // Dati dell'animale (specie, razza, sesso, microchip)
+    const p = t.kind === 'animale' && t.pet && typeof t.pet === 'object' ? t.pet : {};
+    const facts = [['Specie', p.specie], ['Razza', p.razza], ['Sesso', p.sesso === 'maschio' ? 'Maschio' : p.sesso === 'femmina' ? 'Femmina' : ''], ['Microchip', p.chip]]
+      .filter(([, v]) => v && String(v).trim());
+    $('pet').replaceChildren(...facts.flatMap(([k, v]) => {
+      const dt = document.createElement('dt'), dd = document.createElement('dd');
+      dt.textContent = k; dd.textContent = String(v); return [dt, dd];
+    }));
+    $('pet').hidden = !facts.length;
     const msg = String(t.message || '').trim();
     if (msg) { $('msg').textContent = msg; $('msg').hidden = false; $('msgLabel').hidden = !K.msgLabel; }
     if (t.phone) {

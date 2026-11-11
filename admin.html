@@ -200,6 +200,8 @@
 
   // ---------- Tag NFC per i clienti ----------
   const TAG_KINDS = { animale: '🐾 Animale', dpi: '⛑️ DPI', abiti: '👕 Abiti', oggetto: '🔑 Oggetto', altro: '📲 Altro' };
+  // Dati dell'animale: { specie, razza, sesso, chip }
+  const petText = p => { p = p || {}; return [p.specie, p.razza, p.sesso === 'maschio' ? 'Maschio' : p.sesso === 'femmina' ? 'Femmina' : '', p.chip ? 'Microchip ' + p.chip : ''].filter(Boolean).join(' · '); };
   const tagLink = id => `https://wespot.me/#t=${id}`;
   const claimNice = c => String(c || '').replace(/^(.{4})(.{4})$/, '$1-$2');
   const cardText = c => `Il tuo tag WeSpot\n1. Apri wespot.me e installa WeSpot\n2. Entra con il tuo account\n3. Menu › Tag NFC › Collega un tag al tuo account\n4. Scrivi il codice: ${claimNice(c)}\nOppure apri: wespot.me/#collega=${c}`;
@@ -221,6 +223,9 @@
   function useRequest(r) {
     $('tKind').value = r.kind; $('tName').value = r.name || ''; $('tMsg').value = r.message || '';
     $('tPhone').value = r.phone || ''; $('tClient').value = r.buyer_name || '';
+    const p = r.pet || {};
+    $('tSpecie').value = p.specie || ''; $('tRazza').value = p.razza || ''; $('tSesso').value = p.sesso || ''; $('tChip').value = p.chip || '';
+    $('tKind').onchange();
     setFromRequest(r);
     tagsCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -252,6 +257,7 @@
           el('span', { class: 'muted' }, date(r.created_at, true))),
         el('div', {}, r.photo ? el('img', { src: r.photo, alt: '' }) : null,
           el('div', {}, el('b', {}, `${(TAG_KINDS[r.kind] || '')} · ${r.name}`)),
+          r.kind === 'animale' && petText(r.pet) ? el('div', {}, `🐾 ${petText(r.pet)}`) : null,
           r.message ? el('div', { class: 'msgtxt' }, r.message) : null,
           r.phone ? el('div', {}, `Telefono sul tag: ${r.phone}`) : null),
         el('div', {}, '📬 ', r.buyer_email ? el('a', { href: `mailto:${r.buyer_email}` }, r.buyer_email) : null,
@@ -449,6 +455,14 @@ small{color:#4A5560}</style>
     const msg = el('textarea', { id: 'tMsg', maxlength: 500, placeholder: 'Messaggio per chi lo trova, o informazioni di emergenza' });
     const phone = el('input', { id: 'tPhone', type: 'tel', maxlength: 20, placeholder: 'Telefono del cliente (lo vede chi legge il tag)' });
     const client = el('input', { id: 'tClient', maxlength: 80, placeholder: 'Es. Mario Rossi, ordine 12 (lo vedi solo tu)' });
+    const specie = el('input', { id: 'tSpecie', maxlength: 40, list: 'tSpecieList', placeholder: 'Es. Cane' });
+    const razza = el('input', { id: 'tRazza', maxlength: 60, placeholder: 'Es. Labrador, meticcio' });
+    const sesso = el('select', { id: 'tSesso' }, el('option', { value: '' }, '—'), el('option', { value: 'maschio' }, 'Maschio'), el('option', { value: 'femmina' }, 'Femmina'));
+    const chip = el('input', { id: 'tChip', maxlength: 20, inputmode: 'numeric', placeholder: 'Es. 380260000000000' });
+    const petFields = [el('label', {}, 'Specie', specie, el('datalist', { id: 'tSpecieList' }, ['Cane', 'Gatto', 'Cavallo', 'Coniglio', 'Furetto', 'Uccello'].map(v => el('option', { value: v })))),
+      el('label', {}, 'Razza', razza), el('label', {}, 'Sesso', sesso), el('label', {}, 'Microchip', chip)];
+    kind.onchange = () => petFields.forEach(f => { f.hidden = kind.value !== 'animale'; });
+    kind.onchange();
     const save = el('button', { type: 'submit', class: 'btn' }, '+ Crea tag per il cliente');
     tagsNote = el('p', { class: 'muted', role: 'status' });
     madeBox = el('div', { class: 'made', hidden: true });
@@ -456,18 +470,21 @@ small{color:#4A5560}</style>
     fromBox = el('div', { class: 'from-req', hidden: true });
     const form = el('form', { class: 'tform' },
       el('label', {}, 'Tipo', kind), el('label', {}, 'Nome', name), el('label', {}, 'Telefono', phone), el('label', {}, 'Cliente (nota per te)', client),
+      petFields,
       el('label', { class: 'wide' }, 'Messaggio', msg), el('div', { class: 'wide' }, save));
     form.onsubmit = async e => {
       e.preventDefault();
       save.disabled = true; tagsNote.textContent = 'Creo il tag…';
       const req = fromRequest;
       const { data, error } = await sb.rpc('admin_create_tag', { p_kind: kind.value, p_name: name.value, p_message: msg.value, p_phone: phone.value, p_client: client.value,
-        p_photo: req ? req.photo || '' : '', p_request: req ? req.id : null });
+        p_photo: req ? req.photo || '' : '', p_request: req ? req.id : null,
+        p_pet: kind.value === 'animale' ? { specie: specie.value, razza: razza.value, sesso: sesso.value, chip: chip.value } : {} });
       save.disabled = false;
       if (error || !data) { tagsNote.textContent = 'Non riesco a creare il tag. Riprova tra poco.'; return; }
       tagsNote.textContent = 'Tag creato. Ora scrivilo sull\'oggetto e metti il codice nella confezione.';
       showMade({ id: data.id, claim_code: data.claim, kind: kind.value, name: name.value.trim(), client: client.value.trim() });
       name.value = ''; msg.value = ''; phone.value = ''; client.value = '';
+      specie.value = ''; razza.value = ''; sesso.value = ''; chip.value = '';
       setFromRequest(null);
       refreshTags(); refreshRequests();
     };

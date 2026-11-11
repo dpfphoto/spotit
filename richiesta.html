@@ -22,6 +22,9 @@
   .small { font-size: 13px; }
   section { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 2px; }
   label { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; font-size: 13px; font-weight: 600; color: var(--muted); }
+  .pet-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+  .pet-grid label { margin: 6px 0; }
+  select { font: inherit; color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 12px; width: 100%; background: #fff; }
   textarea, input { font: inherit; color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 12px; width: 100%; background: #fff; }
   textarea { min-height: 90px; resize: vertical; }
   .kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin: 10px 0; }
@@ -57,6 +60,13 @@
       <h2>1. Il tag</h2>
       <div id="kinds" class="kinds" role="radiogroup" aria-label="Per che cosa è il tag"></div>
       <label><span id="nameLabel">Nome dell'animale</span><input id="name" maxlength="40" required></label>
+      <div id="petBox" class="pet-grid">
+        <label>Specie<input id="petSpecie" maxlength="40" list="specieList" placeholder="Es. Cane"></label>
+        <label>Razza<input id="petRazza" maxlength="60" placeholder="Es. Labrador, meticcio"></label>
+        <label>Sesso<select id="petSesso"><option value="">—</option><option value="maschio">Maschio</option><option value="femmina">Femmina</option></select></label>
+        <label>Microchip<input id="petChip" maxlength="20" inputmode="numeric" placeholder="Es. 380260000000000"></label>
+        <datalist id="specieList"><option value="Cane"><option value="Gatto"><option value="Cavallo"><option value="Coniglio"><option value="Furetto"><option value="Uccello"></datalist>
+      </div>
       <label><span id="msgLabel">Messaggio per chi lo trova</span><textarea id="message" maxlength="500"></textarea></label>
       <label><span>Telefono da mostrare sul tag (facoltativo)</span><input id="phone" type="tel" maxlength="20" placeholder="Es. 333 1234567"></label>
       <div class="photo-row">
@@ -67,7 +77,7 @@
     </section>
 
     <section>
-      <h2>2. I tuoi dati</h2>
+      <h2>2. I tuoi dati di contatto</h2>
       <p class="muted small">Servono solo per contattarti e spedirti il tag.</p>
       <label>Nome e cognome<input id="buyerName" maxlength="80" required autocomplete="name"></label>
       <label>Email<input id="buyerEmail" type="email" maxlength="120" autocomplete="email" placeholder="Es. nome@gmail.com"></label>
@@ -119,6 +129,7 @@
     const k = KINDS[kind];
     $('nameLabel').textContent = k.name; $('name').placeholder = k.namePh;
     $('msgLabel').textContent = k.msg; $('message').placeholder = k.msgPh;
+    $('petBox').hidden = kind !== 'animale';
   }
   drawKinds();
 
@@ -173,7 +184,8 @@
       const r = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/submit_tag_request`, { method: 'POST', headers, body: JSON.stringify({
         p_kind: kind, p_name: v('name'), p_message: v('message'), p_phone: v('phone'), p_photo: photo,
         p_buyer_name: v('buyerName'), p_buyer_email: emailOk ? v('buyerEmail') : '', p_buyer_phone: v('buyerPhone'),
-        p_address: v('address'), p_notes: v('notes'), p_consent: true, p_promo: v('promo') }) });
+        p_address: v('address'), p_notes: v('notes'), p_consent: true, p_promo: v('promo'),
+        p_pet: kind === 'animale' ? { specie: v('petSpecie'), razza: v('petRazza'), sesso: $('petSesso').value, chip: v('petChip') } : {} }) });
       const id = await r.json().catch(() => null);
       if (!r.ok) throw new Error((id && id.message) || 'errore');
       // Avviso chi prepara i tag (se non parte, la richiesta resta comunque nel pannello)

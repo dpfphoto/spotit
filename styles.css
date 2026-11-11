@@ -469,6 +469,9 @@ button.m-status { border: 0; font-family: inherit; cursor: pointer; }
 .btn.danger { background: #B42318; color: #fff; }
 .tag-pin { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: #B45309; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,.35); font-size: 20px; }
 .tag-kinds { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-pet { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.tag-pet .field { margin: 6px 0; }
+.tag-pet select { width: 100%; min-height: 48px; padding: 12px 14px; border-radius: 14px; border: 1px solid #C3CAD1; background: #fff; font: inherit; font-size: 16px; color: var(--ink); }
 .tag-kind { border: 1px solid #C3CAD1; background: #fff; color: var(--ink); border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
 .tag-kind[aria-checked="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
 .tag-seen-top { border-bottom: 1px solid #E2E8F0; padding-bottom: 6px; margin-bottom: 8px; }

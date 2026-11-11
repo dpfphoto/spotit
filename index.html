@@ -570,6 +570,13 @@
     </div>
     <div id="tagPhotoBox" class="tag-photo-box"></div>
     <label class="field"><span id="tagNameLabel">Nome dell'animale</span> <input id="tagName" type="text" maxlength="40" required placeholder="Es. Fido"></label>
+    <div id="tagPetBox" class="tag-pet">
+      <label class="field">Specie <input id="tagSpecie" type="text" maxlength="40" list="tagSpecieList" placeholder="Es. Cane"></label>
+      <label class="field">Razza <input id="tagRazza" type="text" maxlength="60" placeholder="Es. Labrador, meticcio"></label>
+      <label class="field">Sesso <select id="tagSesso"><option value="">—</option><option value="maschio">Maschio</option><option value="femmina">Femmina</option></select></label>
+      <label class="field">Microchip <input id="tagChip" type="text" maxlength="20" inputmode="numeric" placeholder="Es. 380260000000000"></label>
+      <datalist id="tagSpecieList"><option value="Cane"><option value="Gatto"><option value="Cavallo"><option value="Coniglio"><option value="Furetto"><option value="Uccello"></datalist>
+    </div>
     <label class="field"><span id="tagMsgLabel">Messaggio per chi lo trova</span> <textarea id="tagMsg" maxlength="500" rows="5" placeholder=""></textarea></label>
     <label class="field"><span id="tagPhoneLabel">Il tuo telefono (facoltativo, lo vede chi legge il tag)</span> <input id="tagPhone" type="tel" maxlength="20" autocomplete="tel" placeholder="Es. 333 1234567"></label>
     <button type="submit" id="tagSave" class="btn primary full">Crea la medaglietta</button>

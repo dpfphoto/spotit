@@ -14,7 +14,7 @@
   // Tipi di tag: cambiano etichette, esempi e il testo delle notifiche
   const KINDS = {
     animale: { ico: '🐾', label: 'Animale', name: "Nome dell'animale", namePh: 'Es. Fido', msg: 'Messaggio per chi lo trova',
-      msgPh: 'Es. Mi sono perso! Sono buono. Microchip 380…. Per favore avvisa il mio padrone, grazie.', phone: 'Il tuo telefono (facoltativo, lo vede chi legge il tag)',
+      msgPh: 'Es. Mi sono perso! Sono buono. Per favore avvisa il mio padrone, grazie.', phone: 'Il tuo telefono (facoltativo, lo vede chi legge il tag)',
       found: n => `Qualcuno ha trovato ${n || 'il tuo animale'}` },
     dpi: { ico: '⛑️', label: 'DPI', name: 'Di chi è', namePh: 'Es. Flavio Di Properzio', msg: 'Informazioni di emergenza',
       msgPh: 'Es. Casco G.O.S. Roma. Gruppo sanguigno 0+. Allergie: nessuna. Avvisare: Maria (moglie).', phone: 'Telefono del contatto di emergenza (lo vede chi legge il tag)',
@@ -59,7 +59,7 @@
 
   async function load() {
     const [t, s] = await Promise.all([
-      sb.from('pet_tags').select('id, kind, name, message, phone, photo, created_at, client, claim_code, claimed_at').order('created_at'),
+      sb.from('pet_tags').select('id, kind, name, message, phone, photo, pet, created_at, client, claim_code, claimed_at').order('created_at'),
       sb.from('tag_sightings').select('id, tag_id, lat, lng, acc, note, phone, created_at').order('created_at', { ascending: false }).limit(200)
     ]);
     if (t.error) throw t.error;
@@ -109,6 +109,8 @@
     $('tagName').value = (t && t.name) || '';
     $('tagMsg').value = (t && t.message) || '';
     $('tagPhone').value = (t && t.phone) || (t ? '' : (prefs.phone || ''));
+    const pet = (t && t.pet) || {};
+    $('tagSpecie').value = pet.specie || ''; $('tagRazza').value = pet.razza || ''; $('tagSesso').value = pet.sesso || ''; $('tagChip').value = pet.chip || '';
     drawPhoto();
     drawKind();
     $('tagLinkBox').hidden = !t;
@@ -136,6 +138,7 @@
     $('tagNameLabel').textContent = k.name; $('tagName').placeholder = k.namePh;
     $('tagMsgLabel').textContent = k.msg; $('tagMsg').placeholder = k.msgPh;
     $('tagPhoneLabel').textContent = k.phone;
+    $('tagPetBox').hidden = draftKind !== 'animale';
     if (!okPhoto(draftPhoto)) drawPhoto();
   }
 
@@ -209,6 +212,10 @@
       message: $('tagMsg').value.trim().slice(0, 500),
       phone: $('tagPhone').value.replace(/[^0-9+]/g, '').replace(/(?!^)\+/g, '').slice(0, 16),
       photo: okPhoto(draftPhoto) ? draftPhoto : '',
+      pet: draftKind === 'animale' ? Object.fromEntries(Object.entries({
+        specie: $('tagSpecie').value.trim().slice(0, 40), razza: $('tagRazza').value.trim().slice(0, 60),
+        sesso: $('tagSesso').value, chip: $('tagChip').value.replace(/[^0-9A-Za-z]/g, '').toUpperCase().slice(0, 20)
+      }).filter(([, v]) => v)) : {},
       updated_at: new Date().toISOString()
     };
     $('tagSave').disabled = true;
@@ -221,7 +228,7 @@
       } else {
         let saved = null;
         for (let i = 0; i < 3 && !saved; i++) {
-          const { data, error } = await sb.from('pet_tags').insert({ id: newCode(), ...row }).select('id, kind, name, message, phone, photo, created_at').single();
+          const { data, error } = await sb.from('pet_tags').insert({ id: newCode(), ...row }).select('id, kind, name, message, phone, photo, pet, created_at').single();
           if (!error) saved = data; else if (error.code !== '23505') throw error;
         }
         if (!saved) throw new Error('codice');
