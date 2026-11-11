@@ -260,6 +260,7 @@
           tel ? [' · ', el('a', { href: `https://wa.me/${tel.replace(/\D/g, '').replace(/^(3\d{8,9})$/, '39$1')}`, target: '_blank', rel: 'noopener' }, 'WhatsApp')] : null),
         r.address ? el('div', {}, `🏠 ${r.address}`) : null,
         r.notes ? el('div', {}, `🖨️ ${r.notes}`) : null,
+        r.promo ? el('div', {}, el('b', {}, `🎟️ Codice: ${r.promo}${promoLabel(r.promo)}`)) : null,
         el('div', { class: 'row', style: 'margin:4px 0 0' },
           r.status === 'nuova' ? el('button', { type: 'button', class: 'btn small', onclick: () => useRequest(r) }, '🎁 Crea tag') : null,
           r.status === 'nuova' ? el('button', { type: 'button', class: 'btn ghost small', onclick: () => setRequest(r, 'annullata') }, 'Annulla') : null,
@@ -276,6 +277,76 @@
     reqData = error ? null : data || [];
     drawRequests();
   }
+  // ---------- Codici sconto e omaggio ----------
+  let promoCard = null, promoBody = null, promoNote = null, promoData = [];
+  function promoLabel(code) {
+    const c = (promoData || []).find(x => x.code === code);
+    return !c ? '' : c.kind === 'sconto' ? ` (sconto ${c.percent}%)` : ` (omaggio ${c.months} mesi di Pro)`;
+  }
+  async function refreshPromos() {
+    const { data, error } = await sb.rpc('admin_promos');
+    promoData = error ? null : data || [];
+    drawPromos();
+  }
+  function drawPromos() {
+    if (!promoCard) return;
+    if (promoData === null) { promoBody.replaceChildren(el('tr', {}, el('td', { colspan: 6 }, 'Manca l\'aggiornamento dell\'archivio per i codici.'))); return; }
+    if (!promoData.length) { promoBody.replaceChildren(el('tr', {}, el('td', { colspan: 6, class: 'muted' }, 'Nessun codice, per ora.'))); return; }
+    promoBody.replaceChildren(...promoData.map(c => {
+      const expired = c.expires_at && new Date(c.expires_at) < new Date();
+      const full = c.max_uses && c.uses >= c.max_uses;
+      return el('tr', {},
+        el('td', {}, el('code', {}, c.code)),
+        el('td', {}, c.kind === 'sconto' ? `Sconto ${c.percent}%` : c.months >= 120 ? 'Omaggio: Pro 10 anni' : `Omaggio: ${c.months} mesi di Pro`),
+        el('td', {}, c.note || '—'),
+        el('td', {}, `${n(c.uses)}${c.max_uses ? ' / ' + n(c.max_uses) : ''}`),
+        el('td', {}, !c.active ? el('span', { class: 'pill no' }, 'Disattivato') : expired ? el('span', { class: 'pill no' }, `Scaduto ${date(c.expires_at)}`) : full ? el('span', { class: 'pill no' }, 'Esaurito')
+          : el('span', { class: 'pill ok' }, c.expires_at ? `Valido fino al ${date(c.expires_at)}` : 'Valido')),
+        el('td', {}, el('span', { class: 'row', style: 'margin:0;flex-wrap:nowrap' },
+          el('button', { type: 'button', class: 'btn ghost small', onclick: async () => { try { await navigator.clipboard.writeText(c.code); promoNote.textContent = `Codice ${c.code} copiato.`; } catch { promoNote.textContent = c.code; } } }, 'Copia'),
+          el('button', { type: 'button', class: 'btn small ' + (c.active ? 'danger' : 'ghost'), onclick: async () => {
+            await sb.rpc('admin_toggle_promo', { p_code: c.code, p_active: !c.active }); refreshPromos();
+          } }, c.active ? 'Disattiva' : 'Riattiva'))));
+    }));
+  }
+  function makePromoCard() {
+    if (promoCard) return promoCard;
+    const code = el('input', { maxlength: 20, placeholder: 'Es. PROCIV2026 (vuoto = lo invento io)', style: 'text-transform:uppercase' });
+    const kind = el('select', {}, el('option', { value: 'omaggio' }, '🎁 Omaggio: mesi di Pro gratis'), el('option', { value: 'sconto' }, '🏷️ Sconto sul tag (%)'));
+    const months = el('select', {}, [[1, '1 mese'], [3, '3 mesi'], [6, '6 mesi'], [12, '1 anno'], [24, '2 anni'], [120, 'Sempre (10 anni)']].map(([v, l]) => el('option', { value: v, selected: v === 12 ? 'selected' : null }, l)));
+    const percent = el('input', { type: 'number', min: 1, max: 100, value: 10 });
+    const maxUses = el('input', { type: 'number', min: 0, placeholder: 'Vuoto = senza limite' });
+    const expires = el('input', { type: 'date' });
+    const note = el('input', { maxlength: 120, placeholder: 'Es. Protezione Civile Roma' });
+    const mLabel = el('label', {}, 'Durata del Pro', months), pLabel = el('label', { hidden: true }, 'Sconto %', percent);
+    kind.onchange = () => { mLabel.hidden = kind.value !== 'omaggio'; pLabel.hidden = kind.value !== 'sconto'; };
+    const save = el('button', { type: 'submit', class: 'btn' }, '+ Crea codice');
+    promoNote = el('p', { class: 'muted', role: 'status' });
+    promoBody = el('tbody');
+    const form = el('form', { class: 'tform' },
+      el('label', {}, 'Codice', code), el('label', {}, 'Tipo', kind), mLabel, pLabel,
+      el('label', {}, 'Quante persone possono usarlo', maxUses), el('label', {}, 'Valido fino al (facoltativo)', expires),
+      el('label', { class: 'wide' }, 'Nota per te', note), el('div', { class: 'wide' }, save));
+    form.onsubmit = async e => {
+      e.preventDefault();
+      save.disabled = true;
+      const { data, error } = await sb.rpc('admin_save_promo', { p_code: code.value, p_kind: kind.value, p_months: Number(months.value),
+        p_percent: Number(percent.value) || 0, p_max_uses: Number(maxUses.value) || 0, p_expires: expires.value ? new Date(expires.value + 'T23:59:59').toISOString() : null, p_note: note.value });
+      save.disabled = false;
+      if (error) { promoNote.textContent = 'Non riesco a salvare il codice: usa solo lettere, numeri e trattini (3-20).'; return; }
+      promoNote.textContent = `✅ Codice ${data} pronto. ${kind.value === 'omaggio' ? 'Chi lo usa lo scrive in WeSpot › Menu › WeSpot Pro.' : 'Il cliente lo scrive nella scheda di richiesta del tag.'}`;
+      code.value = ''; note.value = ''; maxUses.value = ''; expires.value = '';
+      refreshPromos();
+    };
+    promoCard = el('section', { class: 'card' },
+      el('h2', {}, '🎟️ Codici sconto e omaggio'),
+      el('p', { class: 'muted' }, 'Omaggio: chi lo usa riceve mesi di WeSpot Pro (es. un codice per tutto il gruppo di Protezione Civile). Sconto: il cliente lo indica nella scheda di richiesta e tu lo vedi nella richiesta.'),
+      form, promoNote,
+      el('div', { class: 'tbl', style: 'margin-top:14px' }, el('table', {},
+        el('thead', {}, el('tr', {}, ['Codice', 'Cosa dà', 'Nota', 'Usato', 'Stato', ''].map(h => el('th', {}, h)))), promoBody)));
+    return promoCard;
+  }
+
   function makeReqCard() {
     if (reqCard) return reqCard;
     reqList = el('div', { class: 'reqs' });
@@ -409,7 +480,7 @@ small{color:#4A5560}</style>
     return tagsCard;
   }
 
-  function render(s, users, tags, reqs) {
+  function render(s, users, tags, reqs, promos) {
     const u = s.users, p = s.places, o = s.outings, st = s.storage;
     const verdicts = Object.entries(p.by_verdict || {}).map(([k, v]) => [(VERDICT[k] || [k])[0], v, (VERDICT[k] || [])[1]]);
     const vbars = el('div', { class: 'bars' });
@@ -421,6 +492,7 @@ small{color:#4A5560}</style>
         kpi(u.signed_in_7d, 'accessi negli ultimi 7 giorni'), kpi(u.with_places, 'hanno salvato almeno un posto'), kpi(u.not_sharing, 'non condividono i posti')),
       users ? usersCard(users) : null,
       makeReqCard(),
+      makePromoCard(),
       makeTagsCard(),
       el('div', { class: 'two' },
         el('section', { class: 'card' }, el('h2', {}, 'Nuovi iscritti, ultimi 30 giorni'), chart(s.daily.signups, 'Nuovi iscritti')),
@@ -447,6 +519,7 @@ small{color:#4A5560}</style>
            ['Codice su GitHub', 'https://github.com/dpfphoto/spotit'],
            ['IONOS (dominio)', 'https://my.ionos.it']].map(([t, h]) => el('a', { class: 'btn ghost', href: h, target: '_blank', rel: 'noopener' }, t)))));
     drawTags(tags);
+    promoData = promos; drawPromos();
     reqData = reqs; drawRequests();
     $('upd').textContent = 'Aggiornato ' + date(s.generated_at, true);
     $('refresh').hidden = false;
@@ -460,9 +533,9 @@ small{color:#4A5560}</style>
       const adm = await sb.rpc('is_admin');
       if (adm.error) { say('Il pannello non è ancora attivo: manca un aggiornamento dell\'archivio.'); return; }
       if (adm.data !== true) { say('Questo account non ha accesso al pannello.'); return; }
-      const [st, us, tg, rq] = await Promise.all([sb.rpc('admin_stats'), sb.rpc('admin_users'), sb.rpc('admin_tags'), sb.rpc('admin_tag_requests')]);
+      const [st, us, tg, rq, pc] = await Promise.all([sb.rpc('admin_stats'), sb.rpc('admin_users'), sb.rpc('admin_tags'), sb.rpc('admin_tag_requests'), sb.rpc('admin_promos')]);
       if (st.error) { say('Non riesco a leggere i numeri ora. Riprova tra poco.'); return; }
-      render(st.data, us.error ? null : us.data, tg.error ? null : tg.data || [], rq.error ? null : rq.data || []);
+      render(st.data, us.error ? null : us.data, tg.error ? null : tg.data || [], rq.error ? null : rq.data || [], pc.error ? null : pc.data || []);
     } catch {
       say('Non riesco a collegarmi ora. Controlla la connessione e riprova.');
     } finally { $('refresh').disabled = false; }

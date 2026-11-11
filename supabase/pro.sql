@@ -129,3 +129,129 @@ begin
 end $$;
 revoke all on function public.admin_pro_add(uuid, int) from public, anon;
 grant execute on function public.admin_pro_add(uuid, int) to authenticated;
+
+-- ---------- Codici sconto e omaggio (v77) ----------
+-- omaggio: aggiunge mesi di Pro a chi lo usa (es. gruppo di Protezione Civile)
+-- sconto: percentuale sul prezzo, da indicare nella scheda di richiesta del tag (la applica l'admin)
+create table if not exists public.promo_codes (
+  code text primary key check (code ~ '^[A-Z0-9-]{3,20}$'),
+  kind text not null check (kind in ('omaggio', 'sconto')),
+  months int not null default 0 check (months between 0 and 120),
+  percent int not null default 0 check (percent between 0 and 100),
+  max_uses int check (max_uses is null or max_uses > 0),
+  uses int not null default 0,
+  expires_at timestamptz,
+  note text not null default '' check (length(note) <= 120),
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+alter table public.promo_codes enable row level security;
+revoke all on public.promo_codes from anon, authenticated;
+
+create table if not exists public.promo_redemptions (
+  code text not null references public.promo_codes on delete cascade,
+  user_id uuid not null references auth.users on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (code, user_id)
+);
+alter table public.promo_redemptions enable row level security;
+revoke all on public.promo_redemptions from anon, authenticated;
+
+alter table public.tag_requests add column if not exists promo text not null default '';
+
+-- Un codice è valido se attivo, non scaduto e con utilizzi rimasti
+create or replace function public.promo_ok(c promo_codes)
+returns boolean language sql immutable as $$
+  select c.active and (c.expires_at is null or c.expires_at > now()) and (c.max_uses is null or c.uses < c.max_uses)
+$$;
+
+-- Scheda di richiesta: controlla un codice sconto (senza account), dice solo se vale e quanto
+create or replace function public.check_promo(p_code text)
+returns jsonb
+language plpgsql security definer stable set search_path = public as $$
+declare c promo_codes;
+begin
+  select * into c from promo_codes where code = upper(trim(coalesce(p_code, '')));
+  if not found or not public.promo_ok(c) then return jsonb_build_object('ok', false); end if;
+  return jsonb_build_object('ok', true, 'kind', c.kind, 'percent', c.percent, 'months', c.months);
+end $$;
+revoke all on function public.check_promo(text) from public;
+grant execute on function public.check_promo(text) to anon, authenticated;
+
+-- App: "Hai un codice omaggio?" aggiunge i mesi di Pro (una volta per persona per codice)
+create or replace function public.redeem_promo(p_code text)
+returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare c promo_codes; u timestamptz;
+begin
+  if auth.uid() is null then raise exception 'entra con il tuo account' using errcode = '42501'; end if;
+  select * into c from promo_codes where code = upper(trim(coalesce(p_code, ''))) for update;
+  if not found or not public.promo_ok(c) then raise exception 'codice non valido o scaduto'; end if;
+  if c.kind <> 'omaggio' then raise exception 'codice sconto: vale sull''acquisto del tag'; end if;
+  if exists (select 1 from promo_redemptions where code = c.code and user_id = auth.uid()) then raise exception 'codice già usato'; end if;
+  insert into promo_redemptions (code, user_id) values (c.code, auth.uid());
+  update promo_codes set uses = uses + 1 where code = c.code;
+  insert into pro_accounts (user_id, until, trial, note) values (auth.uid(), now() + make_interval(months => c.months), false, 'codice ' || c.code)
+    on conflict (user_id) do update
+      set until = greatest(pro_accounts.until, now()) + make_interval(months => c.months), trial = false,
+          note = left('codice ' || c.code || ' · ' || pro_accounts.note, 200), updated_at = now()
+    returning until into u;
+  return jsonb_build_object('until', u, 'months', c.months);
+end $$;
+revoke all on function public.redeem_promo(text) from public, anon;
+grant execute on function public.redeem_promo(text) to authenticated;
+
+-- Scheda di richiesta con il codice sconto (la versione senza codice resta per le pagine già aperte)
+create or replace function public.submit_tag_request(p_kind text, p_name text, p_message text, p_phone text, p_photo text,
+  p_buyer_name text, p_buyer_email text, p_buyer_phone text, p_address text, p_notes text, p_consent boolean, p_promo text)
+returns uuid
+language plpgsql security definer set search_path = public as $$
+declare rid uuid; c promo_codes;
+begin
+  rid := public.submit_tag_request(p_kind, p_name, p_message, p_phone, p_photo, p_buyer_name, p_buyer_email, p_buyer_phone, p_address, p_notes, p_consent);
+  select * into c from promo_codes where code = upper(trim(coalesce(p_promo, '')));
+  if found and public.promo_ok(c) then update tag_requests set promo = c.code where id = rid; end if;
+  return rid;
+end $$;
+revoke all on function public.submit_tag_request(text, text, text, text, text, text, text, text, text, text, boolean, text) from public;
+grant execute on function public.submit_tag_request(text, text, text, text, text, text, text, text, text, text, boolean, text) to anon, authenticated;
+
+-- Pannello admin: elenco, creazione/modifica e attivazione dei codici
+create or replace function public.admin_promos()
+returns setof public.promo_codes
+language plpgsql security definer stable set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'non autorizzato' using errcode = '42501'; end if;
+  return query select * from promo_codes order by created_at desc;
+end $$;
+revoke all on function public.admin_promos() from public, anon;
+grant execute on function public.admin_promos() to authenticated;
+
+create or replace function public.admin_save_promo(p_code text, p_kind text, p_months int, p_percent int,
+  p_max_uses int, p_expires timestamptz, p_note text)
+returns text
+language plpgsql security definer set search_path = public as $$
+declare c text := upper(regexp_replace(coalesce(p_code, ''), '[^A-Za-z0-9-]', '', 'g'));
+begin
+  if not public.is_admin() then raise exception 'non autorizzato' using errcode = '42501'; end if;
+  if c = '' then c := public.tag_random('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 8); end if;
+  insert into promo_codes (code, kind, months, percent, max_uses, expires_at, note)
+    values (c, p_kind, case when p_kind = 'omaggio' then coalesce(p_months, 12) else 0 end,
+            case when p_kind = 'sconto' then coalesce(p_percent, 0) else 0 end,
+            nullif(p_max_uses, 0), p_expires, left(trim(coalesce(p_note, '')), 120))
+    on conflict (code) do update set kind = excluded.kind, months = excluded.months, percent = excluded.percent,
+      max_uses = excluded.max_uses, expires_at = excluded.expires_at, note = excluded.note, active = true;
+  return c;
+end $$;
+revoke all on function public.admin_save_promo(text, text, int, int, int, timestamptz, text) from public, anon;
+grant execute on function public.admin_save_promo(text, text, int, int, int, timestamptz, text) to authenticated;
+
+create or replace function public.admin_toggle_promo(p_code text, p_active boolean)
+returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'non autorizzato' using errcode = '42501'; end if;
+  update promo_codes set active = p_active where code = p_code;
+end $$;
+revoke all on function public.admin_toggle_promo(text, boolean) from public, anon;
+grant execute on function public.admin_toggle_promo(text, boolean) to authenticated;

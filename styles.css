@@ -501,3 +501,7 @@ button.m-status { border: 0; font-family: inherit; cursor: pointer; }
 .pro-col ul { margin: 6px 0 0; padding-left: 18px; }
 .pro-col li { margin: 3px 0; }
 .pro-price { margin: 12px 0 4px; }
+.promo-form { margin-top: 14px; border-top: 1px solid #E2E8F0; padding-top: 6px; }
+.promo-row { display: flex; gap: 8px; }
+.promo-row input { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+.promo-row .btn { width: auto; flex: none; margin: 0; }

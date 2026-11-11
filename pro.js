@@ -49,6 +49,30 @@
     const body = `Ciao, vorrei ${st && st.pro ? 'rinnovare' : 'attivare'} WeSpot Pro.\nIl mio account: ${(u && u.email) || ''}`;
     location.href = `mailto:${CONTACT}?subject=${encodeURIComponent('WeSpot Pro')}&body=${encodeURIComponent(body)}`;
   };
+  // Codice omaggio (es. gruppo di Protezione Civile): aggiunge mesi di Pro
+  function promoMsg(text, kind) { const m = $('promoMsg'); m.textContent = text; m.hidden = !text; m.className = 'nfc-msg' + (kind ? ' ' + kind : ''); }
+  $('promoForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const code = $('promoCode').value.trim();
+    if (!code || !AUTH || !AUTH.user()) return;
+    $('promoGo').disabled = true; promoMsg('⏳ Controllo il codice…', 'wait');
+    try {
+      const { data, error } = await AUTH.sb.rpc('redeem_promo', { p_code: code });
+      if (error) {
+        promoMsg(/già usato/.test(error.message) ? '❌ Hai già usato questo codice.'
+          : /sconto/.test(error.message) ? '❌ Questo è un codice sconto: vale quando richiedi un tag, nella scheda di richiesta.'
+          : '❌ Codice non valido o scaduto.', 'err');
+        return;
+      }
+      promoMsg(`✅ Codice valido! WeSpot Pro attivo fino al ${day(data.until)}.`, 'ok');
+      $('promoCode').value = '';
+      if (navigator.vibrate) navigator.vibrate(200);
+      refresh().catch(() => {});
+    } catch { promoMsg('❌ Non riesco a collegarmi ora. Riprova tra poco.', 'err'); }
+    finally { $('promoGo').disabled = false; }
+  });
+  $('dlgPro').addEventListener('close', () => promoMsg(''));
+
   $('proClaim').onclick = () => { $('dlgPro').close(); if (window.spotitOpenClaim) window.spotitOpenClaim(); };
 
   if (AUTH) AUTH.onUser(() => { refresh().catch(() => {}); });
