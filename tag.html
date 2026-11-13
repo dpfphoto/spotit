@@ -54,6 +54,11 @@
   footer { margin-top: 28px; text-align: center; }
   footer a { color: var(--brand); }
   [hidden] { display: none !important; }
+
+  /* campi ben riconoscibili */
+  input:not([type=checkbox]):not([type=radio]):not([type=file]), textarea, select { background-color: #EEF6F5 !important; border: 1.5px solid #94A3B8 !important; }
+  input:not([type=checkbox]):not([type=radio]):not([type=file]):focus, textarea:focus, select:focus { outline: none; background-color: #fff !important; border-color: #0F766E !important; box-shadow: 0 0 0 3px rgba(15,118,110,.22); }
+  ::placeholder { color: #7B8794; opacity: 1; }
 </style>
 </head>
 <body>

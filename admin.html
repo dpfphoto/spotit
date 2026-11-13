@@ -77,6 +77,11 @@
   .share { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
   .share img { width: 150px; height: 150px; image-rendering: pixelated; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
   .from-req { padding: 10px 12px; border-radius: 12px; background: #FEF3C7; color: #92400E; font-weight: 700; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  /* campi ben riconoscibili */
+  input:not([type=checkbox]):not([type=radio]):not([type=file]), textarea, select { background-color: #EEF6F5 !important; border: 1.5px solid #94A3B8 !important; }
+  input:not([type=checkbox]):not([type=radio]):not([type=file]):focus, textarea:focus, select:focus { outline: none; background-color: #fff !important; border-color: #0F766E !important; box-shadow: 0 0 0 3px rgba(15,118,110,.22); }
+  ::placeholder { color: #7B8794; opacity: 1; }
 </style>
 </head>
 <body>
