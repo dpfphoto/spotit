@@ -14,7 +14,7 @@
   // Tipi di tag: cambiano etichette, esempi e il testo delle notifiche
   const KINDS = {
     animale: { ico: '🐾', label: 'Animale', name: "Nome dell'animale", namePh: 'Es. Fido', msg: 'Messaggio per chi lo trova',
-      msgPh: 'Es. Mi sono perso! Sono buono. Microchip 380…. Per favore avvisa il mio padrone, grazie.', phone: 'Il tuo telefono (facoltativo, lo vede chi legge il tag)',
+      msgPh: 'Es. Mi sono perso! Sono buono. Per favore avvisa il mio padrone, grazie.', phone: 'Il tuo telefono (facoltativo, lo vede chi legge il tag)',
       found: n => `Qualcuno ha trovato ${n || 'il tuo animale'}` },
     dpi: { ico: '⛑️', label: 'DPI', name: 'Di chi è', namePh: 'Es. Flavio Di Properzio', msg: 'Informazioni di emergenza',
       msgPh: 'Es. Casco G.O.S. Roma. Gruppo sanguigno 0+. Allergie: nessuna. Avvisare: Maria (moglie).', phone: 'Telefono del contatto di emergenza (lo vede chi legge il tag)',
@@ -54,12 +54,12 @@
   }
   function okPhoto(s) { return typeof s === 'string' && /^data:image\/(png|jpeg|webp);base64,/.test(s); }
   const ofTag = id => sightings.filter(s => s.tag_id === id);
-  // Tag preparato dall'admin per un cliente e non ancora attivato
+  // Tag preparato dall'admin per un cliente e non ancora collegato a un account
   const pending = t => !!(t && t.claim_code && !t.claimed_at);
 
   async function load() {
     const [t, s] = await Promise.all([
-      sb.from('pet_tags').select('id, kind, name, message, phone, photo, created_at, client, claim_code, claimed_at').order('created_at'),
+      sb.from('pet_tags').select('id, kind, name, message, phone, photo, pet, created_at, client, claim_code, claimed_at').order('created_at'),
       sb.from('tag_sightings').select('id, tag_id, lat, lng, acc, note, phone, created_at').order('created_at', { ascending: false }).limit(200)
     ]);
     if (t.error) throw t.error;
@@ -94,7 +94,7 @@
         okPhoto(t.photo) ? el('img', { src: t.photo, alt: '', class: 'tag-thumb' }) : el('span', { class: 'tag-thumb', 'aria-hidden': 'true' }, KINDS[kindOf(t)].ico),
         el('span', { class: 'tag-txt' },
           el('strong', {}, `${okPhoto(t.photo) ? KINDS[kindOf(t)].ico + ' ' : ''}${t.name || 'Senza nome'}`),
-          pending(t) ? el('span', { class: 'tag-pending small' }, `🎁 ${t.client ? 'Per ' + t.client + ' · ' : ''}da attivare`) : null,
+          pending(t) ? el('span', { class: 'tag-pending small' }, `🎁 ${t.client ? 'Per ' + t.client + ' · ' : ''}da collegare`) : null,
           el('span', { class: 'muted small' }, last ? `Ultima segnalazione ${when(last.created_at)}` : 'Nessuna segnalazione'))));
     }));
   }
@@ -109,6 +109,8 @@
     $('tagName').value = (t && t.name) || '';
     $('tagMsg').value = (t && t.message) || '';
     $('tagPhone').value = (t && t.phone) || (t ? '' : (prefs.phone || ''));
+    const pet = (t && t.pet) || {};
+    $('tagSpecie').value = pet.specie || ''; $('tagRazza').value = pet.razza || ''; $('tagSesso').value = pet.sesso || ''; $('tagChip').value = pet.chip || '';
     drawPhoto();
     drawKind();
     $('tagLinkBox').hidden = !t;
@@ -136,6 +138,7 @@
     $('tagNameLabel').textContent = k.name; $('tagName').placeholder = k.namePh;
     $('tagMsgLabel').textContent = k.msg; $('tagMsg').placeholder = k.msgPh;
     $('tagPhoneLabel').textContent = k.phone;
+    $('tagPetBox').hidden = draftKind !== 'animale';
     if (!okPhoto(draftPhoto)) drawPhoto();
   }
 
@@ -209,6 +212,10 @@
       message: $('tagMsg').value.trim().slice(0, 500),
       phone: $('tagPhone').value.replace(/[^0-9+]/g, '').replace(/(?!^)\+/g, '').slice(0, 16),
       photo: okPhoto(draftPhoto) ? draftPhoto : '',
+      pet: draftKind === 'animale' ? Object.fromEntries(Object.entries({
+        specie: $('tagSpecie').value.trim().slice(0, 40), razza: $('tagRazza').value.trim().slice(0, 60),
+        sesso: $('tagSesso').value, chip: $('tagChip').value.replace(/[^0-9A-Za-z]/g, '').toUpperCase().slice(0, 20)
+      }).filter(([, v]) => v)) : {},
       updated_at: new Date().toISOString()
     };
     $('tagSave').disabled = true;
@@ -221,7 +228,7 @@
       } else {
         let saved = null;
         for (let i = 0; i < 3 && !saved; i++) {
-          const { data, error } = await sb.from('pet_tags').insert({ id: newCode(), ...row }).select('id, kind, name, message, phone, photo, created_at').single();
+          const { data, error } = await sb.from('pet_tags').insert({ id: newCode(), ...row }).select('id, kind, name, message, phone, photo, pet, created_at').single();
           if (!error) saved = data; else if (error.code !== '23505') throw error;
         }
         if (!saved) throw new Error('codice');
@@ -295,7 +302,7 @@
   const needPro = () => !window.spotitPro || window.spotitPro.need('tag');
   $('tagNew').onclick = () => { if (needPro()) openTag(null); };
 
-  // ---------- Collega un tag ricevuto (preparato da WeSpot con il codice di attivazione) ----------
+  // ---------- Collega un tag ricevuto (preparato da WeSpot con il codice per collegarlo) ----------
 
   function claimMsg(text, kind) {
     const m = $('claimMsg');
@@ -352,8 +359,8 @@
 
   // Aperta dalla notifica: wespot.me/#tf=<codice>
   const fromPush = (location.hash.match(/^#tf=([A-Za-z0-9]{7})/) || [])[1];
-  // Link del cartoncino: wespot.me/#attiva=<codice di attivazione>
-  const claimHash = location.hash.match(/^#attiva(?:=([A-Za-z0-9-]{8,9}))?$/);
+  // Link del cartoncino: wespot.me/#collega=<codice> (vale anche il vecchio #attiva=)
+  const claimHash = location.hash.match(/^#(?:attiva|collega)(?:=([A-Za-z0-9-]{8,9}))?$/);
   const toClaim = claimHash ? (claimHash[1] || '').replace(/-/g, '') : null;
   if (fromPush || toClaim != null) history.replaceState(null, '', location.pathname + location.search);
   let started = false;

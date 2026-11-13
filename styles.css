@@ -469,6 +469,9 @@ button.m-status { border: 0; font-family: inherit; cursor: pointer; }
 .btn.danger { background: #B42318; color: #fff; }
 .tag-pin { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: #B45309; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,.35); font-size: 20px; }
 .tag-kinds { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-pet { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.tag-pet .field { margin: 6px 0; }
+.tag-pet select { width: 100%; min-height: 48px; padding: 12px 14px; border-radius: 14px; border: 1px solid #C3CAD1; background: #fff; font: inherit; font-size: 16px; color: var(--ink); }
 .tag-kind { border: 1px solid #C3CAD1; background: #fff; color: var(--ink); border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
 .tag-kind[aria-checked="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
 .tag-seen-top { border-bottom: 1px solid #E2E8F0; padding-bottom: 6px; margin-bottom: 8px; }
@@ -505,3 +508,32 @@ button.m-status { border: 0; font-family: inherit; cursor: pointer; }
 .promo-row { display: flex; gap: 8px; }
 .promo-row input { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
 .promo-row .btn { width: auto; flex: none; margin: 0; }
+/* Tappe di un evento o di un'uscita (v79) */
+.stops-box { margin: 10px 0; }
+.stops { list-style: none; margin: 6px 0 10px; padding: 0; counter-reset: st; display: flex; flex-direction: column; gap: 8px; }
+.stops li { counter-increment: st; position: relative; display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px 10px 44px; border-radius: 12px; background: #F5F3FF; }
+.stops li::before { content: counter(st); position: absolute; left: 12px; top: 10px; width: 24px; height: 24px; border-radius: 50%; background: #7C3AED; color: #fff; font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+.stops .st-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.stops .st-name { font-weight: 700; }
+.stops .st-addr { color: var(--muted, #5B6670); font-size: 14px; overflow-wrap: anywhere; }
+.stops .st-when { font-size: 14px; font-weight: 600; }
+.stops .st-btns { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; flex: none; }
+.stops .st-btns a, .stops .st-btns button { font: inherit; font-size: 13px; font-weight: 700; padding: 6px 10px; border-radius: 10px; border: 1px solid #DDD6FE; background: #fff; color: #5B21B6; text-decoration: none; cursor: pointer; }
+.stops li.past { opacity: .6; }
+.ev-pin .st-num { position: absolute; right: -4px; bottom: -4px; min-width: 16px; height: 16px; border-radius: 8px; background: #111827; color: #fff; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; padding: 0 3px; }
+.ev-pin { position: relative; }
+
+/* Campi da compilare ben riconoscibili (v79): sfondo tinto, bordo marcato, evidenza quando li tocchi */
+input[type="search"], input[type="text"], input[type="email"], input[type="password"], input[type="tel"], input[type="date"],
+input[type="time"], input[type="number"], input[type="url"], input:not([type]), textarea, select {
+  background-color: #EEF6F5; border: 1.5px solid #94A3B8; color: var(--ink);
+}
+input[type="search"]:hover, input[type="text"]:hover, input[type="email"]:hover, input[type="password"]:hover, input[type="tel"]:hover,
+input[type="date"]:hover, input[type="time"]:hover, input[type="number"]:hover, input:not([type]):hover, textarea:hover, select:hover { border-color: #64748B; }
+input[type="search"]:focus, input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, input[type="tel"]:focus,
+input[type="date"]:focus, input[type="time"]:focus, input[type="number"]:focus, input[type="url"]:focus, input:not([type]):focus, textarea:focus, select:focus {
+  outline: none; background-color: #fff; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(15, 118, 110, .22);
+}
+::placeholder { color: #7B8794; opacity: 1; }
+.field { color: #334155; font-weight: 700; }
+.field select { width: 100%; min-height: 48px; padding: 12px 14px; border-radius: 14px; font: inherit; font-size: 16px; }

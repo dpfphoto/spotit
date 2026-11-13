@@ -77,6 +77,11 @@
   .share { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
   .share img { width: 150px; height: 150px; image-rendering: pixelated; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
   .from-req { padding: 10px 12px; border-radius: 12px; background: #FEF3C7; color: #92400E; font-weight: 700; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  /* campi ben riconoscibili */
+  input:not([type=checkbox]):not([type=radio]):not([type=file]), textarea, select { background-color: #EEF6F5 !important; border: 1.5px solid #94A3B8 !important; }
+  input:not([type=checkbox]):not([type=radio]):not([type=file]):focus, textarea:focus, select:focus { outline: none; background-color: #fff !important; border-color: #0F766E !important; box-shadow: 0 0 0 3px rgba(15,118,110,.22); }
+  ::placeholder { color: #7B8794; opacity: 1; }
 </style>
 </head>
 <body>
@@ -200,9 +205,11 @@
 
   // ---------- Tag NFC per i clienti ----------
   const TAG_KINDS = { animale: '🐾 Animale', dpi: '⛑️ DPI', abiti: '👕 Abiti', oggetto: '🔑 Oggetto', altro: '📲 Altro' };
+  // Dati dell'animale: { specie, razza, sesso, chip }
+  const petText = p => { p = p || {}; return [p.specie, p.razza, p.sesso === 'maschio' ? 'Maschio' : p.sesso === 'femmina' ? 'Femmina' : '', p.chip ? 'Microchip ' + p.chip : ''].filter(Boolean).join(' · '); };
   const tagLink = id => `https://wespot.me/#t=${id}`;
   const claimNice = c => String(c || '').replace(/^(.{4})(.{4})$/, '$1-$2');
-  const cardText = c => `Il tuo tag WeSpot\n1. Apri wespot.me e installa WeSpot\n2. Entra con il tuo account\n3. Menu › Tag NFC › Collega un tag\n4. Scrivi il codice: ${claimNice(c)}\nOppure apri: wespot.me/#attiva=${c}`;
+  const cardText = c => `Il tuo tag WeSpot\n1. Apri wespot.me e installa WeSpot\n2. Entra con il tuo account\n3. Menu › Tag NFC › Collega un tag al tuo account\n4. Scrivi il codice: ${claimNice(c)}\nOppure apri: wespot.me/#collega=${c}`;
   let tagsCard = null, tagsBody = null, tagsNote = null, madeBox = null, fromBox = null, fromRequest = null;
   let reqCard = null, reqList = null, reqNote = null, reqShowAll = false, reqData = [];
   const REQ_URL = 'https://wespot.me/richiesta.html';
@@ -221,6 +228,9 @@
   function useRequest(r) {
     $('tKind').value = r.kind; $('tName').value = r.name || ''; $('tMsg').value = r.message || '';
     $('tPhone').value = r.phone || ''; $('tClient').value = r.buyer_name || '';
+    const p = r.pet || {};
+    $('tSpecie').value = p.specie || ''; $('tRazza').value = p.razza || ''; $('tSesso').value = p.sesso || ''; $('tChip').value = p.chip || '';
+    $('tKind').onchange();
     setFromRequest(r);
     tagsCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -252,6 +262,7 @@
           el('span', { class: 'muted' }, date(r.created_at, true))),
         el('div', {}, r.photo ? el('img', { src: r.photo, alt: '' }) : null,
           el('div', {}, el('b', {}, `${(TAG_KINDS[r.kind] || '')} · ${r.name}`)),
+          r.kind === 'animale' && petText(r.pet) ? el('div', {}, `🐾 ${petText(r.pet)}`) : null,
           r.message ? el('div', { class: 'msgtxt' }, r.message) : null,
           r.phone ? el('div', {}, `Telefono sul tag: ${r.phone}`) : null),
         el('div', {}, '📬 ', r.buyer_email ? el('a', { href: `mailto:${r.buyer_email}` }, r.buyer_email) : null,
@@ -373,19 +384,105 @@
     try { await navigator.clipboard.writeText(text); tagsNote.textContent = okMsg; }
     catch { tagsNote.textContent = text; }
   }
-  function printCard(t) {
-    const w = window.open('', '_blank', 'width=420,height=560');
+  // Cartoncino da mettere nella confezione: formato 10 × 15 cm, fronte (collegare il tag) e retro (modificarlo).
+  // Le immagini le metto dentro la pagina: nella finestra di stampa i file del sito non sempre si caricano.
+  const asData = url => fetch(url).then(r => r.ok ? r.blob() : Promise.reject()).then(b => new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(b); })).catch(() => '');
+  async function printCard(t) {
+    const w = window.open('', '_blank');
     if (!w) { tagsNote.textContent = 'Il browser ha bloccato la finestra di stampa: usa "Copia testo".'; return; }
-    const esc = v => String(v).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
-    w.document.write(`<!doctype html><meta charset="utf-8"><title>Cartoncino ${esc(t.name || '')}</title>
-<style>body{font-family:system-ui,sans-serif;margin:24px;color:#17202A}.c{border:2px solid #0F766E;border-radius:16px;padding:20px;max-width:340px}
-h1{margin:0 0 4px;font-size:22px;color:#0F766E}p{margin:4px 0 12px;color:#4A5560}ol{padding-left:20px;line-height:1.6}
-.code{font-size:30px;font-weight:800;letter-spacing:4px;text-align:center;margin:14px 0;padding:10px;background:#F3F5F7;border-radius:12px}
-small{color:#4A5560}</style>
-<div class="c"><h1>Il tuo tag WeSpot</h1><p>${esc(TAG_KINDS[t.kind] || '')} · ${esc(t.name || '')}</p>
-<ol><li>Apri <b>wespot.me</b> e installa WeSpot</li><li>Entra con il tuo account</li><li>Menu › <b>Tag NFC</b> › <b>Collega un tag</b></li><li>Scrivi questo codice:</li></ol>
-<div class="code">${esc(claimNice(t.claim_code))}</div><small>Oppure apri wespot.me/#attiva=${esc(t.claim_code)}</small></div>
-<script>setTimeout(()=>print(),300)<\/script>`);
+    w.document.write('<p style="font:16px system-ui;padding:20px">Preparo il cartoncino…</p>');
+    const esc = v => String(v == null ? '' : v).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+    const link = `https://wespot.me/#collega=${t.claim_code}`;
+    const qr = qrImage(link) || '';
+    const [logo, s1, s2, s3] = await Promise.all(['icons/icon-192.png', 'img/guida/1-menu.jpg', 'img/guida/2-lista.jpg', 'img/guida/3-modifica.jpg'].map(asData));
+    const what = { animale: 'il tuo animale', dpi: 'il tuo DPI', abiti: 'il tuo capo', oggetto: 'il tuo oggetto', altro: 'il tuo oggetto' }[t.kind] || 'il tuo oggetto';
+    const shot = (src, n, text) => `<figure>${src ? `<img src="${src}" alt="">` : ''}<figcaption><span class="n">${n}</span><span>${text}</span></figcaption></figure>`;
+    w.document.open();
+    w.document.write(`<!doctype html><html lang="it"><meta charset="utf-8"><title>Cartoncino ${esc(t.name)}</title>
+<style>
+  @page { size: 100mm 150mm; margin: 0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #0F172A; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .page { width: 100mm; height: 150mm; padding: 7mm 7mm 6mm; display: flex; flex-direction: column; overflow: hidden; break-after: page; page-break-after: always; position: relative; }
+  .page:last-child { break-after: auto; page-break-after: auto; }
+  .back { background: #F1F5F4; }
+  .brand { display: flex; align-items: center; gap: 2mm; font-weight: 800; font-size: 13pt; color: #0F766E; }
+  .brand img { width: 8mm; height: 8mm; border-radius: 2mm; }
+  h1 { font-size: 16pt; line-height: 1.1; margin: 3.5mm 0 0.5mm; }
+  h2 { font-size: 11.5pt; margin: 0 0 2mm; color: #0F766E; }
+  .for { font-size: 9.5pt; color: #5B6670; margin: 0 0 3mm; }
+  .qrrow { display: flex; gap: 3.5mm; align-items: center; }
+  .qrrow > img { width: 27mm; height: 27mm; image-rendering: pixelated; flex: none; }
+  .codelabel { font-size: 8pt; color: #5B6670; margin: 0 0 1mm; }
+  .code { font: 800 16pt/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: 0.8mm; background: #F1F5F4; border: 0.5mm solid #0F766E; border-radius: 2.5mm; padding: 2.5mm 2mm; text-align: center; white-space: nowrap; }
+  .scan { font-size: 7.5pt; color: #5B6670; margin: 1.2mm 0 0; line-height: 1.3; }
+  ol { margin: 3mm 0 0; padding: 0; list-style: none; counter-reset: s; }
+  ol li { counter-increment: s; position: relative; padding-left: 6.5mm; margin: 0 0 1.8mm; font-size: 8.8pt; line-height: 1.3; }
+  ol li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 4.6mm; height: 4.6mm; border-radius: 50%; background: #0F766E; color: #fff; font-weight: 800; font-size: 7.5pt; display: flex; align-items: center; justify-content: center; }
+  .how { margin-top: 2mm; border-top: 0.3mm solid #E2E8F0; padding-top: 2.5mm; }
+  .how p { margin: 0 0 1.2mm; font-size: 8.3pt; line-height: 1.3; }
+  .pro { margin-top: auto; background: #ECFDF5; border-radius: 2.5mm; padding: 2.2mm 3mm; font-size: 7.8pt; line-height: 1.3; }
+  .pro b { color: #166534; }
+  .shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2.5mm; margin-top: 1mm; }
+  figure { margin: 0; }
+  figure img { width: 100%; display: block; border-radius: 2mm; border: 0.3mm solid #C3CAD1; background: #fff; }
+  figcaption { font-size: 7.6pt; line-height: 1.25; margin-top: 1.5mm; display: flex; gap: 1.2mm; align-items: flex-start; }
+  .n { flex: none; width: 4.2mm; height: 4.2mm; border-radius: 50%; background: #0F766E; color: #fff; font-weight: 800; font-size: 7pt; display: inline-flex; align-items: center; justify-content: center; }
+  .note { margin-top: 3mm; background: #fff; border-radius: 2.5mm; padding: 2.2mm 3mm; font-size: 8pt; line-height: 1.3; }
+  .tips { margin-top: auto; font-size: 7.4pt; color: #4A5560; line-height: 1.3; }
+  .tips p { margin: 0 0 1mm; }
+  .foot { font-size: 8pt; font-weight: 700; color: #0F766E; margin-top: 1.5mm; }
+  @media screen {
+    body { background: #E2E8F0; padding: 70px 16px 24px; }
+    .pages { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+    .page { background-color: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.18); }
+    .page.back { background-color: #F1F5F4; }
+    .bar { position: fixed; top: 0; left: 0; right: 0; background: #fff; text-align: center; padding: 10px 12px; font: 600 14px system-ui; box-shadow: 0 1px 6px rgba(0,0,0,.1); }
+    .bar button { font: inherit; padding: 9px 18px; border-radius: 10px; border: 0; background: #0F766E; color: #fff; cursor: pointer; margin-right: 10px; }
+  }
+  @media print { .bar { display: none; } .pages { display: block; } }
+</style>
+<div class="bar"><button onclick="print()">🖨️ Stampa</button>Formato carta <b>10 × 15 cm</b> (4 × 6"), fronte e retro, margini: nessuno.</div>
+<div class="pages">
+  <section class="page front">
+    <div class="brand">${logo ? `<img src="${logo}" alt="">` : ''}WeSpot</div>
+    <h1>Il tuo tag è pronto!</h1>
+    <p class="for">${esc((TAG_KINDS[t.kind] || '').replace(/^\S+\s/, ''))}${t.name ? ' · ' + esc(t.name) : ''}</p>
+    <div class="qrrow">
+      ${qr ? `<img src="${qr}" alt="QR">` : ''}
+      <div><p class="codelabel">Il tuo codice</p><div class="code">${esc(claimNice(t.claim_code))}</div>
+        <p class="scan">Inquadra il QR code con la fotocamera: si apre WeSpot con il codice già scritto.</p></div>
+    </div>
+    <ol>
+      <li>Apri <b>wespot.me</b> (o inquadra il QR) e installa WeSpot.</li>
+      <li>Entra con il tuo account (Google o email).</li>
+      <li>Tocca <b>Collega al mio account</b>. Se non lo vedi: Menu › <b>Tag NFC</b> › <b>Collega un tag al tuo account</b> e scrivi il codice.</li>
+    </ol>
+    <div class="how">
+      <h2>Come funziona</h2>
+      <p>📲 Chi trova ${esc(what)} avvicina il telefono al tag e vede il tuo messaggio, senza scaricare niente.</p>
+      <p>📍 Con un tocco ti avvisa e ti manda la sua posizione: ti arriva una notifica da WeSpot.</p>
+    </div>
+    <div class="pro"><b>🎁 Incluso: 1 anno di WeSpot Pro.</b> Puoi registrare tutti i tag che vuoi, cambiare messaggio, foto e telefono quando vuoi, salvare tutti i posti e organizzare uscite di gruppo. Il tag funziona sempre, anche senza abbonamento.</div>
+  </section>
+  <section class="page back">
+    <h2 style="font-size:13pt;margin-bottom:1mm">✏️ Come modificare il tag</h2>
+    <p class="for" style="margin-bottom:2.5mm">Messaggio, foto, telefono${t.kind === 'animale' ? ', razza, microchip' : ''}: li cambi dall'app quando vuoi.</p>
+    <div class="shots">
+      ${shot(s1, 1, 'Apri WeSpot, tocca <b>☰ Menu</b> e poi <b>Tag NFC</b>.')}
+      ${shot(s2, 2, 'Tocca il tuo tag.')}
+      ${shot(s3, 3, 'Cambia i dati e tocca <b>Salva le modifiche</b>.')}
+    </div>
+    <div class="note">✅ <b>Non serve riscrivere il tag:</b> le modifiche valgono subito. Le segnalazioni di chi lo trova le vedi nella stessa scheda, con la posizione sulla mappa.</div>
+    <div class="tips">
+      <p>📱 <b>Android:</b> l'NFC deve essere attivo. <b>iPhone:</b> avvicina la parte alta del telefono.</p>
+      <p>🔒 La tua posizione non la vede nessuno: chi trova il tag vede solo il messaggio, la foto e il numero che scegli di mostrare.</p>
+    </div>
+    <div class="foot">wespot.me</div>
+  </section>
+</div>
+<script>Promise.all([...document.images].map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; }))).then(() => setTimeout(() => print(), 400));<\/script>
+</html>`);
     w.document.close();
   }
   async function writeNfc(t, box) {
@@ -417,21 +514,21 @@ small{color:#4A5560}</style>
       el('td', {}, t.client || '—'),
       el('td', {}, `${(TAG_KINDS[t.kind] || '').split(' ')[0] || ''} ${t.name || ''}`),
       el('td', {}, el('code', {}, claimNice(t.claim_code))),
-      el('td', {}, t.claimed_at ? el('span', { class: 'pill ok' }, `✅ Attivato ${date(t.claimed_at)}${t.owner_email ? ' · ' + t.owner_email : ''}`) : el('span', { class: 'pill wait' }, '⏳ Da attivare')),
+      el('td', {}, t.claimed_at ? el('span', { class: 'pill ok' }, `✅ Collegato ${date(t.claimed_at)}${t.owner_email ? ' · ' + t.owner_email : ''}`) : el('span', { class: 'pill wait' }, '⏳ Da collegare')),
       el('td', {}, n(t.sightings)),
       el('td', {}, el('span', { class: 'row', style: 'margin:0;flex-wrap:nowrap' },
         el('button', { type: 'button', class: 'btn ghost small', onclick: () => showMade(t) }, 'Apri'),
         t.claimed_at ? null : el('button', { type: 'button', class: 'btn danger small', onclick: async () => {
           if (!confirm(`Eliminare il tag "${t.name}"? Il link sul tag smette di funzionare.`)) return;
           const { error } = await sb.rpc('admin_delete_tag', { p_id: t.id });
-          tagsNote.textContent = error ? 'Non riesco a eliminarlo (forse è già stato attivato).' : 'Tag eliminato.';
+          tagsNote.textContent = error ? 'Non riesco a eliminarlo (forse è già stato collegato a un account).' : 'Tag eliminato.';
           refreshTags();
         } }, 'Elimina'))))));
   }
   function showMade(t) {
     madeBox.replaceChildren(
       el('strong', {}, `${(TAG_KINDS[t.kind] || '').split(' ')[0] || ''} ${t.name || 'Tag'}${t.client ? ' · ' + t.client : ''}`),
-      el('div', {}, 'Codice di attivazione da mettere nella confezione:'),
+      el('div', {}, 'Codice per collegare il tag all\'account, da mettere nella confezione:'),
       el('code', { class: 'claim' }, claimNice(t.claim_code)),
       el('div', { class: 'muted' }, `Link sul tag: ${tagLink(t.id)}`),
       ...tagActions(t));
@@ -449,6 +546,14 @@ small{color:#4A5560}</style>
     const msg = el('textarea', { id: 'tMsg', maxlength: 500, placeholder: 'Messaggio per chi lo trova, o informazioni di emergenza' });
     const phone = el('input', { id: 'tPhone', type: 'tel', maxlength: 20, placeholder: 'Telefono del cliente (lo vede chi legge il tag)' });
     const client = el('input', { id: 'tClient', maxlength: 80, placeholder: 'Es. Mario Rossi, ordine 12 (lo vedi solo tu)' });
+    const specie = el('input', { id: 'tSpecie', maxlength: 40, list: 'tSpecieList', placeholder: 'Es. Cane' });
+    const razza = el('input', { id: 'tRazza', maxlength: 60, placeholder: 'Es. Labrador, meticcio' });
+    const sesso = el('select', { id: 'tSesso' }, el('option', { value: '' }, '—'), el('option', { value: 'maschio' }, 'Maschio'), el('option', { value: 'femmina' }, 'Femmina'));
+    const chip = el('input', { id: 'tChip', maxlength: 20, inputmode: 'numeric', placeholder: 'Es. 380260000000000' });
+    const petFields = [el('label', {}, 'Specie', specie, el('datalist', { id: 'tSpecieList' }, ['Cane', 'Gatto', 'Cavallo', 'Coniglio', 'Furetto', 'Uccello'].map(v => el('option', { value: v })))),
+      el('label', {}, 'Razza', razza), el('label', {}, 'Sesso', sesso), el('label', {}, 'Microchip', chip)];
+    kind.onchange = () => petFields.forEach(f => { f.hidden = kind.value !== 'animale'; });
+    kind.onchange();
     const save = el('button', { type: 'submit', class: 'btn' }, '+ Crea tag per il cliente');
     tagsNote = el('p', { class: 'muted', role: 'status' });
     madeBox = el('div', { class: 'made', hidden: true });
@@ -456,24 +561,27 @@ small{color:#4A5560}</style>
     fromBox = el('div', { class: 'from-req', hidden: true });
     const form = el('form', { class: 'tform' },
       el('label', {}, 'Tipo', kind), el('label', {}, 'Nome', name), el('label', {}, 'Telefono', phone), el('label', {}, 'Cliente (nota per te)', client),
+      petFields,
       el('label', { class: 'wide' }, 'Messaggio', msg), el('div', { class: 'wide' }, save));
     form.onsubmit = async e => {
       e.preventDefault();
       save.disabled = true; tagsNote.textContent = 'Creo il tag…';
       const req = fromRequest;
       const { data, error } = await sb.rpc('admin_create_tag', { p_kind: kind.value, p_name: name.value, p_message: msg.value, p_phone: phone.value, p_client: client.value,
-        p_photo: req ? req.photo || '' : '', p_request: req ? req.id : null });
+        p_photo: req ? req.photo || '' : '', p_request: req ? req.id : null,
+        p_pet: kind.value === 'animale' ? { specie: specie.value, razza: razza.value, sesso: sesso.value, chip: chip.value } : {} });
       save.disabled = false;
       if (error || !data) { tagsNote.textContent = 'Non riesco a creare il tag. Riprova tra poco.'; return; }
       tagsNote.textContent = 'Tag creato. Ora scrivilo sull\'oggetto e metti il codice nella confezione.';
       showMade({ id: data.id, claim_code: data.claim, kind: kind.value, name: name.value.trim(), client: client.value.trim() });
       name.value = ''; msg.value = ''; phone.value = ''; client.value = '';
+      specie.value = ''; razza.value = ''; sesso.value = ''; chip.value = '';
       setFromRequest(null);
       refreshTags(); refreshRequests();
     };
     tagsCard = el('section', { class: 'card' },
       el('h2', {}, '🎁 Tag NFC per i clienti'),
-      el('p', { class: 'muted' }, 'Crea il tag con i dati del cliente, scrivilo sull\'oggetto e spediscilo con il codice di attivazione. Finché il cliente non lo attiva, le segnalazioni arrivano a te; dopo passano a lui. Puoi modificare i dati dei tag non ancora attivati dall\'app, in Tag NFC.'),
+      el('p', { class: 'muted' }, 'Crea il tag con i dati del cliente, scrivilo sull\'oggetto e spediscilo con il codice per collegarlo. Finché il cliente non lo collega al suo account, le segnalazioni arrivano a te; dopo passano a lui. Puoi modificare i dati dei tag non ancora collegati dall\'app, in Tag NFC.'),
       fromBox, form, tagsNote, madeBox,
       el('div', { class: 'tbl', style: 'margin-top:14px' }, el('table', {},
         el('thead', {}, el('tr', {}, ['Cliente', 'Tag', 'Codice', 'Stato', 'Segnalazioni', ''].map(h => el('th', {}, h)))), tagsBody)));

@@ -18,7 +18,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="WeSpot">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=78">
+<link rel="stylesheet" href="styles.css?v=79">
 </head>
 <body>
 <header class="top">
@@ -372,6 +372,9 @@
     <input id="eName" type="text" maxlength="80" placeholder="Es. Festa di Marco" autocomplete="off">
   </label>
   <p class="acc-title">Dove</p>
+  <label class="field" style="margin-top:0">Nome del posto (facoltativo)
+    <input id="eStopName" type="text" maxlength="40" placeholder="Es. Albergo" autocomplete="off">
+  </label>
   <div id="eChosen" class="event-where" hidden><span id="eChosenText"></span><button type="button" id="eChange" class="link-btn">Cambia</button></div>
   <div id="ePick">
     <form id="eSearch" class="row">
@@ -387,12 +390,46 @@
     <label class="field grow">Giorno <input id="eDate" type="date"></label>
     <label class="field grow">Ora <input id="eTime" type="time"></label>
   </div>
+  <div id="eStopsBox" class="stops-box">
+    <p class="acc-title">Altre tappe</p>
+    <ol id="eStops" class="stops"></ol>
+    <button type="button" id="eAddStop" class="btn ghost full">➕ Aggiungi una tappa</button>
+    <p class="muted small">Es. viaggio di lavoro: 1. Albergo, 2. Luogo di lavoro, 3. Cena.</p>
+  </div>
   <label class="field">Messaggio (facoltativo)
     <input id="eMsgText" type="text" maxlength="120" placeholder="Es. porta qualcosa da bere">
   </label>
   <label class="check"><input id="ePublic" type="checkbox"> <span>🌍 Rendilo pubblico sulla mappa<small>Lo vedono tutti gli utenti, senza i nomi di chi c'è</small></span></label>
   <p class="muted">🔒 Se non lo rendi pubblico lo vedono solo le persone che inviti. Dopo la festa resta sulla tua mappa in rosso finché non lo elimini.</p>
   <button type="button" id="eCreate" class="btn primary full">Crea l'evento e invita</button>
+</dialog>
+
+<!-- Una tappa in più (evento o uscita con più posti) -->
+<dialog id="dlgStop" class="sheet">
+  <div class="sheet-head">
+    <h2 id="stTitle">Aggiungi una tappa</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+  </div>
+  <label class="field">Nome della tappa
+    <input id="stName" type="text" maxlength="40" placeholder="Es. Luogo di lavoro" autocomplete="off">
+  </label>
+  <p class="acc-title">Dove</p>
+  <div id="stChosen" class="event-where" hidden><span id="stChosenText"></span><button type="button" id="stChange" class="link-btn">Cambia</button></div>
+  <div id="stPick">
+    <form id="stSearch" class="row">
+      <label class="sr" for="stAddr">Indirizzo</label>
+      <input id="stAddr" type="search" placeholder="Via, numero e città" autocomplete="off">
+      <button type="submit" class="btn primary">Cerca</button>
+    </form>
+    <p id="stMsg" class="muted"></p>
+    <ul id="stResults" class="results"></ul>
+    <button type="button" id="stHere" class="btn ghost full">📍 Usa la mia posizione</button>
+  </div>
+  <div class="row">
+    <label class="field grow">Giorno <input id="stDate" type="date"></label>
+    <label class="field grow">Ora <input id="stTime" type="time"></label>
+  </div>
+  <button type="button" id="stAdd" class="btn primary full">Aggiungi la tappa</button>
 </dialog>
 
 <!-- Uscita di gruppo -->
@@ -415,6 +452,11 @@
     </form>
     <div id="gAddress" class="muted"></div>
     <div id="gWhen" class="when"></div>
+    <div id="gStopsBox" class="stops-box" hidden>
+      <p class="acc-title">🗺️ Tappe</p>
+      <ol id="gStops" class="stops"></ol>
+      <button type="button" id="gAddStop" class="btn ghost small" hidden>➕ Aggiungi una tappa</button>
+    </div>
     <form id="gWhenForm" class="note-form" hidden>
       <div class="row"><label class="mini-label">Giorno<input id="gWhenDate" type="date" required></label><label class="mini-label">Ora<input id="gWhenTime" type="time" required></label></div>
       <div class="row"><button type="submit" class="btn small">Salva</button><button type="button" id="gWhenCancel" class="btn ghost small">Annulla</button></div>
@@ -519,7 +561,7 @@
   <p class="muted">Un tag NFC sulla medaglietta del cane, sul casco o sui DPI, sulla giacca, sulle chiavi… Chi lo avvicina al telefono vede il tuo messaggio (o le informazioni di emergenza) e può mandarti la sua posizione, che ti arriva come notifica. La tua posizione non la vede nessuno.</p>
   <ul id="tagList" class="reg-list tag-list"></ul>
   <button type="button" id="tagNew" class="btn primary full">+ Nuovo tag</button>
-  <button type="button" id="tagClaimOpen" class="btn ghost full">🎁 Collega un tag ricevuto</button>
+  <button type="button" id="tagClaimOpen" class="btn ghost full">🎁 Collega un tag al tuo account</button>
 </dialog>
 
 <dialog id="dlgPro" class="sheet">
@@ -537,7 +579,7 @@
   </div>
   <p class="pro-price"><strong>19,90 € l'anno.</strong> Ogni tag WeSpot acquistato include un anno di Pro.</p>
   <button type="button" id="proContact" class="btn primary full">✉️ Attiva WeSpot Pro</button>
-  <button type="button" id="proClaim" class="btn ghost full">🎁 Ho un tag con il codice di attivazione</button>
+  <button type="button" id="proClaim" class="btn ghost full">🎁 Ho un tag da collegare al mio account</button>
   <form id="promoForm" class="promo-form">
     <label class="field">Hai un codice omaggio?
       <span class="promo-row"><input id="promoCode" type="text" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Es. PROCIV2026"><button type="submit" id="promoGo" class="btn ghost">Usa</button></span>
@@ -548,12 +590,12 @@
 
 <dialog id="dlgClaim" class="sheet">
   <div class="sheet-head">
-    <h2>🎁 Collega un tag</h2>
+    <h2>🎁 Collega il tag all'account</h2>
     <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
   </div>
   <form id="claimForm">
-    <p class="muted">Hai ricevuto un tag NFC già pronto? Scrivi il codice di attivazione che trovi nella confezione: il tag passa al tuo account e le segnalazioni arriveranno a te.</p>
-    <label class="field">Codice di attivazione <input id="claimCode" type="text" maxlength="12" required autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Es. K7P4-QX9M" class="claim-input"></label>
+    <p class="muted">Hai ricevuto un tag NFC già pronto? Scrivi il codice che trovi nella confezione per collegarlo al tuo account: da quel momento potrai modificarlo e le segnalazioni arriveranno a te.</p>
+    <label class="field">Codice per collegare il tag <input id="claimCode" type="text" maxlength="12" required autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Es. K7P4-QX9M" class="claim-input"></label>
     <p id="claimMsg" class="nfc-msg" role="status" aria-live="polite" hidden></p>
     <button type="submit" id="claimGo" class="btn primary full">Collega al mio account</button>
   </form>
@@ -570,6 +612,13 @@
     </div>
     <div id="tagPhotoBox" class="tag-photo-box"></div>
     <label class="field"><span id="tagNameLabel">Nome dell'animale</span> <input id="tagName" type="text" maxlength="40" required placeholder="Es. Fido"></label>
+    <div id="tagPetBox" class="tag-pet">
+      <label class="field">Specie <input id="tagSpecie" type="text" maxlength="40" list="tagSpecieList" placeholder="Es. Cane"></label>
+      <label class="field">Razza <input id="tagRazza" type="text" maxlength="60" placeholder="Es. Labrador, meticcio"></label>
+      <label class="field">Sesso <select id="tagSesso"><option value="">—</option><option value="maschio">Maschio</option><option value="femmina">Femmina</option></select></label>
+      <label class="field">Microchip <input id="tagChip" type="text" maxlength="20" inputmode="numeric" placeholder="Es. 380260000000000"></label>
+      <datalist id="tagSpecieList"><option value="Cane"><option value="Gatto"><option value="Cavallo"><option value="Coniglio"><option value="Furetto"><option value="Uccello"></datalist>
+    </div>
     <label class="field"><span id="tagMsgLabel">Messaggio per chi lo trova</span> <textarea id="tagMsg" maxlength="500" rows="5" placeholder=""></textarea></label>
     <label class="field"><span id="tagPhoneLabel">Il tuo telefono (facoltativo, lo vede chi legge il tag)</span> <input id="tagPhone" type="tel" maxlength="20" autocomplete="tel" placeholder="Es. 333 1234567"></label>
     <button type="submit" id="tagSave" class="btn primary full">Crea la medaglietta</button>
@@ -738,14 +787,14 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=78"></script>
-<script src="app.js?v=78"></script>
+<script src="config.js?v=79"></script>
+<script src="app.js?v=79"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=78"></script>
-<script src="groups.js?v=78"></script>
-<script src="layers.js?v=78"></script>
-<script src="registro.js?v=78"></script>
-<script src="medagliette.js?v=78"></script>
-<script src="pro.js?v=78"></script>
+<script src="account.js?v=79"></script>
+<script src="groups.js?v=79"></script>
+<script src="layers.js?v=79"></script>
+<script src="registro.js?v=79"></script>
+<script src="medagliette.js?v=79"></script>
+<script src="pro.js?v=79"></script>
 </body>
 </html>
