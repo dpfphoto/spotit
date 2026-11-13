@@ -372,6 +372,9 @@
     <input id="eName" type="text" maxlength="80" placeholder="Es. Festa di Marco" autocomplete="off">
   </label>
   <p class="acc-title">Dove</p>
+  <label class="field" style="margin-top:0">Nome del posto (facoltativo)
+    <input id="eStopName" type="text" maxlength="40" placeholder="Es. Albergo" autocomplete="off">
+  </label>
   <div id="eChosen" class="event-where" hidden><span id="eChosenText"></span><button type="button" id="eChange" class="link-btn">Cambia</button></div>
   <div id="ePick">
     <form id="eSearch" class="row">
@@ -387,12 +390,46 @@
     <label class="field grow">Giorno <input id="eDate" type="date"></label>
     <label class="field grow">Ora <input id="eTime" type="time"></label>
   </div>
+  <div id="eStopsBox" class="stops-box">
+    <p class="acc-title">Altre tappe</p>
+    <ol id="eStops" class="stops"></ol>
+    <button type="button" id="eAddStop" class="btn ghost full">➕ Aggiungi una tappa</button>
+    <p class="muted small">Es. viaggio di lavoro: 1. Albergo, 2. Luogo di lavoro, 3. Cena.</p>
+  </div>
   <label class="field">Messaggio (facoltativo)
     <input id="eMsgText" type="text" maxlength="120" placeholder="Es. porta qualcosa da bere">
   </label>
   <label class="check"><input id="ePublic" type="checkbox"> <span>🌍 Rendilo pubblico sulla mappa<small>Lo vedono tutti gli utenti, senza i nomi di chi c'è</small></span></label>
   <p class="muted">🔒 Se non lo rendi pubblico lo vedono solo le persone che inviti. Dopo la festa resta sulla tua mappa in rosso finché non lo elimini.</p>
   <button type="button" id="eCreate" class="btn primary full">Crea l'evento e invita</button>
+</dialog>
+
+<!-- Una tappa in più (evento o uscita con più posti) -->
+<dialog id="dlgStop" class="sheet">
+  <div class="sheet-head">
+    <h2 id="stTitle">Aggiungi una tappa</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+  </div>
+  <label class="field">Nome della tappa
+    <input id="stName" type="text" maxlength="40" placeholder="Es. Luogo di lavoro" autocomplete="off">
+  </label>
+  <p class="acc-title">Dove</p>
+  <div id="stChosen" class="event-where" hidden><span id="stChosenText"></span><button type="button" id="stChange" class="link-btn">Cambia</button></div>
+  <div id="stPick">
+    <form id="stSearch" class="row">
+      <label class="sr" for="stAddr">Indirizzo</label>
+      <input id="stAddr" type="search" placeholder="Via, numero e città" autocomplete="off">
+      <button type="submit" class="btn primary">Cerca</button>
+    </form>
+    <p id="stMsg" class="muted"></p>
+    <ul id="stResults" class="results"></ul>
+    <button type="button" id="stHere" class="btn ghost full">📍 Usa la mia posizione</button>
+  </div>
+  <div class="row">
+    <label class="field grow">Giorno <input id="stDate" type="date"></label>
+    <label class="field grow">Ora <input id="stTime" type="time"></label>
+  </div>
+  <button type="button" id="stAdd" class="btn primary full">Aggiungi la tappa</button>
 </dialog>
 
 <!-- Uscita di gruppo -->
@@ -415,6 +452,11 @@
     </form>
     <div id="gAddress" class="muted"></div>
     <div id="gWhen" class="when"></div>
+    <div id="gStopsBox" class="stops-box" hidden>
+      <p class="acc-title">🗺️ Tappe</p>
+      <ol id="gStops" class="stops"></ol>
+      <button type="button" id="gAddStop" class="btn ghost small" hidden>➕ Aggiungi una tappa</button>
+    </div>
     <form id="gWhenForm" class="note-form" hidden>
       <div class="row"><label class="mini-label">Giorno<input id="gWhenDate" type="date" required></label><label class="mini-label">Ora<input id="gWhenTime" type="time" required></label></div>
       <div class="row"><button type="submit" class="btn small">Salva</button><button type="button" id="gWhenCancel" class="btn ghost small">Annulla</button></div>

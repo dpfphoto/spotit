@@ -59,7 +59,23 @@
   function isEvent(g) { return !!(g && g.place && g.place.pv); }
   // Finita la festa: dopo 12 ore dall'inizio diventa "passato"
   function lateText(min) { return min > 60 ? 'oltre 1 ora' : min === 60 ? '1 ora' : `${min} minuti`; }
-  function isPast(g) { return new Date(g.starts_at).getTime() + 12 * 3600000 < Date.now(); }
+  function isPast(g) { return new Date(lastTime(g)).getTime() + 12 * 3600000 < Date.now(); }
+  // Tappe (tappe.sql): la prima è il posto principale (place, starts_at), le altre stanno in g.stops
+  const STOP_T = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+  function extraStops(g) { return Array.isArray(g && g.stops) ? g.stops.filter(x => x && Number.isFinite(x.la) && Number.isFinite(x.lo) && STOP_T.test(x.t || '')) : []; }
+  function stopsOf(g) {
+    const p = (g && g.place) || {};
+    return [{ n: p.sn || '', a: p.a || '', la: p.la, lo: p.lo, t: g.starts_at, first: true }, ...extraStops(g)];
+  }
+  function lastTime(g) { return extraStops(g).reduce((m, x) => (x.t > m ? x.t : m), g.starts_at || ''); }
+  function shortWhen(t) {
+    const d = new Date(t);
+    return d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  }
+  function stopsText(g) {
+    const all = stopsOf(g); if (all.length < 2) return '';
+    return ' Tappe: ' + all.map((x, i) => `${i + 1}) ${x.n || (i ? 'Tappa ' + (i + 1) : (g.place && g.place.n) || 'Partenza')}${x.a ? ' – ' + x.a : ''}, ${shortWhen(x.t)}`).join('; ') + '.';
+  }
   // Link corto: bastano le prime 12 cifre del codice del gruppo (il resto lo trova il server, short-groups.sql)
   function groupUrl(id) { return `${appUrl()}#g=${id.replace(/-/g, '').slice(0, 12)}`; }
   function asOuting(g) {
@@ -87,8 +103,8 @@
   function inviteText(g, name) {
     const o = asOuting(g);
     const hi = name ? `Ciao ${name}! ` : '';
-    if (isEvent(g)) return `${hi}${myName()} ti invita a "${o.n}"${o.a ? ` (${o.a})` : ''} ${whenLabel(o.t)}${o.m ? `. ${o.m}` : ''}. Ci sei? Rispondi qui: ${groupUrl(g.id)}`;
-    return `${hi}${myName()} organizza un'uscita da "${o.n}" ${whenLabel(o.t)}${o.m ? ` (${o.m})` : ''}. Ci sei? Rispondi qui: ${groupUrl(g.id)}`;
+    if (isEvent(g)) return `${hi}${myName()} ti invita a "${o.n}"${o.a ? ` (${o.a})` : ''} ${whenLabel(o.t)}${o.m ? `. ${o.m}` : ''}.${stopsText(g)} Ci sei? Rispondi qui: ${groupUrl(g.id)}`;
+    return `${hi}${myName()} organizza un'uscita da "${o.n}" ${whenLabel(o.t)}${o.m ? ` (${o.m})` : ''}.${stopsText(g)} Ci sei? Rispondi qui: ${groupUrl(g.id)}`;
   }
 
   // ---------- Crea ----------
@@ -121,6 +137,15 @@
   // ---------- Evento privato ----------
 
   let evPlace = null; // { a, la, lo }
+  let evStops = [];    // altre tappe: [{ n, a, la, lo, t }]
+  function drawEvStops() {
+    $('eStops').replaceChildren(...evStops.map((x, i) => el('li', {},
+      el('span', { class: 'st-text' }, el('span', { class: 'st-name' }, x.n), el('span', { class: 'st-addr' }, x.a), el('span', { class: 'st-when' }, shortWhen(x.t))),
+      el('span', { class: 'st-btns' }, el('button', { type: 'button', 'aria-label': `Togli la tappa ${x.n}`, onclick: () => { evStops.splice(i, 1); drawEvStops(); } }, 'Togli')))));
+    $('eStops').hidden = !evStops.length;
+    // la numerazione parte da 2: la prima tappa è il posto qui sopra
+    $('eStops').style.counterReset = 'st 1';
+  }
   function setEvPlace(p) {
     evPlace = p;
     $('eChosen').hidden = !p;
@@ -139,34 +164,76 @@
     $('eDate').min = new Date().toISOString().slice(0, 10);
     $('eTime').value = '21:00';
     $('ePublic').checked = false;
+    $('eStopName').value = '';
+    evStops = []; drawEvStops();
     setEvPlace(null);
     $('dlgEvent').showModal();
   };
   $('eChange').onclick = () => { setEvPlace(null); $('eAddr').focus(); };
-  $('eSearch').onsubmit = async e => {
-    e.preventDefault();
-    const q = $('eAddr').value.trim(); if (!q) return;
-    $('eMsg').textContent = 'Cerco…'; $('eResults').replaceChildren();
-    let data;
-    try {
-      try { data = GOOGLE_KEY ? await googleSearch(q) : await osmSearch(q); }
-      catch (err) { if (!GOOGLE_KEY) throw err; data = await osmSearch(q); }
-    } catch { $('eMsg').textContent = 'Ricerca non disponibile ora. Prova con "Usa la mia posizione".'; return; }
-    $('eMsg').textContent = data.length ? 'Tocca l\'indirizzo giusto:' : 'Non trovo questo indirizzo. Aggiungi la città.';
-    $('eResults').replaceChildren(...data.map(r => el('li', {}, el('button', {
-      type: 'button',
-      onclick: () => setEvPlace({ a: [r.name, r.address].filter(Boolean).join(', ').slice(0, 160), la: +r.lat.toFixed(6), lo: +r.lng.toFixed(6) })
-    }, el('span', { class: 'name' }, r.name), el('span', { class: 'addr' }, r.address)))));
+  // Ricerca dell'indirizzo, uguale per il posto dell'evento e per le tappe
+  function wireAddress(pre, onPick) {
+    $(pre + 'Search').onsubmit = async e => {
+      e.preventDefault();
+      const q = $(pre + 'Addr').value.trim(); if (!q) return;
+      $(pre + 'Msg').textContent = 'Cerco…'; $(pre + 'Results').replaceChildren();
+      let data;
+      try {
+        try { data = GOOGLE_KEY ? await googleSearch(q) : await osmSearch(q); }
+        catch (err) { if (!GOOGLE_KEY) throw err; data = await osmSearch(q); }
+      } catch { $(pre + 'Msg').textContent = 'Ricerca non disponibile ora. Prova con "Usa la mia posizione".'; return; }
+      $(pre + 'Msg').textContent = data.length ? 'Tocca l\'indirizzo giusto:' : 'Non trovo questo indirizzo. Aggiungi la città.';
+      $(pre + 'Results').replaceChildren(...data.map(r => el('li', {}, el('button', {
+        type: 'button',
+        onclick: () => onPick({ a: [r.name, r.address].filter(Boolean).join(', ').slice(0, 160), la: +r.lat.toFixed(6), lo: +r.lng.toFixed(6) })
+      }, el('span', { class: 'name' }, r.name), el('span', { class: 'addr' }, r.address)))));
+    };
+    $(pre + 'Here').onclick = async () => {
+      const b = $(pre + 'Here');
+      b.disabled = true; b.textContent = 'Cerco la tua posizione…';
+      try {
+        const pos = await getPosition(false);
+        const a = await reverseAddress(pos).catch(() => '');
+        onPick({ a: a || 'La mia posizione', la: +pos.lat.toFixed(6), lo: +pos.lng.toFixed(6) });
+      } catch { toast('Posizione non disponibile: scrivi l\'indirizzo'); }
+      b.disabled = false; b.textContent = '📍 Usa la mia posizione';
+    };
+  }
+  wireAddress('e', setEvPlace);
+
+  // ---------- Una tappa in più ----------
+  let stPlace = null, stDone = null;
+  function setStPlace(p) {
+    stPlace = p;
+    $('stChosen').hidden = !p; $('stPick').hidden = !!p;
+    $('stChosenText').textContent = p ? `📍 ${p.a}` : '';
+  }
+  wireAddress('st', setStPlace);
+  $('stChange').onclick = () => { setStPlace(null); $('stAddr').focus(); };
+  // after: "AAAA-MM-GGTHH:MM" da cui partire (la tappa prima); done(tappa) la riceve
+  function openStop(after, done) {
+    stDone = done;
+    $('stName').value = ''; $('stAddr').value = ''; $('stMsg').textContent = ''; $('stResults').replaceChildren();
+    setStPlace(null);
+    const t = STOP_T.test(after || '') ? after : `${today().slice(0, 10)}T09:00`;
+    $('stDate').value = t.slice(0, 10); $('stTime').value = t.slice(11, 16);
+    $('stDate').min = new Date().toISOString().slice(0, 10);
+    $('dlgStop').showModal();
+    $('stName').focus();
+  }
+  $('stAdd').onclick = async () => {
+    const n = $('stName').value.trim();
+    if (!n) { toast('Dai un nome alla tappa, es. Albergo'); $('stName').focus(); return; }
+    if (!stPlace) { toast('Scegli dove'); return; }
+    if (!$('stDate').value || !$('stTime').value) { toast('Scegli giorno e ora'); return; }
+    const x = { n: n.slice(0, 40), a: stPlace.a, la: stPlace.la, lo: stPlace.lo, t: `${$('stDate').value}T${$('stTime').value}` };
+    const b = $('stAdd'); b.disabled = true;
+    try { if (stDone && (await stDone(x)) === false) return; $('dlgStop').close(); }
+    finally { b.disabled = false; }
   };
-  $('eHere').onclick = async () => {
-    const b = $('eHere');
-    b.disabled = true; b.textContent = 'Cerco la tua posizione…';
-    try {
-      const pos = await getPosition(false);
-      const a = await reverseAddress(pos).catch(() => '');
-      setEvPlace({ a: a || 'La mia posizione', la: +pos.lat.toFixed(6), lo: +pos.lng.toFixed(6) });
-    } catch { toast('Posizione non disponibile: scrivi l\'indirizzo'); }
-    b.disabled = false; b.textContent = '📍 Usa la mia posizione';
+  const byTime = (a, b) => a.t.localeCompare(b.t);
+  $('eAddStop').onclick = () => {
+    const last = evStops.length ? evStops[evStops.length - 1].t : ($('eDate').value && $('eTime').value ? `${$('eDate').value}T${$('eTime').value}` : '');
+    openStop(last, x => { evStops.push(x); evStops.sort(byTime); drawEvStops(); });
   };
   $('eCreate').onclick = async () => {
     const name = $('eName').value.trim();
@@ -178,9 +245,13 @@
     btn.disabled = true; btn.textContent = 'Creo…';
     try {
       const place = { n: name.slice(0, 80), a: evPlace.a, la: evPlace.la, lo: evPlace.lo, pv: 1 };
+      const sn = $('eStopName').value.trim().slice(0, 40);
+      if (sn) place.sn = sn;
       if (okLogo(prefs.logo)) place.ic = prefs.logo;
+      const row = { owner_name: myName(), place, starts_at: `${$('eDate').value}T${$('eTime').value}`, note: $('eMsgText').value.trim(), is_public: $('ePublic').checked };
+      if (evStops.length) row.stops = evStops;
       const { data, error } = await sb.from('outings')
-        .insert({ owner_name: myName(), place, starts_at: `${$('eDate').value}T${$('eTime').value}`, note: $('eMsgText').value.trim(), is_public: $('ePublic').checked })
+        .insert(row)
         .select().single();
       if (error) throw error;
       const { error: e2 } = await sb.from('outing_members').insert({ outing_id: data.id, user_id: me().id, name: myName(), status: 'si' });
@@ -253,6 +324,7 @@
     $('gWhenForm').hidden = true; $('gWhen').hidden = false;
     showNote(g);
     $('gRoute').href = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;
+    drawStops();
     drawGroup();
     if (!$('dlgGroup').open) $('dlgGroup').showModal();
     if (typeof map !== 'undefined' && p.lat) map.setView([p.lat, p.lng], 15);
@@ -262,13 +334,47 @@
   }
   $('dlgGroup').addEventListener('close', () => { clearInterval(pollTimer); group = null; loadUpcoming(); });
 
+  // Tappe nella scheda: elenco con "Portami lì"; chi organizza ne aggiunge o ne toglie
+  function drawStops() {
+    const g = group; if (!g) return;
+    const all = stopsOf(g);
+    const isOwner = me() && g.owner === me().id;
+    $('gStopsBox').hidden = all.length < 2 && !isOwner;
+    $('gAddStop').hidden = !isOwner;
+    $('gStops').hidden = all.length < 2;
+    if (all.length < 2) { $('gStops').replaceChildren(); return; }
+    $('gStops').style.counterReset = '';
+    $('gStops').replaceChildren(...all.map((x, i) => el('li', { class: new Date(x.t).getTime() + 3 * 3600000 < Date.now() ? 'past' : '' },
+      el('span', { class: 'st-text' },
+        el('span', { class: 'st-name' }, x.n || (i ? `Tappa ${i + 1}` : (g.place && g.place.n) || 'Partenza')),
+        x.a ? el('span', { class: 'st-addr' }, x.a) : null,
+        el('span', { class: 'st-when' }, shortWhen(x.t))),
+      el('span', { class: 'st-btns' },
+        Number.isFinite(x.la) ? el('a', { href: `https://www.google.com/maps/dir/?api=1&destination=${x.la},${x.lo}`, target: '_blank', rel: 'noopener' }, '🧭 Portami lì') : null,
+        isOwner && !x.first ? el('button', { type: 'button', onclick: () => saveStops(extraStops(g).filter(y => y !== x)) }, 'Togli') : null))));
+  }
+  async function saveStops(list) {
+    const g = group; if (!g) return false;
+    list = list.slice().sort(byTime).slice(0, 10);
+    const { error } = await sb.from('outings').update({ stops: list }).eq('id', g.id);
+    if (error) { toast('Non riesco a salvare la tappa ora. Riprova tra poco.'); return false; }
+    g.stops = list; drawStops(); drawGroup();
+    toast('Tappe aggiornate');
+    return true;
+  }
+  $('gAddStop').onclick = () => {
+    const g = group; if (!g) return;
+    if (extraStops(g).length >= 10) { toast('Al massimo 11 tappe'); return; }
+    openStop(lastTime(g), x => saveStops([...extraStops(g), x]));
+  };
+
   async function refresh() {
     if (!group || document.hidden) return;
     try {
       const g = await fetchGroup(group.id);
       if (g && group && g.id === group.id) {
         const newCover = (g.place && g.place.c) !== (group.place && group.place.c);
-        group = g; drawGroup();
+        group = g; drawStops(); drawGroup();
         if ($('gNoteForm').hidden) showNote(g);
         if (newCover) showCover($('gCover'), placeOf(g));
       }
@@ -845,14 +951,14 @@
   async function loadUpcoming() {
     if (!me()) { upcoming = []; events = []; drawEvents(); drawBell(); return; }
     try {
-      const { data, error } = await sb.from('outings').select('id, owner, place, starts_at, owner_name, outing_members(id, user_id, name, status, arrival, delay_min)')
+      const { data, error } = await sb.from('outings').select('id, owner, place, starts_at, stops, owner_name, outing_members(id, user_id, name, status, arrival, delay_min)')
         .order('starts_at').limit(200);
       if (error) throw error;
       const all = data || [];
       allOutings = all;
       checkNews(all);
       checkNotes(all);
-      upcoming = all.filter(g => g.starts_at >= today() && !(isEvent(g) && isPast(g))).slice(0, 10);
+      upcoming = all.filter(g => lastTime(g) >= today() && !(isEvent(g) && isPast(g))).slice(0, 10);
       events = all.filter(isEvent);
       window.SPOTIT_MY_OUTINGS = new Set(all.map(g => g.id)); // i miei eventi pubblici non li ripeto nel livello di tutti
       render();
@@ -1057,6 +1163,12 @@
       L.marker([p.la, p.lo], { icon, title: p.n, alt: `${p.n}, evento ${past ? 'passato' : 'privato'}`, zIndexOffset: 500 })
         .on('click', () => openGroup(g.id))
         .addTo(evLayer);
+      // le altre tappe: stesso segno, con il numero della tappa
+      extraStops(g).forEach((x, i) => {
+        const ic = L.divIcon({ className: '', html: pinHtml(p.ic, `ev-pin${past ? ' past' : ''}`).replace(/<\/span>$/, `<b class="st-num">${i + 2}</b></span>`), iconSize: [36, 36], iconAnchor: [18, 18] });
+        L.marker([x.la, x.lo], { icon: ic, title: `${p.n} · ${x.n}`, alt: `${p.n}, tappa ${i + 2}: ${x.n}`, zIndexOffset: 499 })
+          .on('click', () => openGroup(g.id)).addTo(evLayer);
+      });
     }
   }
   // Sulla mappa: pulsante per la prossima uscita

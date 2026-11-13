@@ -508,3 +508,17 @@ button.m-status { border: 0; font-family: inherit; cursor: pointer; }
 .promo-row { display: flex; gap: 8px; }
 .promo-row input { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
 .promo-row .btn { width: auto; flex: none; margin: 0; }
+/* Tappe di un evento o di un'uscita (v79) */
+.stops-box { margin: 10px 0; }
+.stops { list-style: none; margin: 6px 0 10px; padding: 0; counter-reset: st; display: flex; flex-direction: column; gap: 8px; }
+.stops li { counter-increment: st; position: relative; display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px 10px 44px; border-radius: 12px; background: #F5F3FF; }
+.stops li::before { content: counter(st); position: absolute; left: 12px; top: 10px; width: 24px; height: 24px; border-radius: 50%; background: #7C3AED; color: #fff; font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+.stops .st-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.stops .st-name { font-weight: 700; }
+.stops .st-addr { color: var(--muted, #5B6670); font-size: 14px; overflow-wrap: anywhere; }
+.stops .st-when { font-size: 14px; font-weight: 600; }
+.stops .st-btns { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; flex: none; }
+.stops .st-btns a, .stops .st-btns button { font: inherit; font-size: 13px; font-weight: 700; padding: 6px 10px; border-radius: 10px; border: 1px solid #DDD6FE; background: #fff; color: #5B21B6; text-decoration: none; cursor: pointer; }
+.stops li.past { opacity: .6; }
+.ev-pin .st-num { position: absolute; right: -4px; bottom: -4px; min-width: 16px; height: 16px; border-radius: 8px; background: #111827; color: #fff; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; padding: 0 3px; }
+.ev-pin { position: relative; }
