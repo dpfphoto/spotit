@@ -537,3 +537,12 @@ input[type="date"]:focus, input[type="time"]:focus, input[type="number"]:focus, 
 ::placeholder { color: #7B8794; opacity: 1; }
 .field { color: #334155; font-weight: 700; }
 .field select { width: 100%; min-height: 48px; padding: 12px 14px; border-radius: 14px; font: inherit; font-size: 16px; }
+/* Finestra Novità */
+.news .sheet-head { margin-bottom: 0; }
+.news-badge { flex: 1; font-weight: 800; font-size: 14px; color: var(--brand); text-transform: uppercase; letter-spacing: .5px; }
+.news-hero { display: flex; justify-content: center; margin: 4px 0 6px; }
+.news-hero span { width: 84px; height: 84px; border-radius: 26px; background: linear-gradient(160deg, #0F766E, #115E59); display: flex; align-items: center; justify-content: center; font-size: 44px; box-shadow: 0 6px 18px rgba(15, 118, 110, .3); }
+.news-title { text-align: center; font-size: 23px; margin: 8px 0 6px; }
+.news p { text-align: center; color: var(--muted); margin: 0 0 14px; }
+.news .btn { margin: 6px 0; }
+.news-later { display: block; margin: 8px auto 0; }

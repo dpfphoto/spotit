@@ -18,7 +18,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="WeSpot">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=79">
+<link rel="stylesheet" href="styles.css?v=80">
 </head>
 <body>
 <header class="top">
@@ -769,6 +769,20 @@
   </form>
 </dialog>
 
+<!-- Novità: compare una volta sola a chi entra (news.js) -->
+<dialog id="dlgNews" class="sheet news">
+  <div class="sheet-head">
+    <span class="news-badge">🆕 Novità</span>
+    <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+  </div>
+  <div class="news-hero"><span aria-hidden="true">📲</span></div>
+  <h2 class="news-title">Aggiungi i tuoi tag NFC</h2>
+  <p>Metti un tag NFC sulla medaglietta del cane, sul casco, sulla giacca o sulle chiavi. Chi li trova avvicina il telefono, vede il tuo messaggio e ti avvisa con la sua posizione.</p>
+  <a id="newsMore" class="btn primary full" href="tag-nfc.html">Scopri di più</a>
+  <button type="button" id="newsTry" class="btn ghost full">📲 Vai ai miei tag NFC</button>
+  <button type="button" class="link-btn news-later" data-close>Più tardi</button>
+</dialog>
+
 <!-- Guida installazione iPhone -->
 <dialog id="dlgIos" class="sheet">
   <div class="sheet-head">
@@ -787,14 +801,15 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=79"></script>
-<script src="app.js?v=79"></script>
+<script src="config.js?v=80"></script>
+<script src="app.js?v=80"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=79"></script>
-<script src="groups.js?v=79"></script>
-<script src="layers.js?v=79"></script>
-<script src="registro.js?v=79"></script>
-<script src="medagliette.js?v=79"></script>
-<script src="pro.js?v=79"></script>
+<script src="account.js?v=80"></script>
+<script src="groups.js?v=80"></script>
+<script src="layers.js?v=80"></script>
+<script src="registro.js?v=80"></script>
+<script src="medagliette.js?v=80"></script>
+<script src="pro.js?v=80"></script>
+<script src="news.js?v=80"></script>
 </body>
 </html>

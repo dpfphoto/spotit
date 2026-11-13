@@ -362,12 +362,15 @@
   // Link del cartoncino: wespot.me/#collega=<codice> (vale anche il vecchio #attiva=)
   const claimHash = location.hash.match(/^#(?:attiva|collega)(?:=([A-Za-z0-9-]{8,9}))?$/);
   const toClaim = claimHash ? (claimHash[1] || '').replace(/-/g, '') : null;
-  if (fromPush || toClaim != null) history.replaceState(null, '', location.pathname + location.search);
+  // Dalla pagina informativa (tag-nfc.html): wespot.me/#tags apre l'elenco dei tag
+  const toTags = location.hash === '#tags';
+  if (fromPush || toClaim != null || toTags) history.replaceState(null, '', location.pathname + location.search);
   let started = false;
   AUTH.onUser(() => {
     if (started) return; started = true;
     if (toClaim != null) openClaim(toClaim);
     else if (fromPush) openTags(fromPush).catch(() => {});
+    else if (toTags) openTags().catch(() => {});
     else checkNew().catch(() => {});
   });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) checkNew().catch(() => {}); });
