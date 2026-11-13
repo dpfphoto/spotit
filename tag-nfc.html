@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F766E">
+<title>Tag NFC · WeSpot</title>
+<link rel="icon" href="icons/icon-192.png">
+<meta property="og:title" content="Tag NFC WeSpot: chi trova le tue cose ti avvisa">
+<meta property="og:description" content="Un tag NFC su medaglietta, casco, giacca o chiavi: chi lo trova avvicina il telefono e ti manda la sua posizione.">
+<meta property="og:image" content="https://wespot.me/icons/icon-512.png">
+<style>
+  :root { --brand: #0F766E; --brand-dark: #115E59; --ink: #0F172A; --muted: #5B6670; --soft: #F1F5F4; --line: #E2E8F0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: #fff; }
+  main { max-width: 640px; margin: 0 auto; padding: 18px 16px 40px; }
+  .brand { display: flex; align-items: center; gap: 8px; color: var(--brand); font-weight: 800; text-decoration: none; font-size: 15px; }
+  .brand img { width: 28px; height: 28px; border-radius: 8px; }
+  .hero { background: linear-gradient(160deg, #0F766E, #115E59); color: #fff; border-radius: 22px; padding: 24px 20px; margin: 16px 0 8px; }
+  .hero .ico { font-size: 44px; line-height: 1; }
+  .hero h1 { font-size: 27px; line-height: 1.15; margin: 10px 0 8px; }
+  .hero p { margin: 0; font-size: 17px; opacity: .95; }
+  h2 { font-size: 21px; margin: 30px 0 6px; }
+  .muted { color: var(--muted); }
+  .uses { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+  .use { background: var(--soft); border-radius: 16px; padding: 14px; }
+  .use b { display: block; font-size: 16px; margin: 4px 0 2px; }
+  .use span { font-size: 14px; color: var(--muted); }
+  .use .i { font-size: 28px; }
+  .steps { list-style: none; padding: 0; margin: 12px 0; counter-reset: s; }
+  .steps > li { counter-increment: s; position: relative; padding-left: 42px; margin: 0 0 16px; }
+  .steps > li::before { content: counter(s); position: absolute; left: 0; top: -2px; width: 30px; height: 30px; border-radius: 50%; background: var(--brand); color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  .shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
+  .shots.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  figure { margin: 0; }
+  figure img { width: 100%; display: block; border-radius: 14px; border: 1px solid #CBD5E1; box-shadow: 0 2px 10px rgba(15, 23, 42, .08); }
+  figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.35; }
+  .box { border-radius: 16px; padding: 14px 16px; margin: 14px 0; }
+  .box.green { background: #ECFDF5; }
+  .box.yellow { background: #FEF3C7; }
+  .box.soft { background: var(--soft); }
+  .box p { margin: 4px 0; }
+  .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 54px; border: 0; border-radius: 16px; font: inherit; font-weight: 700; font-size: 17px; text-decoration: none; margin: 10px 0; padding: 12px 16px; }
+  .btn.primary { background: var(--brand); color: #fff; }
+  .btn.ghost { background: #fff; color: var(--ink); border: 1.5px solid #94A3B8; }
+  .two-col { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  @media (min-width: 560px) { .two-col { grid-template-columns: 1fr 1fr; } .uses { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .two-col figure { max-width: 260px; margin: 0 auto; width: 100%; }
+  footer { margin-top: 28px; text-align: center; font-size: 14px; }
+  footer a { color: var(--brand); }
+</style>
+</head>
+<body>
+<main>
+  <a class="brand" href="./"><img src="icons/icon-192.png" alt="">WeSpot</a>
+
+  <section class="hero">
+    <div class="ico" aria-hidden="true">📲</div>
+    <h1>Aggiungi i tuoi tag NFC</h1>
+    <p>Chi trova il tuo cane, il tuo casco o le tue chiavi avvicina il telefono al tag, vede il tuo messaggio e ti avvisa con la sua posizione. Senza scaricare niente.</p>
+  </section>
+
+  <h2>Dove metterlo</h2>
+  <div class="uses">
+    <div class="use"><span class="i">🐾</span><b>Animali</b><span>Sulla medaglietta del collare</span></div>
+    <div class="use"><span class="i">⛑️</span><b>DPI</b><span>Casco e dispositivi, con le info di emergenza</span></div>
+    <div class="use"><span class="i">👕</span><b>Abiti</b><span>Giacche e divise</span></div>
+    <div class="use"><span class="i">🔑</span><b>Oggetti</b><span>Chiavi, zaini, bici…</span></div>
+  </div>
+
+  <h2>Cosa succede quando qualcuno lo trova</h2>
+  <div class="two-col">
+    <ol class="steps">
+      <li>Avvicina il telefono al tag: si apre la pagina con il nome, la foto e il tuo messaggio.</li>
+      <li>Tocca <b>Avvisa il padrone</b>: ti arriva una notifica con la sua posizione sulla mappa e, se hai messo il telefono, ti scrive subito su WhatsApp.</li>
+      <li>Tu lo chiami o vai a prenderlo. La <b>tua</b> posizione non la vede nessuno.</li>
+    </ol>
+    <figure><img src="img/guida/4-chi-trova.jpg" alt="La pagina che vede chi trova il tag" loading="lazy"><figcaption>Quello che vede chi trova il tag</figcaption></figure>
+  </div>
+
+  <h2>Crea il tuo tag nell'app</h2>
+  <ol class="steps">
+    <li>Apri WeSpot, tocca <b>☰ Menu</b> e poi <b>Tag NFC</b>.</li>
+    <li>Tocca <b>+ Nuovo tag</b> e scegli che cosa è: animale, DPI, abiti, oggetto.</li>
+    <li>Scrivi il nome e il messaggio, aggiungi una foto e, se vuoi, il tuo telefono. Tocca <b>Crea il tag</b>.</li>
+  </ol>
+  <div class="shots">
+    <figure><img src="img/guida/1-menu.jpg" alt="Menu di WeSpot con Tag NFC" loading="lazy"><figcaption>1. Menu › Tag NFC</figcaption></figure>
+    <figure><img src="img/guida/5-nuovo.jpg" alt="Scheda di un nuovo tag" loading="lazy"><figcaption>2-3. Compila e crea</figcaption></figure>
+    <figure><img src="img/guida/2-lista.jpg" alt="Elenco dei tag" loading="lazy"><figcaption>Il tag nel tuo elenco</figcaption></figure>
+  </div>
+
+  <h2>Scrivi il tag</h2>
+  <p class="muted">Serve un tag NFC vuoto: adesivo, portachiavi o medaglietta (tipo NTAG213 o NTAG215, si trovano ovunque a pochi euro).</p>
+  <div class="box soft">
+    <p><b>🤖 Android con Chrome:</b> apri il tag in WeSpot, tocca <b>📲 Scrivi sul tag</b> e appoggia subito il tag sul retro del telefono. Aspetta il riquadro verde <b>Registrazione avvenuta</b>.</p>
+    <p><b>🍏 iPhone:</b> tocca <b>Copia link</b>, apri l'app gratuita <b>NFC Tools</b>, tocca Scrivi › Aggiungi un record › URL, incolla il link, poi Scrivi e avvicina il tag.</p>
+  </div>
+  <div class="box green"><p>✅ <b>Il tag si scrive una volta sola.</b> Messaggio, foto e telefono li cambi dall'app quando vuoi (Menu › Tag NFC › tocca il tag › Salva le modifiche) e valgono subito.</p></div>
+
+  <h2>Hai ricevuto un tag già pronto?</h2>
+  <p>Nella confezione trovi un cartoncino con il codice. Inquadra il QR code, oppure apri WeSpot e vai in Menu › <b>Tag NFC</b> › <b>Collega un tag al tuo account</b>, poi scrivi il codice. Da quel momento il tag è tuo.</p>
+
+  <h2>Non hai ancora un tag?</h2>
+  <p>Te lo prepariamo noi, personalizzato e già scritto: compili la scheda e lo ricevi a casa con 1 anno di WeSpot Pro incluso.</p>
+  <a class="btn ghost" href="richiesta.html">📝 Richiedi il tuo tag</a>
+
+  <div class="box yellow">
+    <p><b>⭐ WeSpot Pro</b> serve per creare e modificare i tag. Il tag funziona sempre, anche senza abbonamento: chi lo trova vede i tuoi dati e a te arrivano sempre le segnalazioni con la posizione.</p>
+  </div>
+
+  <a class="btn primary" href="./#tags">📲 Apri i miei tag NFC</a>
+
+  <footer class="muted"><p><a href="./">WeSpot</a> · <a href="privacy.html">Privacy</a></p></footer>
+</main>
+</body>
+</html>
