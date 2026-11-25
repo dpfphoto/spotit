@@ -659,7 +659,7 @@ async function setPhotos(id, list) {
     tx.oncomplete = res; tx.onerror = () => rej(tx.error);
   });
 }
-async function shrinkPhoto(file, max = 1024) {
+async function shrinkPhoto(file, max = 1024, quality = 0.7) {
   const img = await new Promise((res, rej) => {
     const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file);
   });
@@ -668,7 +668,7 @@ async function shrinkPhoto(file, max = 1024) {
   c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
   c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
   URL.revokeObjectURL(img.src);
-  return c.toDataURL('image/jpeg', 0.7);
+  return c.toDataURL('image/jpeg', quality);
 }
 
 // Disegna miniature + pulsante "Aggiungi foto"; onChange riceve la nuova lista
@@ -694,6 +694,7 @@ let onPhotoDelete = null;
 function showPhoto(src, onDelete) {
   $('photoBig').src = src;
   onPhotoDelete = onDelete;
+  $('photoDelete').hidden = !onDelete;
   $('dlgPhoto').showModal();
 }
 $('photoDelete').onclick = () => {
@@ -1193,7 +1194,7 @@ $('iSave').onclick = () => {
 
 // ---------- Aggiornamenti ----------
 // Ogni pubblicazione alza APP_VERSION qui e in version.json: se online c'è un numero più alto propongo "Aggiorna"
-const APP_VERSION = 80;
+const APP_VERSION = 81;
 $('versionText').textContent = `Versione ${APP_VERSION}`;
 async function latestVersion() {
   const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
