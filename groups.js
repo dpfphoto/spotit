@@ -312,6 +312,7 @@
     group = g; claimId = null; travel = null;
     const p = placeOf(g);
     showCover($('gCover'), p);
+    drawPics(g);
     const ev = isEvent(g);
     $('gTitle').textContent = g.owner === (me() && me().id) ? (ev ? 'Il tuo evento' : 'La tua uscita') : (g.owner_name ? `${g.owner_name} ti invita` : 'Sei invitato');
     $('gName').textContent = p.name;
@@ -374,9 +375,11 @@
       const g = await fetchGroup(group.id);
       if (g && group && g.id === group.id) {
         const newCover = (g.place && g.place.c) !== (group.place && group.place.c);
+        const newPics = picsOf(g).join() !== picsOf(group).join();
         group = g; drawStops(); drawGroup();
         if ($('gNoteForm').hidden) showNote(g);
         if (newCover) showCover($('gCover'), placeOf(g));
+        if (newPics) drawPics(g);
       }
     } catch { /* riprovo al prossimo giro */ }
   }
@@ -609,6 +612,9 @@
     if (!group || !confirm(ev ? 'Eliminare l\'evento per tutti? Sparisce dalla mappa di tutti.' : 'Annullare l\'uscita per tutti?')) return;
     // Prima avviso chi ha detto "Ci sono" o "Forse" (poi l'uscita non esiste più)
     if (!isPast(group)) { try { await callNotify({ action: 'cancel', outing_id: group.id }); } catch { /* l'annullamento va avanti lo stesso */ } }
+    // Tolgo foto e locandine finché l'uscita esiste ancora (dopo non sarebbero più "mie")
+    const files = picsOf(group).map(t => picFile(group.id, t));
+    if (files.length) { try { await sb.storage.from('covers').remove(files); } catch { /* restano solo file orfani */ } }
     const { error } = await sb.from('outings').delete().eq('id', group.id);
     if (error) { toast('Non riesco ad annullarla ora'); return; }
     forget(group.id);
@@ -840,6 +846,79 @@
       toast(isEvent(group) ? 'Copertina tolta' : 'Torna la foto di Google');
     } catch { toast('Non riesco a toglierla ora. Riprova.'); }
   };
+
+  // ---------- Foto e locandine (le mette chi organizza, le vedono tutti gli invitati) ----------
+  // File covers/<id uscita>_<ora>.jpg; place.ph è l'elenco delle ore, nell'ordine in cui sono state aggiunte
+  const MAX_PICS = 8;
+  function picsOf(g) { return (g && g.place && Array.isArray(g.place.ph)) ? g.place.ph : []; }
+  function picFile(id, t) { return `${id}_${t}.jpg`; }
+  function picUrl(id, t) { return sb.storage.from('covers').getPublicUrl(picFile(id, t)).data.publicUrl; }
+  function drawPics(g) {
+    const isOwner = g.owner === (me() && me().id);
+    const list = picsOf(g);
+    $('gPicsBox').hidden = !list.length && !isOwner;
+    const thumbs = list.map((t, i) => {
+      const src = picUrl(g.id, t);
+      return el('button', {
+        type: 'button', class: 'thumb', 'aria-label': `Foto ${i + 1}`,
+        onclick: () => showPhoto(src, isOwner ? () => delPic(t) : null)
+      }, el('img', { src, alt: '', loading: 'lazy' }));
+    });
+    let add = null;
+    if (isOwner && list.length < MAX_PICS) {
+      const input = el('input', { type: 'file', accept: 'image/*', multiple: '', class: 'sr' });
+      input.onchange = () => addPics([...input.files]);
+      add = el('label', { class: 'thumb add' }, input, el('span', { 'aria-hidden': 'true' }, '➕'), el('span', {}, list.length ? 'Altra foto' : 'Foto o locandina'));
+    }
+    $('gPics').replaceChildren(...thumbs, ...(add ? [add] : []));
+  }
+  async function savePics(ph) {
+    const place = { ...group.place };
+    if (ph.length) place.ph = ph; else delete place.ph;
+    const { error } = await sb.from('outings').update({ place }).eq('id', group.id);
+    if (error) throw error;
+    group.place = place;
+    drawPics(group);
+  }
+  // Le locandine hanno scritte piccole: le tengo più grandi della copertina, ma sotto 1 MB (limite della cartella)
+  async function picBlob(file) {
+    for (const [max, q] of [[2000, 0.8], [1600, 0.75], [1200, 0.7]]) {
+      const blob = await (await fetch(await shrinkPhoto(file, max, q))).blob();
+      if (blob.size < 1000000) return blob;
+    }
+    throw new Error('troppo grande');
+  }
+  async function addPics(files) {
+    if (!group || !files.length) return;
+    const g = group;
+    const room = MAX_PICS - picsOf(g).length;
+    if (files.length > room) toast(`Al massimo ${MAX_PICS} foto: ne aggiungo ${room}`);
+    toast(files.length > 1 ? 'Carico le foto…' : 'Carico la foto…');
+    const added = [];
+    let t = Date.now();
+    for (const f of files.slice(0, room)) {
+      try {
+        const blob = await picBlob(f);
+        const { error } = await sb.storage.from('covers').upload(picFile(g.id, t), blob, { upsert: true, contentType: 'image/jpeg', cacheControl: '3600' });
+        if (error) throw error;
+        added.push(t++);
+      } catch { /* provo le altre */ }
+    }
+    if (!added.length) { toast('Non riesco a caricare la foto ora. Riprova.'); return; }
+    if (group !== g) return;
+    try {
+      await savePics([...picsOf(g), ...added]);
+      toast(added.length > 1 ? `${added.length} foto aggiunte` : 'Foto aggiunta');
+    } catch { toast('Non riesco a salvare ora. Riprova.'); }
+  }
+  async function delPic(t) {
+    if (!group) return;
+    try {
+      await savePics(picsOf(group).filter(x => x !== t));
+      sb.storage.from('covers').remove([picFile(group.id, t)]).catch(() => {});
+      toast('Foto tolta');
+    } catch { toast('Non riesco a toglierla ora. Riprova.'); }
+  }
 
   $('gPublic').addEventListener('change', async () => {
     if (!group) return;
