@@ -18,7 +18,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="WeSpot">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=82">
+<link rel="stylesheet" href="styles.css?v=83">
 </head>
 <body>
 <header class="top">
@@ -789,6 +789,17 @@
   <button type="button" class="link-btn news-later" data-close>Più tardi</button>
 </dialog>
 
+<!-- Avviso al nuovo co-amministratore -->
+<dialog id="dlgCoAdmin" class="sheet">
+  <div class="sheet-head">
+    <h2>⭐ Nuovo co-amministratore</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Chiudi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+  </div>
+  <p id="coText"></p>
+  <a id="coWa" class="btn primary full" target="_blank" rel="noopener">📲 Avvisalo su WhatsApp</a>
+  <button type="button" class="link-btn news-later" data-close>Non ora</button>
+</dialog>
+
 <!-- Guida installazione iPhone -->
 <dialog id="dlgIos" class="sheet">
   <div class="sheet-head">
@@ -807,15 +818,15 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js?v=82"></script>
-<script src="app.js?v=82"></script>
+<script src="config.js?v=83"></script>
+<script src="app.js?v=83"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="account.js?v=82"></script>
-<script src="groups.js?v=82"></script>
-<script src="layers.js?v=82"></script>
-<script src="registro.js?v=82"></script>
-<script src="medagliette.js?v=82"></script>
-<script src="pro.js?v=82"></script>
-<script src="news.js?v=82"></script>
+<script src="account.js?v=83"></script>
+<script src="groups.js?v=83"></script>
+<script src="layers.js?v=83"></script>
+<script src="registro.js?v=83"></script>
+<script src="medagliette.js?v=83"></script>
+<script src="pro.js?v=83"></script>
+<script src="news.js?v=83"></script>
 </body>
 </html>

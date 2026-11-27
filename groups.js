@@ -494,7 +494,23 @@
     if (error) { toast(/ancora entrato/.test(error.message) ? `${m.name} deve prima entrare con il link d'invito` : 'Non riesco a salvarlo ora. Riprova tra poco.'); return; }
     m.role = on ? 'admin' : '';
     drawGroup();
-    toast(on ? `⭐ ${m.name} ora è co-amministratore: può modificare e riceve gli avvisi` : `${m.name} non è più co-amministratore`);
+    if (on) askCoAdminWa(m);
+    else toast(`${m.name} non è più co-amministratore`);
+  }
+
+  // Dopo la nomina: messaggio WhatsApp di conferma con il link all'uscita
+  function coAdminText(g, name) {
+    const o = asOuting(g);
+    return `Ciao ${name}! ${myName()} ti ha nominato co-amministratore di "${o.n}" ${whenLabel(o.t)}. `
+      + `Ora puoi modificarlo, aggiungere e togliere partecipanti, e ricevi anche tu gli avvisi quando qualcuno risponde. Aprilo qui: ${groupUrl(g.id)}`;
+  }
+  function askCoAdminWa(m) {
+    const g = group; if (!g) return;
+    const phone = m.phone || phones[m.id] || '';
+    $('coText').textContent = `${m.name} ora è co-amministratore: può modificare e riceve gli avvisi. Vuoi mandargli un messaggio di conferma con il link?`;
+    $('coWa').href = `https://wa.me/${phone}?text=${encodeURIComponent(coAdminText(g, m.name))}`;
+    $('coWa').onclick = () => $('dlgCoAdmin').close();
+    $('dlgCoAdmin').showModal();
   }
 
   // ---------- Note dei partecipanti ----------
