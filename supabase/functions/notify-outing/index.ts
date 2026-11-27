@@ -233,7 +233,10 @@ Deno.serve(async req => {
     if (!o || o.owner === user.id) return json({ sent: 0 });
     await admin.from('outing_members').update({ notified: true }).eq('id', m.id);
 
-    const { data: subs } = await admin.from('push_subscriptions').select('endpoint, p256dh, auth, sound').eq('user_id', o.owner);
+    // Avviso chi organizza e i co-amministratori (coadmin.sql); se la colonna role non c'è ancora, solo chi organizza
+    const { data: adm } = await admin.from('outing_members').select('user_id').eq('outing_id', m.outing_id).eq('role', 'admin');
+    const to = [...new Set([o.owner as string, ...((adm || []) as { user_id: string | null }[]).map(a => a.user_id).filter(Boolean) as string[]])].filter(u => u !== user.id);
+    const { data: subs } = await admin.from('push_subscriptions').select('endpoint, p256dh, auth, sound').in('user_id', to);
     const sent = await pushTo(subs || [], {
       title: `${m.name} c'è!`,
       body: `Ha risposto "Ci sono" per ${(o.place && o.place.n) || 'la tua uscita'}`,
