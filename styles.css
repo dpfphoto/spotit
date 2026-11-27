@@ -548,3 +548,8 @@ input[type="date"]:focus, input[type="time"]:focus, input[type="number"]:focus, 
 .news p { text-align: center; color: var(--muted); margin: 0 0 14px; }
 .news .btn { margin: 6px 0; }
 .news-later { display: block; margin: 8px auto 0; }
+/* Co-amministratori (v82) */
+.m-role { display: block; font-size: 12px; font-weight: 700; color: #92400E; }
+.m-admin { border: 1.5px solid #E2E8F0; background: #fff; font-size: 16px; width: 36px; height: 36px; border-radius: 18px; filter: grayscale(1); opacity: .55; flex: none; }
+.m-admin.on { filter: none; opacity: 1; border-color: #F59E0B; background: #FEF3C7; }
+.admin-hint { background: #FFFBEB; border-radius: 12px; padding: 10px 12px; margin: 6px 0 10px; }

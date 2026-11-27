@@ -57,6 +57,9 @@
   }
   // Evento privato (festa, cena a casa): non è un locale, sta solo sulla mappa di chi è nel gruppo
   function isEvent(g) { return !!(g && g.place && g.place.pv); }
+  // Chi organizza o un co-amministratore (coadmin.sql): può modificare l'uscita e gestire i partecipanti
+  function isCoAdmin(g) { const u = me(); return !!(u && g && (g.members || g.outing_members || []).some(m => m.user_id === u.id && m.role === 'admin')); }
+  function canManage(g) { const u = me(); return !!(u && g && (g.owner === u.id || isCoAdmin(g))); }
   // Finita la festa: dopo 12 ore dall'inizio diventa "passato"
   function lateText(min) { return min > 60 ? 'oltre 1 ora' : min === 60 ? '1 ora' : `${min} minuti`; }
   function isPast(g) { return new Date(lastTime(g)).getTime() + 12 * 3600000 < Date.now(); }
@@ -268,14 +271,14 @@
   // ---------- Apri ----------
 
   async function fetchGroup(id) {
-    const { data, error } = await sb.from('outings').select('*, outing_members(id, user_id, name, status, created_at, arrival, delay_min)').eq('id', id).maybeSingle();
+    const { data, error } = await sb.from('outings').select('*, outing_members(id, user_id, name, status, created_at, arrival, delay_min, role)').eq('id', id).maybeSingle();
     if (error) throw error;
     if (data) {
       data.members = (data.outing_members || []).sort((a, b) => a.created_at.localeCompare(b.created_at));
       data.joined = true;
       remember(data, data.members); // quello che vedo aperto non diventa una notifica dopo
-      // I numeri li vede solo l'organizzatore
-      if (me() && data.owner === me().id) {
+      // I numeri li vedono solo chi organizza e i co-amministratori
+      if (canManage(data)) {
         const { data: ph } = await sb.rpc('outing_phones', { oid: id });
         for (const r of ph || []) { const m = data.members.find(x => x.id === r.id); if (m) m.phone = r.phone; }
       }
@@ -339,7 +342,7 @@
   function drawStops() {
     const g = group; if (!g) return;
     const all = stopsOf(g);
-    const isOwner = me() && g.owner === me().id;
+    const isOwner = canManage(g);
     $('gStopsBox').hidden = all.length < 2 && !isOwner;
     $('gAddStop').hidden = !isOwner;
     $('gStops').hidden = all.length < 2;
@@ -405,6 +408,7 @@
     const g = group; if (!g) return;
     const u = me();
     const isOwner = u && g.owner === u.id;
+    const can = canManage(g);
     const mine = g.joined && u ? g.members.find(m => m.user_id === u.id) : null;
 
     // "Chi sei?": solo per chi arriva dal link ed è stato aggiunto a mano dall'organizzatore
@@ -427,10 +431,12 @@
     $('gCount').textContent = `${yes} ${yes === 1 ? 'c\'è' : 'ci sono'} su ${g.members.length}`;
     $('gMembers').replaceChildren(...g.members.map(m => {
       const st = (m.status === 'si' && ARRIVAL[m.arrival]) || STATUS[m.status] || STATUS.invitato;
-      const phone = isOwner && (m.phone || phones[m.id]);
+      const phone = can && (m.phone || phones[m.id]);
+      const boss = m.user_id && m.user_id === g.owner;
       const isMe = u && (m.user_id === u.id);
       return el('li', {},
         el('span', { class: 'm-name' }, m.name + (isMe ? ' (tu)' : ''),
+          boss ? el('small', { class: 'm-role' }, '👑 Organizza') : m.role === 'admin' ? el('small', { class: 'm-role' }, '⭐ Co-amministratore') : '',
           phone ? el('small', { class: 'm-phone' }, '+' + phone) : ''),
         (m.delay_min > 0 && m.arrival !== 'arrivato' && (m.status === 'si' || m.status === 'forse')) ? el('span', { class: 'm-status late' }, (m.delay_min > 60 ? '⏱ oltre 1 ora' : `⏱ +${m.delay_min} min`)) : '',
         isMe && m.status === 'si' && ARRIVAL[m.arrival] && !isPast(g)
@@ -440,20 +446,29 @@
           class: 'm-wa', target: '_blank', rel: 'noopener', 'aria-label': `Manda l'invito a ${m.name} su WhatsApp`,
           href: `https://wa.me/${phone}?text=${encodeURIComponent(inviteText(g, m.name))}`
         }, 'WhatsApp') : '',
-        isOwner && !isMe ? el('button', {
+        // Solo chi organizza nomina i co-amministratori, tra chi è entrato con il link
+        isOwner && !isMe && m.user_id && g.joined ? el('button', {
+          type: 'button', class: 'm-admin' + (m.role === 'admin' ? ' on' : ''), 'aria-pressed': String(m.role === 'admin'),
+          title: m.role === 'admin' ? `Togli ${m.name} dai co-amministratori` : `Rendi ${m.name} co-amministratore`,
+          'aria-label': m.role === 'admin' ? `Togli ${m.name} dai co-amministratori` : `Rendi ${m.name} co-amministratore`,
+          onclick: () => setAdmin(m, m.role !== 'admin')
+        }, '⭐') : '',
+        can && !isMe && !boss && (isOwner || m.role !== 'admin') ? el('button', {
           type: 'button', class: 'm-del', 'aria-label': `Togli ${m.name}`, onclick: () => removeMember(m)
         }, '✕') : '');
     }));
 
-    $('gAddForm').hidden = !isOwner;
-    $('gNotify').hidden = !isOwner;
-    if (isOwner) drawNotify();
+    $('gAddForm').hidden = !can;
+    $('gNotify').hidden = !can;
+    if (can) drawNotify();
     $('gCancel').hidden = !isOwner;
-    $('gPublicBox').hidden = !(isOwner && isEvent(g));
-    $('gCoverBox').hidden = !isOwner;
-    $('gNoteEdit').hidden = !isOwner || !$('gNoteForm').hidden;
-    $('gNameEdit').hidden = !isOwner || !$('gNameForm').hidden;
-    $('gWhenEdit').hidden = !isOwner || !$('gWhenForm').hidden;
+    $('gPublicBox').hidden = !(can && isEvent(g));
+    $('gCoverBox').hidden = !can;
+    $('gNoteEdit').hidden = !can || !$('gNoteForm').hidden;
+    $('gNameEdit').hidden = !can || !$('gNameForm').hidden;
+    $('gWhenEdit').hidden = !can || !$('gWhenForm').hidden;
+    $('gAdminHint').hidden = !(isOwner && g.joined && g.members.some(m => m.user_id && m.user_id !== u.id));
+    $('gCoHint').hidden = !(isCoAdmin(g) && !isOwner);
     const pl = g.place || {};
     $('gAppt').hidden = isEvent(g) || pl.la == null || !window.spotitMyVerdict
       || window.spotitMyVerdict({ name: pl.n || '', lat: pl.la, lng: pl.lo }) === 'appuntamento';
@@ -470,7 +485,16 @@
     $('gCoverLabel').textContent = g.place && g.place.c ? 'Cambia copertina' : 'Metti una copertina';
     $('gPublic').checked = !!g.is_public;
     $('gLeaveGroup').hidden = isOwner || !mine;
-    drawNotes(g, isOwner);
+    drawNotes(g, can);
+  }
+
+  // Nomina o toglie un co-amministratore (solo chi organizza)
+  async function setAdmin(m, on) {
+    const { error } = await sb.rpc('set_outing_admin', { p_member: m.id, p_admin: on });
+    if (error) { toast(/ancora entrato/.test(error.message) ? `${m.name} deve prima entrare con il link d'invito` : 'Non riesco a salvarlo ora. Riprova tra poco.'); return; }
+    m.role = on ? 'admin' : '';
+    drawGroup();
+    toast(on ? `⭐ ${m.name} ora è co-amministratore: può modificare e riceve gli avvisi` : `${m.name} non è più co-amministratore`);
   }
 
   // ---------- Note dei partecipanti ----------
@@ -854,7 +878,7 @@
   function picFile(id, t) { return `${id}_${t}.jpg`; }
   function picUrl(id, t) { return sb.storage.from('covers').getPublicUrl(picFile(id, t)).data.publicUrl; }
   function drawPics(g) {
-    const isOwner = g.owner === (me() && me().id);
+    const isOwner = canManage(g);
     const list = picsOf(g);
     $('gPicsBox').hidden = !list.length && !isOwner;
     const thumbs = list.map((t, i) => {
@@ -1030,7 +1054,7 @@
   async function loadUpcoming() {
     if (!me()) { upcoming = []; events = []; drawEvents(); drawBell(); return; }
     try {
-      const { data, error } = await sb.from('outings').select('id, owner, place, starts_at, stops, owner_name, outing_members(id, user_id, name, status, arrival, delay_min)')
+      const { data, error } = await sb.from('outings').select('id, owner, place, starts_at, stops, owner_name, outing_members(id, user_id, name, status, arrival, delay_min, role)')
         .order('starts_at').limit(200);
       if (error) throw error;
       const all = data || [];
